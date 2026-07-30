@@ -6,6 +6,7 @@ BGG 컬렉션 CSV(geekcollection.php export)를 읽어서
 """
 import csv
 import json
+import os
 import sys
 from datetime import datetime, timezone
 
@@ -58,6 +59,10 @@ def convert(csv_path, json_path):
         "count": len(games),
         "games": games,
     }
+
+    out_dir = os.path.dirname(json_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
 
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
