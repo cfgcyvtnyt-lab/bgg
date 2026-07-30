@@ -32,6 +32,19 @@ jobs:
               -o collection.csv
           fi
 
+      - name: 받아온 파일 확인용 디버그 출력
+        run: |
+          echo "--- 파일 크기 ---"
+          wc -c collection.csv
+          echo "--- 앞 20줄 ---"
+          head -n 20 collection.csv
+
+      - name: collection.csv를 아티팩트로 업로드 (직접 열어보기용)
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-collection-csv
+          path: collection.csv
+
       - name: Python 설정
         uses: actions/setup-python@v5
         with:
