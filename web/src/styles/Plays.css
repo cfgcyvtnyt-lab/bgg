@@ -81,12 +81,15 @@
   gap: 4px;
 }
 
+/* border-box로 고정해야 겹침 모드에서 테두리를 둘러도 바깥 크기(34px)가 안 변한다 -
+   그래야 인원수가 달라 겹침 여부가 바뀌어도 행 높이가 흔들리지 않는다. */
 .winner-avatar {
   width: 34px;
   height: 34px;
   border-radius: 50%;
   object-fit: cover;
   flex: none;
+  box-sizing: border-box;
 }
 
 .winner-initial {
@@ -100,18 +103,47 @@
   font-size: 14px;
   font-weight: 700;
   color: #fff;
+  box-sizing: border-box;
 }
 
-/* 경쟁전(개인전) 승자: 프로필 사진 앞에 작은 트로피를 붙인다 */
-.winner-slot {
+/* 프로필 원들을 담는 묶음 - 행 오른쪽 끝에 고정 정렬된다(.play-item-winners가 flex:none).
+   BGStats 스크린샷처럼 2인부터 이미 겹친다 - 겹침 여부로 행 높이가 흔들리지 않게
+   음수 마진은 항상 적용하고(1인은 형제가 없어 영향 없음), 테두리도 항상 둘러 경계를 또렷하게 한다. */
+.play-item-avatars {
   display: flex;
   align-items: center;
-  gap: 1px;
 }
 
-.winner-slot-trophy {
-  font-size: 13px;
+.avatar-slot {
+  position: relative;
+  display: flex;
   flex: none;
+}
+
+.avatar-slot:not(:first-child) {
+  margin-left: -12px;
+}
+
+.play-item-avatars .winner-avatar,
+.play-item-avatars .winner-initial {
+  border: 2px solid var(--bg);
+}
+
+/* 최대 4명까지만 보여주고 나머지는 +N */
+.avatar-overflow {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 2px solid var(--bg);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-left: -12px;
 }
 
 /* 에러플 표시 - 트로피/프로필과 자리를 다투지 않게 작게, 살짝 왼쪽 여백만 준다 */
@@ -122,9 +154,9 @@
   margin-right: 2px;
 }
 
-/* 협력/솔로 판: 승패를 아바타 대신 아이콘 하나로만 보여준다 */
+/* 판 전체 결과 아이콘(트로피/해골) - 프로필 묶음 "앞"(왼쪽)에 하나만 붙는다 */
 .result-icon {
-  font-size: 22px;
+  font-size: 20px;
   flex: none;
   line-height: 1;
 }

@@ -248,30 +248,45 @@ export default function PlaysPage() {
                     {!!p.has_rule_error && (
                       <span className="rule-error-icon" aria-label="에러플" title="에러플">⚠️</span>
                     )}
-                    {isSoloOrCoop ? (
-                      succeeded ? (
-                        <span className="result-icon" aria-label="성공" title="성공">🏆</span>
-                      ) : (
-                        <span className="result-icon result-icon-loss" aria-label="실패" title="실패">💀</span>
-                      )
-                    ) : (
-                      winners.map((w, i) => {
-                        const avatar = avatarByName.get(w.name);
-                        const isMyWin = w.name === myName;
-                        return (
-                          <span key={i} className="winner-slot">
-                            {isMyWin && <span className="winner-slot-trophy" aria-hidden="true">🏆</span>}
-                            {avatar ? (
-                              <img className="winner-avatar" src={api.avatarUrl(avatar)} alt={w.name} title={w.name} />
-                            ) : (
-                              <div className="winner-initial" style={{ background: colorForName(w.name) }} title={w.name}>
-                                {w.name.slice(0, 1)}
-                              </div>
+                    {(() => {
+                      // 트로피/해골은 판 전체 결과를 나타내는 아이콘 하나 - 프로필 앞(왼쪽)에 붙는다.
+                      // 협력/솔로는 성공 여부, 경쟁전은 "로그인 사용자가 이겼을 때만"(기존 규칙 유지).
+                      const showTrophy = isSoloOrCoop ? succeeded : !!myPlayer && (myPlayer.win === true || myPlayer.win === 1);
+                      const showLoss = isSoloOrCoop && !succeeded;
+                      // 프로필은 항상 전원 표시(BGStats 방식) - 로그인 사용자를 맨 앞(가장 오른쪽/최상단)에 둔다.
+                      const displayPlayers = myPlayer
+                        ? [myPlayer, ...p.players.filter((pl) => pl !== myPlayer)]
+                        : p.players;
+                      const MAX_VISIBLE = 4;
+                      const visiblePlayers = displayPlayers.slice(0, MAX_VISIBLE);
+                      const overflowCount = displayPlayers.length - visiblePlayers.length;
+                      return (
+                        <>
+                          {showTrophy && <span className="result-icon" aria-label="승리" title="승리">🏆</span>}
+                          {showLoss && <span className="result-icon result-icon-loss" aria-label="실패" title="실패">💀</span>}
+                          <div className="play-item-avatars">
+                            {visiblePlayers.map((pl, i) => {
+                              const avatar = avatarByName.get(pl.name);
+                              const label = pl.is_automa ? "봇" : pl.name;
+                              return (
+                                <span key={pl.id ?? i} className="avatar-slot" style={{ zIndex: visiblePlayers.length - i }} title={label}>
+                                  {avatar ? (
+                                    <img className="winner-avatar" src={api.avatarUrl(avatar)} alt={label} />
+                                  ) : (
+                                    <div className="winner-initial" style={{ background: colorForName(pl.name) }}>
+                                      {label.slice(0, 1)}
+                                    </div>
+                                  )}
+                                </span>
+                              );
+                            })}
+                            {overflowCount > 0 && (
+                              <span className="avatar-slot avatar-overflow" style={{ zIndex: 0 }}>+{overflowCount}</span>
                             )}
-                          </span>
-                        );
-                      })
-                    )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </Link>
               );
