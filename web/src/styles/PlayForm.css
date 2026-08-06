@@ -35,29 +35,44 @@
   border-bottom: none;
 }
 
+/* 타이머는 입력 폼의 한 줄일 뿐이다. 큰 박스로 자리를 차지하지 않게 한 줄로 배치한다. */
 .play-timer {
-  margin: 12px 0;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
 }
 
 .play-timer-display {
-  font-size: 40px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 1px;
-  margin-bottom: 10px;
+  min-width: 62px;
 }
 
-.play-timer-buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
+.play-timer-btn {
+  padding: 5px 11px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.play-timer-btn.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.play-timer-btn.ghost {
+  color: var(--muted);
 }
 
 .play-timer-avg {
-  margin-top: 10px;
-  font-size: 12.5px;
+  font-size: 12px;
+  margin-left: auto;
 }
 
 .coop-toggle {
