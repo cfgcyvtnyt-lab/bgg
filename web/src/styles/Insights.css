@@ -63,10 +63,47 @@
   gap: 16px;
 }
 
+/* 요일 파이는 조각 안에 글자만 넣고 범례가 없어서 중앙 정렬한다 */
+.pie-chart-row-letter {
+  justify-content: center;
+}
+
 .pie-chart-svg {
   width: 130px;
   height: 130px;
   flex: none;
+}
+
+.pie-slice-letter {
+  font-size: 9px;
+  font-weight: 700;
+  fill: #fff;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.pie-slice-percent {
+  font-size: 8px;
+  font-weight: 700;
+  fill: #fff;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* 두 파이(요일/장소)를 한 줄에 좌우로 나란히 배치. 375px에서도 겹치지 않게 min-width:0 */
+.pie-two-col {
+  display: flex;
+  gap: 10px;
+}
+
+.pie-two-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.pie-two-item .pie-chart-svg {
+  width: 100px;
+  height: 100px;
 }
 
 .pie-legend {
@@ -142,49 +179,6 @@
   margin-bottom: 14px;
 }
 
-.level-badges {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-}
-
-.level-badge {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 4px;
-  text-align: center;
-  opacity: 0.4;
-}
-
-.level-badge.earned {
-  opacity: 1;
-  border-color: var(--accent);
-}
-
-.level-badge-value {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.level-badge-label {
-  font-size: 10.5px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.streak-card {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.streak-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--accent);
-}
-
 .bar-chart {
   display: flex;
   flex-direction: column;
@@ -215,9 +209,14 @@
 
 .bar-row-fill {
   height: 100%;
-  background: var(--accent);
+  background: var(--accent-dim);
   border-radius: 6px;
   min-width: 3px;
+}
+
+/* 최다 플레이 TOP10은 한 톤(accent)으로 통일하고 1위만 진하게 강조한다 */
+.bar-row-fill.is-first {
+  background: var(--accent);
 }
 
 .bar-row-value {
@@ -247,11 +246,11 @@
   text-align: right;
 }
 
-.monthly-chart {
+.plays-chart {
   overflow-x: auto;
 }
 
-.monthly-bars {
+.plays-bars {
   display: flex;
   align-items: flex-end;
   gap: 6px;
@@ -259,7 +258,7 @@
   min-width: min-content;
 }
 
-.monthly-bar-col {
+.plays-bar-col {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -269,23 +268,22 @@
   flex: none;
 }
 
-.monthly-bar {
+.plays-bar {
   width: 10px;
   background: var(--accent-dim);
   border-radius: 3px 3px 0 0;
   min-height: 2px;
 }
 
-/* 최대값 달만 진하게 - 단색 팔레트는 유지하되 그 달만 강조한다 */
-.monthly-bar.is-max {
+/* 최대값 구간만 진하게 - 단색 팔레트는 유지하되 그 구간만 강조한다 */
+.plays-bar.is-max {
   background: var(--accent);
 }
 
-.monthly-bar-label {
+.plays-bar-label {
   font-size: 9px;
   color: var(--muted);
   margin-top: 4px;
-  writing-mode: vertical-rl;
   white-space: nowrap;
 }
 

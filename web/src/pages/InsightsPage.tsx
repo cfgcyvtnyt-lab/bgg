@@ -25,38 +25,47 @@ function fmtKRW(krw: number) {
 }
 
 // 요일·장소 분포용 파이 조각 계산. 라이브러리 없이 SVG path만으로 그린다.
+// 텍스트를 조각 안에 넣어야 해서 중간각의 라벨 위치(lx,ly)도 함께 계산한다.
 function pieSlices(items: { label: string; count: number }[]) {
   const total = items.reduce((s, it) => s + it.count, 0);
-  if (total <= 0) return { total, slices: [] as { label: string; count: number; percent: number; color: string; path?: string; isFull?: boolean }[] };
+  if (total <= 0) {
+    return {
+      total,
+      slices: [] as { label: string; count: number; percent: number; color: string; path?: string; isFull?: boolean; lx: number; ly: number }[],
+    };
+  }
   const nonZero = items.filter((it) => it.count > 0);
   let angle = -90; // 12시 방향에서 시작
+  const cx = 50, cy = 50, r = 48;
+  const toXY = (deg: number, rad: number) => [cx + rad * Math.cos((deg * Math.PI) / 180), cy + rad * Math.sin((deg * Math.PI) / 180)];
   const slices = nonZero.map((it, i) => {
     const frac = it.count / total;
     const percent = Math.round(frac * 100);
     const color = colorAt(i);
     if (nonZero.length === 1) {
-      return { label: it.label, count: it.count, percent, color, isFull: true };
+      return { label: it.label, count: it.count, percent, color, isFull: true, lx: cx, ly: cy };
     }
     const start = angle;
     const sweep = frac * 360;
     const end = start + sweep;
     angle = end;
-    const cx = 50, cy = 50, r = 48;
-    const toXY = (deg: number) => [cx + r * Math.cos((deg * Math.PI) / 180), cy + r * Math.sin((deg * Math.PI) / 180)];
-    const [sx, sy] = toXY(start);
-    const [ex, ey] = toXY(end);
+    const [sx, sy] = toXY(start, r);
+    const [ex, ey] = toXY(end, r);
     const large = sweep > 180 ? 1 : 0;
     const path = `M${cx},${cy} L${sx},${sy} A${r},${r} 0 ${large} 1 ${ex},${ey} Z`;
-    return { label: it.label, count: it.count, percent, color, path };
+    const [lx, ly] = toXY((start + end) / 2, r * 0.62);
+    return { label: it.label, count: it.count, percent, color, path, lx, ly };
   });
   return { total, slices };
 }
 
-function PieChart({ items }: { items: { label: string; count: number }[] }) {
+// mode="letter": 조각 안에 라벨 글자(요일), 범례 없음.
+// mode="percent": 조각 안에 흰색 퍼센트, 옆에 색점+이름만 범례.
+function PieChart({ items, mode }: { items: { label: string; count: number }[]; mode: "letter" | "percent" }) {
   const { total, slices } = pieSlices(items);
   if (total <= 0) return <p className="muted">기록이 없습니다.</p>;
   return (
-    <div className="pie-chart-row">
+    <div className={`pie-chart-row pie-chart-row-${mode}`}>
       <svg viewBox="0 0 100 100" className="pie-chart-svg">
         {slices.map((s) =>
           s.isFull ? (
@@ -65,16 +74,25 @@ function PieChart({ items }: { items: { label: string; count: number }[] }) {
             <path key={s.label} d={s.path} fill={s.color} />
           )
         )}
+        {mode === "letter" &&
+          slices.map((s) => (
+            <text key={s.label} x={s.lx} y={s.ly} className="pie-slice-letter">{s.label}</text>
+          ))}
+        {mode === "percent" &&
+          slices.map((s) => (
+            <text key={s.label} x={s.lx} y={s.ly} className="pie-slice-percent">{s.percent}%</text>
+          ))}
       </svg>
-      <div className="pie-legend">
-        {slices.map((s) => (
-          <div key={s.label} className="pie-legend-row">
-            <span className="pie-legend-swatch" style={{ background: s.color }} />
-            <span className="pie-legend-label">{s.label}</span>
-            <span className="pie-legend-value muted">{s.percent}%</span>
-          </div>
-        ))}
-      </div>
+      {mode === "percent" && (
+        <div className="pie-legend">
+          {slices.map((s) => (
+            <div key={s.label} className="pie-legend-row">
+              <span className="pie-legend-swatch" style={{ background: s.color }} />
+              <span className="pie-legend-label">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -114,6 +132,33 @@ function periodRange(key: PeriodKey, anchor: Date, customFrom: string, customTo:
   return {};
 }
 
+type Bucket = "day" | "month" | "year";
+
+// 기간 탭에 따라 그래프 버킷을 정한다: 전체=연도별, 올해=월별, 이번달=일별.
+// 직접 지정은 기간 길이로 자동 판단(1년 초과면 월별, 아니면 일별).
+function bucketForPeriod(key: PeriodKey, from?: string, to?: string): Bucket {
+  if (key === "month") return "day";
+  if (key === "year") return "month";
+  if (key === "all") return "year";
+  if (from && to) {
+    const days = (new Date(to).getTime() - new Date(from).getTime()) / 86400000;
+    return days > 366 ? "month" : "day";
+  }
+  return "day";
+}
+
+const BUCKET_TITLE: Record<Bucket, string> = { day: "일별 플레이", month: "월별 플레이", year: "연도별 플레이" };
+
+// 그래프 막대 아래 표시할 짧은 라벨. day는 촘촘해서 일부만(대략 6~8개 간격) 보여준다.
+function barLabel(label: string, bucket: Bucket, index: number, count: number) {
+  if (bucket === "year") return label;
+  if (bucket === "month") return `${Number(label.slice(5, 7))}월`;
+  const day = Number(label.slice(8, 10));
+  const step = Math.max(1, Math.ceil(count / 10));
+  if (day === 1 || (index % step === 0)) return String(day);
+  return "";
+}
+
 export default function InsightsPage() {
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,7 +172,8 @@ export default function InsightsPage() {
   useEffect(() => {
     setLoading(true);
     const { from, to } = periodRange(period, anchor, customFrom, customTo);
-    api.insights({ from, to })
+    const bucket = bucketForPeriod(period, from, to);
+    api.insights({ from, to, bucket })
       .then(setData)
       .catch((err) => setError(err instanceof Error ? err.message : "불러오기 실패"))
       .finally(() => setLoading(false));
@@ -158,15 +204,7 @@ export default function InsightsPage() {
 
   const topGames = data.topGames.slice(0, 10);
   const maxTop = topGames[0]?.count || 1;
-  const maxMonthly = Math.max(1, ...data.monthlyPlays.map((m) => m.count));
-
-  const levelBadges = [
-    { key: "fives", label: "5판+", value: data.levels.fives },
-    { key: "dimes", label: "10판+", value: data.levels.dimes },
-    { key: "quarters", label: "25판+", value: data.levels.quarters },
-    { key: "centuries", label: "100판+", value: data.levels.centuries },
-    { key: "thousands", label: "1000판+", value: data.levels.thousands },
-  ];
+  const maxPlays = Math.max(1, ...data.plays.map((m) => m.count));
 
   return (
     <div className="page insights-page">
@@ -223,24 +261,20 @@ export default function InsightsPage() {
         총 구매 {fmtKRW(data.spending.totalPaid)} · 회수 {fmtKRW(data.spending.totalSold)} · 순지출 {fmtKRW(data.spending.net)}
       </div>
 
-      <div className="section-title">달성 레벨</div>
-      <div className="level-badges">
-        {levelBadges.map((b, i) => (
-          <div
-            key={b.key}
-            className={`level-badge${b.value > 0 ? " earned" : ""}`}
-            style={b.value > 0 ? { borderColor: colorAt(i), color: colorAt(i) } : undefined}
-          >
-            <div className="level-badge-value">{b.value}</div>
-            <div className="level-badge-label">{b.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="section-title">최다 연승</div>
-      <div className="card streak-card">
-        <span className="streak-value">{fmt(data.bestStreak)}</span>
-        <span className="muted">연승</span>
+      <div className="section-title">{BUCKET_TITLE[data.bucket]}</div>
+      <div className="card plays-chart">
+        {data.plays.length === 0 && <p className="muted">기록이 없습니다.</p>}
+        <div className="plays-bars">
+          {data.plays.map((m, i) => (
+            <div key={m.label} className="plays-bar-col" title={`${m.label}: ${m.count}회`}>
+              <div
+                className={`plays-bar${m.count === maxPlays && maxPlays > 0 ? " is-max" : ""}`}
+                style={{ height: `${(m.count / maxPlays) * 100}%` }}
+              />
+              <div className="plays-bar-label">{barLabel(m.label, data.bucket, i, data.plays.length)}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="section-title">최다 플레이 TOP 10</div>
@@ -250,7 +284,7 @@ export default function InsightsPage() {
           <Link key={g.game_id} to={`/game/${g.game_id}`} className="bar-row">
             <span className="bar-row-label">{g.game_name}</span>
             <div className="bar-row-track">
-              <div className="bar-row-fill" style={{ width: `${(g.count / maxTop) * 100}%`, background: colorAt(i) }} />
+              <div className={`bar-row-fill${i === 0 ? " is-first" : ""}`} style={{ width: `${(g.count / maxTop) * 100}%` }} />
             </div>
             <span className="bar-row-value">{fmt(g.count)}</span>
           </Link>
@@ -278,33 +312,22 @@ export default function InsightsPage() {
         )}
       </div>
 
-      <div className="section-title">월별 플레이</div>
-      <div className="card monthly-chart">
-        {data.monthlyPlays.length === 0 && <p className="muted">기록이 없습니다.</p>}
-        <div className="monthly-bars">
-          {data.monthlyPlays.map((m) => (
-            <div key={m.month} className="monthly-bar-col" title={`${m.month}: ${m.count}회`}>
-              <div
-                className={`monthly-bar${m.count === maxMonthly ? " is-max" : ""}`}
-                style={{ height: `${(m.count / maxMonthly) * 100}%` }}
-              />
-              <div className="monthly-bar-label">{m.month.slice(2).replace("-", "/")}</div>
-            </div>
-          ))}
+      <div className="pie-two-col">
+        <div className="pie-two-item">
+          <div className="section-title">요일별 분포</div>
+          <div className="card">
+            <PieChart items={data.byWeekday.map((w) => ({ label: w.weekday, count: w.count }))} mode="letter" />
+          </div>
+        </div>
+        <div className="pie-two-item">
+          <div className="section-title">장소별 분포</div>
+          <div className="card">
+            <PieChart items={data.byLocation.map((l) => ({ label: l.location, count: l.count }))} mode="percent" />
+          </div>
         </div>
       </div>
 
-      <div className="section-title">요일별 분포</div>
-      <div className="card">
-        <PieChart items={data.byWeekday.map((w) => ({ label: w.weekday, count: w.count }))} />
-      </div>
-
-      <div className="section-title">장소별 분포</div>
-      <div className="card">
-        <PieChart items={data.byLocation.map((l) => ({ label: l.location, count: l.count }))} />
-      </div>
-
-      <div className="section-title">안 해본 보유 게임 ({data.ownedNotPlayed.length})</div>
+      <div className="section-title">노플 게임 ({data.ownedNotPlayed.length})</div>
       <div className="card">
         {data.ownedNotPlayed.length === 0 && <p className="muted">보유 게임을 모두 플레이했습니다.</p>}
         <div className="chip-row wrap">
