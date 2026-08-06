@@ -20,16 +20,21 @@ export function upsertGames(db, games) {
   const stmt = db.prepare(`
     INSERT INTO game (id, name, name_en, aliases, thumbnail, image, year_published,
                       min_players, max_players, playing_time, weight, bgg_rating,
-                      bgg_rank, synced_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                      bgg_rank, item_type, description, designers, artists, categories,
+                      mechanics, synced_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name, name_en = excluded.name_en, aliases = excluded.aliases,
       thumbnail = excluded.thumbnail, image = excluded.image,
       year_published = excluded.year_published, min_players = excluded.min_players,
       max_players = excluded.max_players, playing_time = excluded.playing_time,
       weight = excluded.weight, bgg_rating = excluded.bgg_rating,
-      bgg_rank = excluded.bgg_rank, synced_at = datetime('now')
+      bgg_rank = excluded.bgg_rank, item_type = excluded.item_type,
+      description = excluded.description, designers = excluded.designers,
+      artists = excluded.artists, categories = excluded.categories,
+      mechanics = excluded.mechanics, synced_at = datetime('now')
   `);
+  // description_ko(번역 캐시)는 여기서 절대 건드리지 않는다 - 동기화 때마다 다시 번역하지 않기 위해서다.
 
   for (const g of games) {
     const korean = g.koreanNames || [];
@@ -39,7 +44,10 @@ export function upsertGames(db, games) {
     stmt.run(g.id, display, g.primaryName ?? null, JSON.stringify(aliases),
              g.thumbnail ?? null, g.image ?? null, g.yearPublished ?? null,
              g.minPlayers ?? null, g.maxPlayers ?? null, g.playingTime ?? null,
-             g.weight ?? null, g.bggRating ?? null, g.bggRank ?? null);
+             g.weight ?? null, g.bggRating ?? null, g.bggRank ?? null,
+             g.itemType ?? null, g.description ?? null,
+             JSON.stringify(g.designers || []), JSON.stringify(g.artists || []),
+             JSON.stringify(g.categories || []), JSON.stringify(g.mechanics || []));
   }
   return games.length;
 }

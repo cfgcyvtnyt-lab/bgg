@@ -21,6 +21,14 @@ export interface Game {
   bgg_rating: number | null;
   bgg_rank: number | null;
   synced_at: string | null;
+  // BGG <item type="...">. boardgame | boardgameexpansion | null(백필 전)
+  item_type?: string | null;
+  description?: string | null;
+  description_ko?: string | null;
+  designers?: string[];
+  artists?: string[];
+  categories?: string[];
+  mechanics?: string[];
 }
 
 export interface GameOpponentRecord {
@@ -70,6 +78,7 @@ export interface CollectionEntry {
   bgg_rank?: number | null;
   // 요청 사용자(X-User-Id)의 개인 평점. 평가 안 했으면 null
   my_rating?: number | null;
+  item_type?: string | null;
 }
 
 // /api/collection 전용 응답. id/status는 "플레이했지만 collection 행이 없는 게임"에서 null이 될 수 있다.

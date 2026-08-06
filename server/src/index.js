@@ -1,4 +1,7 @@
 import express from "express";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { extname, join, resolve } from "node:path";
 import { openDb } from "./db.js";
 import { runSync } from "./sync.js";
 
@@ -6,6 +9,12 @@ const DB_PATH = process.env.DB_PATH || "data/app.db";
 const PORT = process.env.PORT || 3001;
 const BGG_API_KEY = process.env.BGG_API_KEY;
 const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+// 이미지 디스크 캐시. BGG를 매번 핫링크하지 않기 위한 프록시 저장 위치.
+const IMAGE_CACHE_DIR = process.env.IMAGE_CACHE_DIR || "data/cache/images";
+// 사용자 업로드 사진 저장 경로. 나중에 도커 볼륨을 따로 붙일 수 있게 상수만 빼둔다 (업로드 기능은 이번 범위 아님).
+const PHOTO_DIR = process.env.PHOTO_DIR || "data/photos";
+mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
 
 const db = openDb(DB_PATH);
 const app = express();
@@ -124,11 +133,59 @@ app.get("/api/games/:id", (req, res) => {
   res.json({
     ...game,
     aliases: parseJsonArray(game.aliases),
+    designers: parseJsonArray(game.designers),
+    artists: parseJsonArray(game.artists),
+    categories: parseJsonArray(game.categories),
+    mechanics: parseJsonArray(game.mechanics),
     collectionHistory,
     playCount,
     my_rating: myRating,
     stats,
   });
+});
+
+// 무료 구글 gtx 엔드포인트로 번역. 공식 API 키가 필요 없는 대신 한 번에 보낼 수 있는 길이가
+// 제한적이라 문장 단위로 잘라 여러 번 호출한 뒤 이어붙인다.
+async function translateToKorean(text) {
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const chunks = [];
+  let cur = "";
+  for (const s of sentences) {
+    if (cur && cur.length + s.length > 1500) {
+      chunks.push(cur);
+      cur = "";
+    }
+    cur += (cur ? " " : "") + s;
+  }
+  if (cur) chunks.push(cur);
+  if (chunks.length === 0) return "";
+
+  const parts = [];
+  for (const chunk of chunks) {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gt&sl=en&tl=ko&dt=t&q=${encodeURIComponent(chunk)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`번역 요청 실패 (HTTP ${resp.status})`);
+    const data = await resp.json();
+    parts.push((data[0] || []).map((piece) => piece[0]).join(""));
+  }
+  return parts.join(" ");
+}
+
+// 설명 번역. 캐시(description_ko)가 있으면 재번역하지 않는다.
+app.post("/api/games/:id/translate", async (req, res) => {
+  const id = Number(req.params.id);
+  const game = db.prepare("SELECT id, description, description_ko FROM game WHERE id = ?").get(id);
+  if (!game) return res.status(404).json({ error: "게임을 찾을 수 없습니다" });
+  if (game.description_ko) return res.json({ description_ko: game.description_ko });
+  if (!game.description) return res.status(400).json({ error: "번역할 원문 설명이 없습니다" });
+
+  try {
+    const ko = await translateToKorean(game.description);
+    db.prepare("UPDATE game SET description_ko = ? WHERE id = ?").run(ko, id);
+    res.json({ description_ko: ko });
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
 });
 
 // 게임 상세 화면용 요청 사용자 기준 통계: 승률, 점수, 평균 소요시간, 마지막 플레이, 상대 전적.
@@ -246,7 +303,7 @@ app.patch("/api/games/:id", (req, res) => {
 const STATUS_PRIORITY = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
 
 app.get("/api/collection", (req, res) => {
-  const { status, tag } = req.query;
+  const { status, tag, include_expansions } = req.query;
   const userId = currentUserId(req);
 
   // 취득 이력(팔았다 다시 사기도 함)을 전부 가져온 뒤 게임당 대표 행 하나로 줄인다.
@@ -254,7 +311,7 @@ app.get("/api/collection", (req, res) => {
   const rows = db.prepare(`
     SELECT c.*, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en, g.thumbnail, g.image,
            g.year_published, g.min_players, g.max_players, g.playing_time, g.weight,
-           g.bgg_rating, g.bgg_rank,
+           g.bgg_rating, g.bgg_rank, g.item_type,
            gr.rating AS my_rating,
            COALESCE(gr.want_to_play, 0) AS want_to_play
     FROM collection c
@@ -279,7 +336,7 @@ app.get("/api/collection", (req, res) => {
   const unownedRows = db.prepare(`
     SELECT g.id AS game_id, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en,
            g.thumbnail, g.image, g.year_published, g.min_players, g.max_players, g.playing_time,
-           g.weight, g.bgg_rating, g.bgg_rank, gr.rating AS my_rating,
+           g.weight, g.bgg_rating, g.bgg_rank, g.item_type, gr.rating AS my_rating,
            COALESCE(gr.want_to_play, 0) AS want_to_play
     FROM game g
     LEFT JOIN game_rating gr ON gr.game_id = g.id AND gr.user_id = ?
@@ -293,8 +350,14 @@ app.get("/api/collection", (req, res) => {
       game_name: r.game_name, game_name_en: r.game_name_en, thumbnail: r.thumbnail, image: r.image,
       year_published: r.year_published, min_players: r.min_players, max_players: r.max_players,
       playing_time: r.playing_time, weight: r.weight, bgg_rating: r.bgg_rating, bgg_rank: r.bgg_rank,
-      my_rating: r.my_rating,
+      item_type: r.item_type, my_rating: r.my_rating,
     });
+  }
+
+  // 기본적으로 확장(boardgameexpansion)은 목록에서 숨긴다. include_expansions=1이면 그대로 둔다.
+  // item_type이 아직 비어 있는(백필 전) 게임은 확장인지 알 수 없으니 숨기지 않는다.
+  if (!include_expansions) {
+    entries = entries.filter((e) => e.item_type !== "boardgameexpansion");
   }
 
   // 요청 사용자 기준 플레이 횟수/최근 플레이일 - BGStats 스타일 정렬·뷰 필터에 쓴다.
@@ -850,6 +913,45 @@ app.delete("/api/aliases/:id", (req, res) => {
   const result = db.prepare("DELETE FROM name_alias WHERE id = ?").run(id);
   if (result.changes === 0) return res.status(404).json({ error: "찾을 수 없습니다" });
   res.json({ ok: true });
+});
+
+// ---------- 이미지 디스크 캐시 프록시 ----------
+
+// 허용 호스트를 BGG 이미지 CDN 하나로 제한한다. 임의 URL을 받아 서버가 아무 데나
+// 요청하게 두면 SSRF로 이어질 수 있어서다.
+const ALLOWED_IMAGE_HOSTS = new Set(["cf.geekdo-images.com"]);
+
+app.get("/api/image", async (req, res) => {
+  const src = req.query.url;
+  if (!src || typeof src !== "string") return res.status(400).json({ error: "url이 필요합니다" });
+
+  let parsed;
+  try {
+    parsed = new URL(src);
+  } catch {
+    return res.status(400).json({ error: "잘못된 URL입니다" });
+  }
+  if (!ALLOWED_IMAGE_HOSTS.has(parsed.hostname)) {
+    return res.status(400).json({ error: "허용되지 않은 이미지 호스트입니다" });
+  }
+
+  const hash = createHash("sha256").update(src).digest("hex");
+  const ext = extname(parsed.pathname) || ".img";
+  const filePath = resolve(join(IMAGE_CACHE_DIR, hash + ext));
+
+  try {
+    if (!existsSync(filePath)) {
+      const resp = await fetch(src, {
+        headers: { "User-Agent": "bgg-collection-manager/0.1 (personal use; image cache)" },
+      });
+      if (!resp.ok) return res.status(resp.status).json({ error: "원본 이미지를 가져오지 못했습니다" });
+      writeFileSync(filePath, Buffer.from(await resp.arrayBuffer()));
+    }
+    res.set("Cache-Control", "public, max-age=31536000");
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
 });
 
 // ---------- BGG 검색 프록시 ----------

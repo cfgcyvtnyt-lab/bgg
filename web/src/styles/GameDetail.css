@@ -111,6 +111,86 @@
   color: var(--text);
 }
 
+.detail-hero-statline {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+/* ---------- 접이식 섹션 ---------- */
+
+.detail-section {
+  margin-bottom: 10px;
+}
+
+.detail-section-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 6px 2px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.detail-section-chevron {
+  color: var(--muted);
+  transition: transform 0.15s ease;
+  font-size: 12px;
+}
+
+.detail-section-chevron.open {
+  transform: rotate(180deg);
+}
+
+.detail-section-body {
+  margin-top: 6px;
+}
+
+/* ---------- 게임 소개 ---------- */
+
+.intro-box {
+  gap: 10px;
+}
+
+.intro-desc {
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.intro-toggle {
+  align-self: flex-start;
+}
+
+.intro-people {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chip-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-static {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--accent-dim);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.chip-mechanic {
+  background: var(--panel);
+}
+
 .info-box {
   margin-bottom: 8px;
   display: flex;

@@ -35,13 +35,16 @@ export default function CollectionPage() {
   const [sort, setSort] = useState(loadSort);
   const [view, setView] = useState<"grid" | "list">(() => (localStorage.getItem("bgg_view") as "grid" | "list") || "grid");
   const [showSearch, setShowSearch] = useState(false);
+  const [includeExpansions, setIncludeExpansions] = useState(
+    () => localStorage.getItem("bgg_include_expansions") === "1"
+  );
   const listRef = useRef<HTMLDivElement>(null);
 
-  async function load() {
+  async function load(withExpansions: boolean) {
     setLoading(true);
     setError(null);
     try {
-      const coll = await api.collection();
+      const coll = await api.collection(undefined, undefined, withExpansions);
       setEntries(coll);
     } catch (err) {
       setError(err instanceof Error ? err.message : "불러오기 실패");
@@ -50,9 +53,12 @@ export default function CollectionPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(includeExpansions); }, [includeExpansions]);
   useEffect(() => { localStorage.setItem("bgg_view", view); }, [view]);
   useEffect(() => { localStorage.setItem(SORT_KEY, JSON.stringify(sort)); }, [sort]);
+  useEffect(() => {
+    localStorage.setItem("bgg_include_expansions", includeExpansions ? "1" : "0");
+  }, [includeExpansions]);
 
   const searched = useMemo(() => {
     const q = query.trim();
@@ -119,6 +125,15 @@ export default function CollectionPage() {
                     </button>
                   );
                 })}
+                <div className="filter-dropdown-section-title">옵션</div>
+                <label className="filter-dropdown-item filter-dropdown-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={includeExpansions}
+                    onChange={(e) => setIncludeExpansions(e.target.checked)}
+                  />
+                  확장 포함
+                </label>
               </div>
             </>
           )}
@@ -198,7 +213,7 @@ export default function CollectionPage() {
       </div>
 
       {showSearch && (
-        <BggSearchModal onClose={() => setShowSearch(false)} onAdded={load} />
+        <BggSearchModal onClose={() => setShowSearch(false)} onAdded={() => load(includeExpansions)} />
       )}
     </div>
   );

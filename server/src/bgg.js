@@ -39,6 +39,19 @@ function firstTagAttrs(xml, tag) {
   return m ? parseAttrs(m[1]) : null;
 }
 
+// <link type="boardgamedesigner" id="..." value="..."/> 처럼 반복되는 link 태그 중
+// 특정 type의 value만 모은다. 디자이너/아티스트/카테고리/메커니즘이 전부 이 형태다.
+function collectLinkValues(body, linkType) {
+  const values = [];
+  const re = /<link\b([^>]*)\/>/g;
+  let m;
+  while ((m = re.exec(body))) {
+    const attrs = parseAttrs(m[1]);
+    if (attrs.type === linkType && attrs.value) values.push(attrs.value);
+  }
+  return values;
+}
+
 function tagText(xml, tag) {
   const re = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, "i");
   const m = xml.match(re);
@@ -178,6 +191,13 @@ export async function fetchThings(ids, apiKey) {
         weight: weight ? Math.round(weight * 100) / 100 : null,
         bggRating: average ? Math.round(average * 100) / 100 : null,
         bggRank,
+        // <item type="boardgame|boardgameexpansion" ...> - 컬렉션에서 확장 숨기기에 쓴다.
+        itemType: attrs.type || null,
+        description: tagText(body, "description"),
+        designers: collectLinkValues(body, "boardgamedesigner"),
+        artists: collectLinkValues(body, "boardgameartist"),
+        categories: collectLinkValues(body, "boardgamecategory"),
+        mechanics: collectLinkValues(body, "boardgamemechanic"),
       });
     }
 

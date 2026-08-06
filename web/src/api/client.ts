@@ -74,11 +74,14 @@ export const api = {
 
   updateGame: (id: number, body: { custom_name: string }) =>
     request<GameDetail>(`/games/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  translateGame: (id: number) =>
+    request<{ description_ko: string }>(`/games/${id}/translate`, { method: "POST" }),
 
-  collection: (status?: string, tag?: string) => {
+  collection: (status?: string, tag?: string, includeExpansions?: boolean) => {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (tag) params.set("tag", tag);
+    if (includeExpansions) params.set("include_expansions", "1");
     return request<CollectionListEntry[]>(`/collection?${params}`);
   },
   addCollection: (body: Partial<CollectionEntry> & { game_id: number }) =>

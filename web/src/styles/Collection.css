@@ -187,6 +187,17 @@
   color: var(--accent);
 }
 
+.filter-dropdown-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.filter-dropdown-checkbox input {
+  margin: 0;
+}
+
 /* ---------- 정렬 칩 + 오름/내림 토글 ---------- */
 
 .sort-row {

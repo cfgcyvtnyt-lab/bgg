@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { CollectionListEntry } from "../api/types";
 import { groupOf } from "../utils/collectionSort";
+import { imgUrl } from "../utils/imgUrl";
 
 interface Props {
   entry: CollectionListEntry;
@@ -45,7 +46,7 @@ export default function GameCard({ entry, view }: Props) {
       data-idx-group={group}
     >
       <div className="game-card-thumb">
-        {thumb ? <img src={thumb} alt="" loading="lazy" /> : <div className="game-card-thumb-empty">?</div>}
+        {thumb ? <img src={imgUrl(thumb)} alt="" loading="lazy" /> : <div className="game-card-thumb-empty">?</div>}
       </div>
       {view === "list" ? (
         <div className="game-card-body">

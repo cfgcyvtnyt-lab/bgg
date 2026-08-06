@@ -104,6 +104,17 @@ const ALTER_COLUMNS = [
   "ALTER TABLE game_rating ADD COLUMN want_to_play INTEGER NOT NULL DEFAULT 0",
   // 오토마/봇 플레이어 표시. "사람 플레이어 1명 이하"를 솔로로 판정할 때 이 플래그로 사람 수를 센다.
   "ALTER TABLE play_player ADD COLUMN is_automa INTEGER DEFAULT 0",
+  // BGG thing 응답의 <item type="...">. boardgame/boardgameexpansion 구분 - 컬렉션에서 확장을 기본으로 숨기는 데 쓴다.
+  "ALTER TABLE game ADD COLUMN item_type TEXT",
+  // 게임 소개 화면용 필드. description은 BGG 원문(영문 위주), description_ko는 번역 결과 캐시.
+  // description_ko는 동기화가 절대 건드리지 않는다(upsertGames 참고) - 번역 API를 아낀다.
+  "ALTER TABLE game ADD COLUMN description TEXT",
+  "ALTER TABLE game ADD COLUMN description_ko TEXT",
+  // designers/artists/categories/mechanics는 모두 JSON 배열 문자열로 저장.
+  "ALTER TABLE game ADD COLUMN designers TEXT",
+  "ALTER TABLE game ADD COLUMN artists TEXT",
+  "ALTER TABLE game ADD COLUMN categories TEXT",
+  "ALTER TABLE game ADD COLUMN mechanics TEXT",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.
