@@ -91,6 +91,9 @@ const ALTER_COLUMNS = [
   "ALTER TABLE play_player ADD COLUMN team TEXT",
   "ALTER TABLE play_player ADD COLUMN is_new INTEGER DEFAULT 0",
   "ALTER TABLE play_player ADD COLUMN start_position TEXT",
+  // BGG에서 오는 이름이 영문뿐인 게임이 있어 사용자가 직접 표시 이름을 지정할 수 있게 한다.
+  // 동기화는 이 컬럼을 절대 건드리지 않는다(upsertGames 참고).
+  "ALTER TABLE game ADD COLUMN custom_name TEXT",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.
@@ -121,6 +124,16 @@ CREATE TABLE IF NOT EXISTS game_rating (
   game_id INTEGER NOT NULL REFERENCES game(id),
   rating  REAL,
   UNIQUE(user_id, game_id)
+);
+
+-- 같은 사람/장소가 다른 이름으로 기록돼 통계가 갈라지는 걸 조회 시점에만 합쳐 보여준다.
+-- 원본(play_player.name, play.location)은 절대 고치지 않는다 - 사용자가 직접 지정한 매핑만 신뢰한다.
+CREATE TABLE IF NOT EXISTS name_alias (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind      TEXT NOT NULL,      -- 'player' | 'location'
+  alias     TEXT NOT NULL,      -- 실제 기록된 값
+  canonical TEXT NOT NULL,      -- 대표로 쓸 이름
+  UNIQUE(kind, alias)
 );
 `;
 

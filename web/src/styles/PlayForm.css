@@ -96,6 +96,14 @@
   position: relative;
 }
 
+/* input의 기본 너비가 grid 트랙보다 넓어서(1fr인데 안 줄어듦) 좁은 화면에서
+   가로 스크롤을 만드는 걸 막는다. */
+.player-name-input, .player-score-input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .win-checkbox {
   display: flex;
   align-items: center;

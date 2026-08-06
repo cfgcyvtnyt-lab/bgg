@@ -22,6 +22,11 @@ export default function GameDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // 이름 인라인 편집
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
+
   // 편집 중인 "내 정보" 폼 상태 (최신 취득 이력 기준)
   const [form, setForm] = useState({
     status: "보유", price_paid: "", price_sold: "", tags: "", note: "",
@@ -55,6 +60,27 @@ export default function GameDetailPage() {
   }
 
   useEffect(() => { load(); }, [gameId]);
+
+  function startEditName() {
+    if (!game) return;
+    setNameInput(game.custom_name || "");
+    setEditingName(true);
+  }
+
+  // 빈 값으로 저장하면 서버가 custom_name을 NULL로 되돌려 원래(BGG) 이름으로 복귀시킨다.
+  async function saveName() {
+    if (!game) return;
+    setSavingName(true);
+    try {
+      await api.updateGame(game.id, { custom_name: nameInput.trim() });
+      setEditingName(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "이름 저장 실패");
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   async function saveInfo() {
     if (!game) return;
@@ -94,7 +120,29 @@ export default function GameDetailPage() {
       <div className="detail-hero">
         {thumb ? <img src={thumb} alt="" /> : <div className="detail-hero-empty">?</div>}
         <div className="detail-hero-info">
-          <h1>{game.name}</h1>
+          {editingName ? (
+            <div className="name-edit-row">
+              <input
+                className="name-edit-input"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                placeholder={game.original_name || game.name}
+                autoFocus
+              />
+              <button className="btn-small" disabled={savingName} onClick={saveName}>
+                {savingName ? "저장 중..." : "저장"}
+              </button>
+              <button className="btn-small" onClick={() => setEditingName(false)}>취소</button>
+            </div>
+          ) : (
+            <h1 className="name-view-row">
+              {game.name}
+              <button className="name-edit-btn" aria-label="이름 편집" onClick={startEditName}>✎</button>
+            </h1>
+          )}
+          {game.custom_name && game.original_name && game.original_name !== game.name && (
+            <p className="muted name-original">원래 이름: {game.original_name}</p>
+          )}
           {game.name_en && <p className="muted">{game.name_en}{game.year_published ? ` (${game.year_published})` : ""}</p>}
           <div className="detail-hero-stats">
             <span>{game.min_players && game.max_players
@@ -114,6 +162,36 @@ export default function GameDetailPage() {
         <div className="info-row"><span className="muted">내 플레이 수</span><span>{fmtNum(game.playCount)}회</span></div>
         <div className="info-row"><span className="muted">소유 상태</span><span>{game.collectionHistory.length > 0 ? game.collectionHistory[game.collectionHistory.length - 1].status : "미보유"}</span></div>
       </div>
+
+      {game.stats && game.stats.playCount > 0 && (
+        <>
+          <div className="section-title">게임별 통계</div>
+          <div className="card info-box">
+            <div className="info-row"><span className="muted">플레이 수</span><span>{fmtNum(game.stats.playCount)}회</span></div>
+            <div className="info-row"><span className="muted">승률</span><span>{game.stats.winRate != null ? `${game.stats.winRate}%` : "-"}</span></div>
+            {game.stats.score && (
+              <>
+                <div className="info-row"><span className="muted">최고점</span><span>{fmtNum(game.stats.score.best)}</span></div>
+                <div className="info-row"><span className="muted">최저점</span><span>{fmtNum(game.stats.score.worst)}</span></div>
+                <div className="info-row"><span className="muted">평균점</span><span>{fmtNum(game.stats.score.avg)}</span></div>
+              </>
+            )}
+            <div className="info-row"><span className="muted">평균 소요시간</span><span>{game.stats.avgDurationMin != null ? `${game.stats.avgDurationMin}분` : "-"}</span></div>
+            <div className="info-row"><span className="muted">마지막 플레이</span><span>{game.stats.lastPlayedAt || "-"}</span></div>
+          </div>
+
+          {game.stats.opponents.length > 0 && (
+            <div className="card opponent-box">
+              {game.stats.opponents.map((o) => (
+                <div key={o.name} className="info-row">
+                  <span className="muted">{o.name}</span>
+                  <span>{o.games}판 중 {o.myWins}승</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       <div className="section-title">내 정보 (편집 가능)</div>
       <div className="card info-box">

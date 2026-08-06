@@ -23,3 +23,45 @@
   margin-top: 8px;
   font-size: 12px;
 }
+
+.alias-kind-toggle {
+  margin-bottom: 10px;
+}
+
+.alias-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.alias-row:last-child {
+  border-bottom: none;
+}
+
+.alias-row-main {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.alias-row-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.alias-row-action select {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}

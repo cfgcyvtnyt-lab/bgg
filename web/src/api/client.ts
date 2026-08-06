@@ -1,5 +1,6 @@
 import type {
   User, Game, GameDetail, CollectionEntry, Play, PlayInput, Insights, BggSearchResult,
+  NameAlias, NameCount,
 } from "./types";
 
 const BASE = "/api";
@@ -71,6 +72,9 @@ export const api = {
     };
   },
 
+  updateGame: (id: number, body: { custom_name: string }) =>
+    request<GameDetail>(`/games/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+
   collection: (status?: string, tag?: string) => {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
@@ -103,6 +107,15 @@ export const api = {
   insights: () => request<Insights>("/insights"),
 
   search: (q: string) => request<BggSearchResult[]>(`/search?${new URLSearchParams({ q })}`),
+
+  names: (kind: "player" | "location") =>
+    request<NameCount[]>(`/names?${new URLSearchParams({ kind })}`),
+  aliases: (kind?: "player" | "location") =>
+    request<NameAlias[]>(`/aliases${kind ? `?kind=${kind}` : ""}`),
+  addAlias: (body: { kind: "player" | "location"; alias: string; canonical: string }) =>
+    request<NameAlias>("/aliases", { method: "POST", body: JSON.stringify(body) }),
+  deleteAlias: (id: number) =>
+    request<{ ok: boolean }>(`/aliases/${id}`, { method: "DELETE" }),
 };
 
 export { getUserId };

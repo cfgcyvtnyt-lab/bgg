@@ -166,6 +166,13 @@
   color: var(--muted);
 }
 
+/* number/text input의 기본 너비(브라우저마다 다름)가 좁은 화면에서 flex-row를 밀어내
+   가로 스크롤을 만드는 걸 막는다. */
+.field input, .field select, .field textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .section-title {
   font-size: 14px;
   color: var(--muted);

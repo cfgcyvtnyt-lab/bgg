@@ -9,6 +9,7 @@ export interface Game {
   id: number;
   name: string;
   name_en: string | null;
+  custom_name?: string | null;
   aliases: string[];
   thumbnail: string | null;
   image: string | null;
@@ -20,6 +21,21 @@ export interface Game {
   bgg_rating: number | null;
   bgg_rank: number | null;
   synced_at: string | null;
+}
+
+export interface GameOpponentRecord {
+  name: string;
+  games: number;
+  myWins: number;
+}
+
+export interface GameStats {
+  playCount: number;
+  winRate: number | null; // 0~100 정수(%)
+  avgDurationMin: number | null;
+  lastPlayedAt: string | null;
+  score: { best: number; worst: number; avg: number } | null;
+  opponents: GameOpponentRecord[];
 }
 
 export interface CollectionEntry {
@@ -52,6 +68,8 @@ export interface GameDetail extends Game {
   collectionHistory: CollectionEntry[];
   playCount: number;
   my_rating?: number | null;
+  original_name?: string;
+  stats?: GameStats | null;
 }
 
 export interface PlayPlayer {
@@ -127,6 +145,19 @@ export interface PlayInput {
   is_coop?: boolean;
   expansions?: string[];
   players?: PlayPlayer[];
+}
+
+export interface NameAlias {
+  id: number;
+  kind: "player" | "location";
+  alias: string;
+  canonical: string;
+}
+
+export interface NameCount {
+  name: string;
+  count: number;
+  canonical: string | null;
 }
 
 export interface BggSearchResult {

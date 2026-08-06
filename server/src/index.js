@@ -39,6 +39,24 @@ function parseJsonArray(text) {
   }
 }
 
+// BGStats가 BGG에 올릴 때 코멘트 끝에 붙이는 태그. 원본 DB는 보존하고 응답에서만 걷어낸다.
+function stripBgStatsTag(comment) {
+  if (comment == null) return null;
+  const stripped = comment.replace(/\s*#bgstats\s*$/i, "").trim();
+  return stripped === "" ? null : stripped;
+}
+
+// 플레이어/장소 별칭 맵. { kind: Map<alias, canonical> } 형태로 매 요청마다 새로 읽는다
+// (설정에서 바꾸면 바로 반영돼야 하므로 캐싱하지 않는다).
+function loadAliasMap(kind) {
+  const rows = db.prepare("SELECT alias, canonical FROM name_alias WHERE kind = ?").all(kind);
+  return new Map(rows.map((r) => [r.alias, r.canonical]));
+}
+
+function applyAlias(map, name) {
+  return map.get(name) || name;
+}
+
 // ---------- health / users ----------
 
 app.get("/api/health", (req, res) => {
@@ -60,22 +78,29 @@ app.get("/api/games", (req, res) => {
   let rows;
   if (q) {
     // aliases는 JSON 배열을 문자열째로 저장하므로 LIKE로 부분 일치만 확인해도 충분하다.
+    // custom_name도 검색 대상에 포함해야 사용자가 지정한 한글 이름으로도 찾을 수 있다.
     const like = `%${q}%`;
     rows = db.prepare(`
-      SELECT * FROM game
-      WHERE name LIKE ? OR name_en LIKE ? OR aliases LIKE ?
-      ORDER BY name
+      SELECT *, COALESCE(custom_name, name) AS name FROM game
+      WHERE name LIKE ? OR name_en LIKE ? OR aliases LIKE ? OR custom_name LIKE ?
+      ORDER BY COALESCE(custom_name, name)
       LIMIT ? OFFSET ?
-    `).all(like, like, like, limit, offset);
+    `).all(like, like, like, like, limit, offset);
   } else {
-    rows = db.prepare("SELECT * FROM game ORDER BY name LIMIT ? OFFSET ?").all(limit, offset);
+    rows = db.prepare(`
+      SELECT *, COALESCE(custom_name, name) AS name FROM game
+      ORDER BY COALESCE(custom_name, name) LIMIT ? OFFSET ?
+    `).all(limit, offset);
   }
   res.json(rows.map((g) => ({ ...g, aliases: parseJsonArray(g.aliases) })));
 });
 
 app.get("/api/games/:id", (req, res) => {
   const id = Number(req.params.id);
-  const game = db.prepare("SELECT * FROM game WHERE id = ?").get(id);
+  // name은 표시용(custom_name 우선), original_name은 BGG에서 온 원래 이름 - 편집 UI에서 같이 보여준다.
+  const game = db.prepare(
+    "SELECT *, name AS original_name, COALESCE(custom_name, name) AS name FROM game WHERE id = ?"
+  ).get(id);
   if (!game) return res.status(404).json({ error: "게임을 찾을 수 없습니다" });
 
   const collectionHistory = db.prepare(
@@ -84,6 +109,7 @@ app.get("/api/games/:id", (req, res) => {
   const userId = currentUserId(req);
   let playCount = 0;
   let myRating = null;
+  let stats = null;
   if (userId) {
     const row = db.prepare(
       "SELECT COUNT(*) AS c FROM play WHERE game_id = ? AND user_id = ?").get(id, userId);
@@ -91,6 +117,8 @@ app.get("/api/games/:id", (req, res) => {
     const ratingRow = db.prepare(
       "SELECT rating FROM game_rating WHERE game_id = ? AND user_id = ?").get(id, userId);
     myRating = ratingRow ? ratingRow.rating : null;
+
+    stats = computeGameStats(id, userId, playCount);
   }
 
   res.json({
@@ -99,7 +127,102 @@ app.get("/api/games/:id", (req, res) => {
     collectionHistory,
     playCount,
     my_rating: myRating,
+    stats,
   });
+});
+
+// 게임 상세 화면용 요청 사용자 기준 통계: 승률, 점수, 평균 소요시간, 마지막 플레이, 상대 전적.
+function computeGameStats(gameId, userId, playCount) {
+  const user = db.prepare("SELECT name FROM user WHERE id = ?").get(userId);
+  if (!user) return null;
+
+  const playerAlias = loadAliasMap("player");
+  const myCanonical = applyAlias(playerAlias, user.name);
+
+  const playRows = db.prepare(
+    "SELECT id, played_at, duration_min FROM play WHERE game_id = ? AND user_id = ?"
+  ).all(gameId, userId);
+  if (playRows.length === 0) {
+    return {
+      playCount: 0, winRate: null, avgDurationMin: null, lastPlayedAt: null,
+      score: null, opponents: [],
+    };
+  }
+
+  const playIds = playRows.map((p) => p.id);
+  const placeholders = playIds.map(() => "?").join(",");
+  const allPlayers = db.prepare(
+    `SELECT play_id, name, score, win FROM play_player WHERE play_id IN (${placeholders})`
+  ).all(...playIds);
+
+  // 각 판에서 "나"의 win 여부를 먼저 뽑아둔다 - 상대 전적 계산에 필요하다.
+  const myWinByPlay = new Map();
+  const myScores = [];
+  let myWins = 0;
+  for (const pp of allPlayers) {
+    if (applyAlias(playerAlias, pp.name) !== myCanonical) continue;
+    myWinByPlay.set(pp.play_id, pp.win ? 1 : 0);
+    if (pp.win) myWins++;
+    if (pp.score != null) myScores.push(pp.score);
+  }
+
+  // 점수가 아예 없는 게임(협력 등)은 점수 섹션 자체를 숨긴다.
+  const score = myScores.length === 0 ? null : {
+    best: Math.round(Math.max(...myScores)),
+    worst: Math.round(Math.min(...myScores)),
+    avg: Math.round(myScores.reduce((a, b) => a + b, 0) / myScores.length),
+  };
+
+  const durations = playRows.map((p) => p.duration_min).filter((n) => n != null && n > 0);
+  const avgDurationMin = durations.length
+    ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+    : null;
+  const lastPlayedAt = playRows.reduce((max, p) => (p.played_at > max ? p.played_at : max), playRows[0].played_at);
+
+  // 상대별 전적: 나를 제외한 참가자를 별칭 기준으로 합쳐서 판수/내 승수를 집계한다.
+  const opponentMap = new Map();
+  for (const pp of allPlayers) {
+    const canonical = applyAlias(playerAlias, pp.name);
+    if (canonical === myCanonical) continue;
+    const cur = opponentMap.get(canonical) || { name: canonical, games: new Set(), myWins: 0 };
+    if (!cur.games.has(pp.play_id)) {
+      cur.games.add(pp.play_id);
+      if (myWinByPlay.get(pp.play_id)) cur.myWins++;
+    }
+    opponentMap.set(canonical, cur);
+  }
+  const opponents = [...opponentMap.values()]
+    .map((o) => ({ name: o.name, games: o.games.size, myWins: o.myWins }))
+    .sort((a, b) => b.games - a.games);
+
+  return {
+    playCount,
+    winRate: playCount ? Math.round((myWins / playCount) * 100) : null,
+    avgDurationMin,
+    lastPlayedAt,
+    score,
+    opponents,
+  };
+}
+
+// custom_name만 수정 가능. 빈 문자열이면 NULL로 되돌려 원래(BGG) 이름으로 복귀시킨다.
+app.patch("/api/games/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare("SELECT id FROM game WHERE id = ?").get(id);
+  if (!existing) return res.status(404).json({ error: "게임을 찾을 수 없습니다" });
+  if (!("custom_name" in (req.body || {}))) {
+    return res.status(400).json({ error: "custom_name이 필요합니다" });
+  }
+
+  let customName = req.body.custom_name;
+  if (typeof customName === "string") customName = customName.trim();
+  if (!customName) customName = null;
+
+  db.prepare("UPDATE game SET custom_name = ? WHERE id = ?").run(customName, id);
+  const row = db.prepare(
+    "SELECT *, name AS original_name, COALESCE(custom_name, name) AS name FROM game WHERE id = ?"
+  ).get(id);
+  res.json({ ...row, aliases: parseJsonArray(row.aliases) });
 });
 
 // ---------- collection (공유) ----------
@@ -113,7 +236,7 @@ app.get("/api/collection", (req, res) => {
 
   // 취득 이력(팔았다 다시 사기도 함)을 전부 가져온 뒤 게임당 대표 행 하나로 줄인다.
   const rows = db.prepare(`
-    SELECT c.*, g.name AS game_name, g.name_en AS game_name_en, g.thumbnail, g.image,
+    SELECT c.*, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en, g.thumbnail, g.image,
            g.year_published, g.min_players, g.max_players, g.playing_time, g.weight,
            g.bgg_rating, g.bgg_rank,
            gr.rating AS my_rating
@@ -207,7 +330,7 @@ app.get("/api/plays", (req, res) => {
   const off = Number(offset) || 0;
 
   const rows = db.prepare(`
-    SELECT p.*, g.name AS game_name
+    SELECT p.*, COALESCE(g.custom_name, g.name) AS game_name
     FROM play p
     JOIN game g ON g.id = p.game_id
     WHERE ${clauses.join(" AND ")}
@@ -217,6 +340,7 @@ app.get("/api/plays", (req, res) => {
 
   const result = rows.map((r) => ({
     ...r,
+    comment: stripBgStatsTag(r.comment),
     expansions: parseJsonArray(r.expansions),
     players: loadPlayers(r.id),
   }));
@@ -262,7 +386,10 @@ app.post("/api/plays", (req, res) => {
     db.exec("COMMIT");
 
     const row = db.prepare("SELECT * FROM play WHERE id = ?").get(playId);
-    res.status(201).json({ ...row, expansions: parseJsonArray(row.expansions), players: loadPlayers(playId) });
+    res.status(201).json({
+      ...row, comment: stripBgStatsTag(row.comment),
+      expansions: parseJsonArray(row.expansions), players: loadPlayers(playId),
+    });
   } catch (err) {
     db.exec("ROLLBACK");
     res.status(500).json({ error: String(err.message || err) });
@@ -316,7 +443,10 @@ app.patch("/api/plays/:id", (req, res) => {
   }
 
   const row = db.prepare("SELECT * FROM play WHERE id = ?").get(id);
-  res.json({ ...row, expansions: parseJsonArray(row.expansions), players: loadPlayers(id) });
+  res.json({
+    ...row, comment: stripBgStatsTag(row.comment),
+    expansions: parseJsonArray(row.expansions), players: loadPlayers(id),
+  });
 });
 
 app.delete("/api/plays/:id", (req, res) => {
@@ -358,11 +488,15 @@ app.get("/api/insights", (req, res) => {
   const where = clauses.join(" AND ");
 
   const plays = db.prepare(`
-    SELECT p.id, p.game_id, p.played_at, p.duration_min, p.location, g.name AS game_name
+    SELECT p.id, p.game_id, p.played_at, p.duration_min, p.location,
+           COALESCE(g.custom_name, g.name) AS game_name
     FROM play p JOIN game g ON g.id = p.game_id
     WHERE ${where}
     ORDER BY p.played_at ASC, COALESCE(p.bgg_play_id, p.id) ASC
   `).all(...params);
+
+  const playerAlias = loadAliasMap("player");
+  const locationAlias = loadAliasMap("location");
 
   const playIds = plays.map((p) => p.id);
 
@@ -388,10 +522,11 @@ app.get("/api/insights", (req, res) => {
       `SELECT play_id, name, win FROM play_player WHERE play_id IN (${placeholders})`
     ).all(...playIds);
     for (const pp of pps) {
-      const cur = playerStats.get(pp.name) || { name: pp.name, plays: 0, wins: 0 };
+      const name = applyAlias(playerAlias, pp.name);
+      const cur = playerStats.get(name) || { name, plays: 0, wins: 0 };
       cur.plays++;
       if (pp.win) cur.wins++;
-      playerStats.set(pp.name, cur);
+      playerStats.set(name, cur);
     }
   }
   const winRates = [...playerStats.values()]
@@ -410,7 +545,7 @@ app.get("/api/insights", (req, res) => {
   // 장소별 분포
   const locationCounts = new Map();
   for (const p of plays) {
-    const loc = p.location || "(미기록)";
+    const loc = p.location ? applyAlias(locationAlias, p.location) : "(미기록)";
     locationCounts.set(loc, (locationCounts.get(loc) || 0) + 1);
   }
   const byLocation = [...locationCounts.entries()].sort(([, a], [, b]) => b - a)
@@ -463,17 +598,17 @@ app.get("/api/insights", (req, res) => {
 
   // 안 해본 보유 게임: collection.status='보유'인데 이 사용자 플레이 0건
   const ownedNotPlayed = db.prepare(`
-    SELECT DISTINCT g.id, g.name
+    SELECT DISTINCT g.id, COALESCE(g.custom_name, g.name) AS name
     FROM collection c
     JOIN game g ON g.id = c.game_id
     WHERE c.status = '보유'
       AND NOT EXISTS (SELECT 1 FROM play p WHERE p.game_id = g.id AND p.user_id = ?)
-    ORDER BY g.name
+    ORDER BY COALESCE(g.custom_name, g.name)
   `).all(userId);
 
   // 판당 비용: collection.price_paid를 이 사용자의 해당 게임 플레이 수로 나눈다
   const priceRows = db.prepare(`
-    SELECT c.game_id, g.name AS game_name, SUM(c.price_paid) AS total_paid
+    SELECT c.game_id, COALESCE(g.custom_name, g.name) AS game_name, SUM(c.price_paid) AS total_paid
     FROM collection c
     JOIN game g ON g.id = c.game_id
     WHERE c.price_paid IS NOT NULL
@@ -507,6 +642,59 @@ app.get("/api/insights", (req, res) => {
     ownedNotPlayed,
     costPerPlay: { cheapest, priciest },
   });
+});
+
+// ---------- 이름 정리 (플레이어/장소 별칭) ----------
+
+// 설정 화면에서 "현재 이렇게 기록되고 있다"를 보여주기 위한 원본 이름 + 판수 목록.
+// 원본 데이터는 건드리지 않으므로 여기 나오는 값은 항상 실제 저장된 값 그대로다.
+app.get("/api/names", (req, res) => {
+  const kind = req.query.kind;
+  if (kind !== "player" && kind !== "location") {
+    return res.status(400).json({ error: "kind는 player 또는 location이어야 합니다" });
+  }
+  const rows = kind === "player"
+    ? db.prepare("SELECT name, COUNT(*) AS count FROM play_player GROUP BY name ORDER BY count DESC").all()
+    : db.prepare(
+        "SELECT location AS name, COUNT(*) AS count FROM play WHERE location IS NOT NULL GROUP BY location ORDER BY count DESC"
+      ).all();
+
+  const aliasRows = db.prepare("SELECT alias, canonical FROM name_alias WHERE kind = ?").all(kind);
+  const aliasMap = new Map(aliasRows.map((r) => [r.alias, r.canonical]));
+
+  res.json(rows.map((r) => ({ ...r, canonical: aliasMap.get(r.name) || null })));
+});
+
+app.get("/api/aliases", (req, res) => {
+  const { kind } = req.query;
+  const rows = kind
+    ? db.prepare("SELECT * FROM name_alias WHERE kind = ? ORDER BY canonical, alias").all(kind)
+    : db.prepare("SELECT * FROM name_alias ORDER BY kind, canonical, alias").all();
+  res.json(rows);
+});
+
+app.post("/api/aliases", (req, res) => {
+  const { kind, alias, canonical } = req.body || {};
+  if (kind !== "player" && kind !== "location") {
+    return res.status(400).json({ error: "kind는 player 또는 location이어야 합니다" });
+  }
+  if (!alias || !canonical) return res.status(400).json({ error: "alias, canonical이 필요합니다" });
+  if (alias === canonical) return res.status(400).json({ error: "alias와 canonical이 같을 수 없습니다" });
+
+  db.prepare(`
+    INSERT INTO name_alias (kind, alias, canonical) VALUES (?, ?, ?)
+    ON CONFLICT(kind, alias) DO UPDATE SET canonical = excluded.canonical
+  `).run(kind, alias, canonical);
+
+  const row = db.prepare("SELECT * FROM name_alias WHERE kind = ? AND alias = ?").get(kind, alias);
+  res.status(201).json(row);
+});
+
+app.delete("/api/aliases/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const result = db.prepare("DELETE FROM name_alias WHERE id = ?").run(id);
+  if (result.changes === 0) return res.status(404).json({ error: "찾을 수 없습니다" });
+  res.json({ ok: true });
 });
 
 // ---------- BGG 검색 프록시 ----------

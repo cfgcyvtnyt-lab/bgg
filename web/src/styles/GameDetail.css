@@ -39,6 +39,51 @@
   line-height: 1.3;
 }
 
+.name-view-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.name-edit-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 2px 4px;
+  flex: none;
+}
+
+.name-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.name-edit-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.name-original {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.opponent-box {
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .detail-hero-stats {
   display: flex;
   flex-direction: column;
