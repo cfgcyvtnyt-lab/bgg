@@ -24,6 +24,16 @@ function fmtKRW(krw: number) {
   return `₩${Math.round(krw).toLocaleString()}`;
 }
 
+// 막대 그래프(일별/월별/연도별 플레이, TOP10) 색상: 값이 클수록 노랑·밝게, 작을수록 파랑·더 어둡게
+// 자연스럽게 이어지는 그라데이션. HSL 보간으로 hue(파랑210→노랑40)와 lightness를 동시에 움직인다.
+function barGradient(count: number, max: number) {
+  const t = max > 0 ? Math.max(0, Math.min(1, count / max)) : 0;
+  const hue = 210 - t * 170;
+  const sat = 55 + t * 25;
+  const light = 22 + t * 33;
+  return `hsl(${hue} ${sat}% ${light}%)`;
+}
+
 // 요일·장소 분포용 파이 조각 계산. 라이브러리 없이 SVG path만으로 그린다.
 // 텍스트를 조각 안에 넣어야 해서 중간각의 라벨 위치(lx,ly)도 함께 계산한다.
 function pieSlices(items: { label: string; count: number }[]) {
@@ -276,12 +286,15 @@ export default function InsightsPage() {
       <div className="section-title">{BUCKET_TITLE[data.bucket]}</div>
       <div className="card plays-chart">
         {data.plays.length === 0 && <p className="muted">기록이 없습니다.</p>}
-        <div className="plays-bars">
+        <div
+          className="plays-bars"
+          style={{ gap: data.plays.length > 15 ? "3px" : data.plays.length > 8 ? "6px" : "12px" }}
+        >
           {data.plays.map((m, i) => (
             <div key={m.label} className="plays-bar-col" title={`${m.label}: ${m.count}회`}>
               <div
-                className={`plays-bar${m.count === maxPlays && maxPlays > 0 ? " is-max" : ""}`}
-                style={{ height: `${(m.count / maxPlays) * 100}%` }}
+                className="plays-bar"
+                style={{ height: `${(m.count / maxPlays) * 100}%`, background: barGradient(m.count, maxPlays) }}
               />
               <div className="plays-bar-label">{barLabel(m.label, data.bucket, i, data.plays.length)}</div>
             </div>
@@ -292,11 +305,14 @@ export default function InsightsPage() {
       <div className="section-title">최다 플레이 TOP 10</div>
       <div className="card bar-chart">
         {topGames.length === 0 && <p className="muted">기록이 없습니다.</p>}
-        {topGames.map((g, i) => (
+        {topGames.map((g) => (
           <Link key={g.game_id} to={`/game/${g.game_id}`} className="bar-row">
             <span className="bar-row-label">{g.game_name}</span>
             <div className="bar-row-track">
-              <div className={`bar-row-fill${i === 0 ? " is-first" : ""}`} style={{ width: `${(g.count / maxTop) * 100}%` }} />
+              <div
+                className="bar-row-fill"
+                style={{ width: `${(g.count / maxTop) * 100}%`, background: barGradient(g.count, maxTop) }}
+              />
             </div>
             <span className="bar-row-value">{fmt(g.count)}</span>
           </Link>

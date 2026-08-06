@@ -90,20 +90,39 @@
   dominant-baseline: middle;
 }
 
-/* 두 파이(요일/장소)를 한 줄에 좌우로 나란히 배치. 375px에서도 겹치지 않게 min-width:0 */
+/* 두 파이(요일/장소)를 같은 그리드에 놓고 높이를 맞춘다. grid는 기본 align-items:stretch라
+   짧은 쪽(요일) 카드가 긴 쪽(장소, 범례 포함) 카드 높이에 맞춰 늘어난다. */
 .pie-two-col {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
   gap: 10px;
 }
 
 .pie-two-item {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
+.pie-two-item .card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 두 파이의 지름을 동일하게 고정 */
 .pie-two-item .pie-chart-svg {
   width: 100px;
   height: 100px;
+}
+
+/* 375px 등 좁은 화면에서는 위아래로 쌓되 각 카드는 꽉 채운다 */
+@media (max-width: 420px) {
+  .pie-two-col {
+    grid-template-columns: 1fr;
+  }
 }
 
 .pie-legend {
@@ -207,16 +226,13 @@
   overflow: hidden;
 }
 
+/* 기본 배경(승률 막대용). TOP10 막대는 값 비율에 따른 그라데이션(파랑→노랑)을
+   컴포넌트에서 인라인 style로 지정해 이 기본값을 덮어쓴다 */
 .bar-row-fill {
   height: 100%;
   background: var(--accent-dim);
   border-radius: 6px;
   min-width: 3px;
-}
-
-/* 최다 플레이 TOP10은 한 톤(accent)으로 통일하고 1위만 진하게 강조한다 */
-.bar-row-fill.is-first {
-  background: var(--accent);
 }
 
 .bar-row-value {
@@ -246,16 +262,18 @@
   text-align: right;
 }
 
+/* 일별/월별/연도별 전환에도 프레임 높이가 흔들리지 않도록 높이를 고정한다 */
 .plays-chart {
-  overflow-x: auto;
+  overflow: hidden;
 }
 
+/* 막대 개수와 무관하게 항상 컨테이너 가로폭을 꽉 채운다(flex:1 균등 분배).
+   gap은 JS에서 구간 수에 따라 조절(구간이 많으면 좁게). */
 .plays-bars {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
-  height: 120px;
-  min-width: min-content;
+  height: 140px;
+  width: 100%;
 }
 
 .plays-bar-col {
@@ -263,21 +281,17 @@
   flex-direction: column;
   justify-content: flex-end;
   align-items: center;
-  width: 20px;
+  flex: 1 1 0;
+  min-width: 0;
   height: 100%;
-  flex: none;
 }
 
 .plays-bar {
-  width: 10px;
+  width: 100%;
+  max-width: 36px;
   background: var(--accent-dim);
   border-radius: 3px 3px 0 0;
   min-height: 2px;
-}
-
-/* 최대값 구간만 진하게 - 단색 팔레트는 유지하되 그 구간만 강조한다 */
-.plays-bar.is-max {
-  background: var(--accent);
 }
 
 .plays-bar-label {
