@@ -1,0 +1,10 @@
+# 이 저장소는 공개다. 구매가·판매가·개인 메모가 담긴 파일은 절대 커밋하지 않는다.
+asset/
+data/*
+!data/aliases.json
+
+# docs/ 아래 공개용 JSON은 티스토리가 fetch해야 하므로 커밋 대상이다.
+# (가격·메모는 build_dataset.py가 공개용에서 걸러낸다.)
+
+__pycache__/
+*.pyc

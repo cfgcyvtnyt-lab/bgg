@@ -16,7 +16,7 @@ jobs:
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
 
-      - name: BGG 컬렉션 XML 받기 (공식 XML API2)
+      - name: 설정값 확인
         env:
           BGG_USERNAME: ${{ vars.BGG_USERNAME }}
           BGG_API_KEY: ${{ secrets.BGG_API_KEY }}
@@ -38,71 +38,29 @@ jobs:
             exit 1
           fi
 
-          # 붙여넣기 과정에서 앞뒤 공백/개행이 섞여 들어오면 401이 나므로 제거한다.
-          BGG_API_KEY=$(printf '%s' "$BGG_API_KEY" | tr -d '[:space:]')
-
           # 값 자체는 절대 찍지 않고 길이만 확인한다. 정상 키는 UUID 형식이라 36자.
-          echo "API 키 길이: ${#BGG_API_KEY}자 (정상이면 36자)"
-          if [ "${#BGG_API_KEY}" -ne 36 ]; then
+          KEY=$(printf '%s' "$BGG_API_KEY" | tr -d '[:space:]')
+          echo "API 키 길이: ${#KEY}자 (정상이면 36자)"
+          if [ "${#KEY}" -ne 36 ]; then
             echo "::warning::키 길이가 36자가 아닙니다. 값이 잘렸거나 다른 문자가 섞였을 수 있습니다."
           fi
-
-          URL="https://boardgamegeek.com/xmlapi2/collection?username=${BGG_USERNAME}&subtype=boardgame&stats=1"
-
-          # BGG는 첫 요청에 202(아직 준비 중)를 주고, 잠시 후 재요청하면 200으로 데이터를 준다.
-          # 202만 재시도 대상이고, 401/403 같은 인증 오류는 재시도해도 소용없으므로 즉시 중단한다.
-          STATUS=0
-          for i in $(seq 1 10); do
-            STATUS=$(curl -sL -H "Authorization: Bearer ${BGG_API_KEY}" \
-              -o collection.xml -w "%{http_code}" "$URL")
-            echo "시도 $i: HTTP $STATUS"
-
-            case "$STATUS" in
-              200)
-                break
-                ;;
-              202)
-                echo "BGG가 컬렉션을 준비 중입니다. 10초 후 재시도"
-                sleep 10
-                ;;
-              401|403)
-                echo "::error::인증 실패 (HTTP $STATUS). BGG_API_KEY 값이 유효한지 확인하세요."
-                cat collection.xml || true
-                exit 1
-                ;;
-              *)
-                echo "예상치 못한 응답. 10초 후 재시도"
-                sleep 10
-                ;;
-            esac
-          done
-
-          if [ "$STATUS" != "200" ]; then
-            echo "::error::최종 실패: HTTP $STATUS"
-            cat collection.xml || true
-            exit 1
-          fi
-
-      - name: 받아온 파일 확인용 디버그 출력
-        run: |
-          echo "--- 파일 크기 ---"
-          wc -c collection.xml
-          echo "--- 앞 30줄 ---"
-          head -n 30 collection.xml
-
-      - name: collection.xml을 아티팩트로 업로드 (직접 열어보기용)
-        uses: actions/upload-artifact@v4
-        with:
-          name: raw-collection-xml
-          path: collection.xml
 
       - name: Python 설정
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: XML -> JSON 변환
-        run: python scripts/xml_to_json.py collection.xml docs/collection.json
+      - name: BGG 데이터 수집 (컬렉션 + 상세정보)
+        env:
+          BGG_USERNAME: ${{ vars.BGG_USERNAME }}
+          BGG_API_KEY: ${{ secrets.BGG_API_KEY }}
+        run: python scripts/fetch_bgg.py "$BGG_USERNAME" data/bgg.json
+
+      - name: 공개용 JSON 생성
+        # 시트(개인 데이터)는 저장소에 없으므로 BGG 데이터만으로 만든다.
+        run: |
+          python scripts/build_dataset.py \
+            data/bgg.json data/sheet.json data/collection.json docs/collection.json
 
       - name: 변경사항 커밋
         run: |
