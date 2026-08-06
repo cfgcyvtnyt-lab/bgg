@@ -8,7 +8,7 @@ import { bggGameUrl, bggSleevesUrl } from "../utils/bggUrl";
 import StarRating from "../components/StarRating";
 import "../styles/GameDetail.css";
 
-const STATUS_LIST = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
+const STATUS_LIST = ["보유", "선주문", "위시리스트", "방출 예정", "방출 완료"];
 const RECENT_PLAYS_COUNT = 5;
 const INTRO_TRUNCATE_CHARS = 160; // 대략 4줄 분량 - CSS 라인 수 대신 글자 수로 근사한다.
 

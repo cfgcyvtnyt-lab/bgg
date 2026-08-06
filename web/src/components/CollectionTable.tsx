@@ -5,7 +5,7 @@ import { ratingColor, weightColor } from "../utils/ratingTier";
 import StarRating from "./StarRating";
 import "../styles/CollectionTable.css";
 
-const STATUS_OPTIONS = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
+const STATUS_OPTIONS = ["보유", "선주문", "위시리스트", "방출 예정", "방출 완료"];
 
 type SortKey =
   | "name" | "status" | "price_paid" | "price_sold" | "tags"

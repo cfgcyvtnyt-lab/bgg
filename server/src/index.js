@@ -569,7 +569,7 @@ app.delete("/api/games/:id/score-template", (req, res) => {
 // ---------- collection (공유) ----------
 
 // 화면에 보일 때 "가장 현재에 가까운" 상태 하나만 고르는 우선순위. 취득 이력 전체는 게임 상세에서만 본다.
-const STATUS_PRIORITY = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
+const STATUS_PRIORITY = ["보유", "선주문", "위시리스트", "방출 예정", "방출 완료"];
 
 app.get("/api/collection", (req, res) => {
   const { status, tag, include_expansions } = req.query;

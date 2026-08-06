@@ -3,7 +3,7 @@
 import type { CollectionListEntry } from "../api/types";
 
 export type ViewKey = "all" | "unplayed_owned" | "played" | "played_or_owned" | "played_not_owned";
-export type StatusKey = "보유" | "위시리스트" | "want_to_play" | "선주문" | "방출 예정" | "방출 확정" | "방출 완료";
+export type StatusKey = "보유" | "위시리스트" | "want_to_play" | "선주문" | "방출 예정" | "방출 완료";
 export type FilterState = { kind: "view"; key: ViewKey } | { kind: "status"; key: StatusKey };
 
 export const VIEW_DEFS: { key: ViewKey; label: string }[] = [
@@ -20,7 +20,6 @@ export const STATUS_DEFS: { key: StatusKey; label: string }[] = [
   { key: "want_to_play", label: "플레이 희망" },
   { key: "선주문", label: "선주문" },
   { key: "방출 예정", label: "방출 예정" },
-  { key: "방출 확정", label: "방출 확정" },
   { key: "방출 완료", label: "방출 완료" },
 ];
 

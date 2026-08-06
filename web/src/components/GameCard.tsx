@@ -18,8 +18,8 @@ function StatusIcon({ status, wantToPlay }: { status: string | null; wantToPlay:
   if (status === "보유") { icon = "✓"; cls += " status-icon-owned"; }
   else if (status === "위시리스트") { icon = "♡"; cls += " status-icon-wish"; }
   else if (status === "선주문") { icon = "⏳"; cls += " status-icon-muted"; }
-  else if (status === "방출 예정") { icon = "▽"; cls += " status-icon-muted"; }
-  else if (status === "방출 확정") { icon = "◇"; cls += " status-icon-muted"; }
+  // '방출 확정'은 '방출 예정'으로 통합했다 - 두 상태를 구분할 실익이 없었다.
+  else if (status === "방출 예정") { icon = "👎"; cls += " status-icon-muted"; }
   else if (status === "방출 완료") { icon = "×"; cls += " status-icon-muted"; }
 
   return (

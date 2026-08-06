@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS game (
 CREATE TABLE IF NOT EXISTS collection (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   game_id     INTEGER NOT NULL REFERENCES game(id),
-  status      TEXT NOT NULL DEFAULT '보유',   -- 보유/선주문/위시리스트/방출 예정/방출 확정/방출 완료
+  status      TEXT NOT NULL DEFAULT '보유',   -- 보유/선주문/위시리스트/방출 예정/방출 완료
   price_paid  INTEGER,
   price_sold  INTEGER,
   tags        TEXT,                           -- JSON 배열 (전략, 필러 …)
