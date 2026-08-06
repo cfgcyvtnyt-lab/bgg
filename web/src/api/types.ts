@@ -114,6 +114,15 @@ export interface PlayPlayer {
   isBestScore?: boolean;
 }
 
+export interface Photo {
+  id: number;
+  play_id: number;
+  filename: string;
+  caption: string | null;
+  published: boolean;
+  created_at: string;
+}
+
 export interface Play {
   id: number;
   user_id: number;
@@ -127,6 +136,7 @@ export interface Play {
   is_coop: number;
   expansions: string[];
   players: PlayPlayer[];
+  photos: Photo[];
 }
 
 export interface TopGame {
@@ -214,4 +224,75 @@ export interface ComboPlayerStat {
 
 export interface PlayDetail extends Play {
   comboStats: { matchCount: number; players: ComboPlayerStat[] };
+}
+
+// ---------- 피드 ----------
+
+export interface FeedPlayerLite {
+  name: string;
+  score: number | null;
+  win: boolean;
+  is_automa: boolean;
+}
+
+export interface FeedPlay {
+  id: number;
+  user_id: number;
+  author: string;
+  game_id: number;
+  game_name: string;
+  categories: string[];
+  played_at: string;
+  duration_min: number | null;
+  location: string | null;
+  comment: string | null;
+  is_coop: boolean;
+  players: FeedPlayerLite[];
+  photos: Photo[];
+}
+
+export interface FeedItemPlay {
+  type: "play";
+  date: string;
+  seq: number;
+  userId: number;
+  play: FeedPlay;
+  own?: boolean;
+}
+
+export interface FeedItemEvent {
+  type: "event";
+  kind: "first" | "milestone" | "best" | "worst";
+  date: string;
+  seq: number;
+  userId: number;
+  author: string;
+  game_id: number;
+  game_name: string;
+  count?: number;
+  score?: number;
+  solo?: boolean;
+}
+
+export interface FeedItemMonth {
+  type: "month";
+  date: string;
+  seq: number;
+  month: string;
+  year: number;
+  monthNum: number;
+  totalPlays: number;
+  newGames: string[];
+  newGameCount: number;
+  topGames: { name: string; count: number }[];
+  bestUpdateCount: number;
+  totalMinutes: number;
+}
+
+export type FeedItem = FeedItemPlay | FeedItemEvent | FeedItemMonth;
+
+export interface FeedResponse {
+  items: FeedItem[];
+  hasMore: boolean;
+  total: number;
 }

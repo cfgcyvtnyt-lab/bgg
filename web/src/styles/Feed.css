@@ -1,0 +1,147 @@
+.feed-page {
+  padding-bottom: 24px;
+}
+
+.feed-tag-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feed-play-card {
+  padding: 12px;
+}
+
+.feed-play-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.feed-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex: none;
+}
+
+.feed-play-headinfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-play-author {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.feed-play-date {
+  font-size: 12px;
+}
+
+.feed-publish-toggle {
+  flex: none;
+}
+
+.feed-play-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.feed-play-tags .chip {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.feed-play-comment {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feed-play-meta {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.feed-event-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px;
+  font-size: 13px;
+}
+
+.feed-event-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed-event-date {
+  flex: none;
+  font-size: 12px;
+}
+
+.month-card {
+  cursor: pointer;
+}
+
+.month-card-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.month-card-caret {
+  flex: none;
+  font-size: 11px;
+}
+
+.month-card-detail {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: default;
+}
+
+.month-card-detail .info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  align-items: flex-start;
+}
+
+.month-card-detail .info-row > span:last-child {
+  text-align: right;
+}

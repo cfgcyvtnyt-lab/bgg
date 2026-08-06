@@ -1,6 +1,6 @@
 import type {
   User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
-  NameAlias, NameCount, LocationCount, PlayDetail,
+  NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse,
 } from "./types";
 
 const BASE = "/api";
@@ -122,6 +122,49 @@ export const api = {
     request<NameAlias>("/aliases", { method: "POST", body: JSON.stringify(body) }),
   deleteAlias: (id: number) =>
     request<{ ok: boolean }>(`/aliases/${id}`, { method: "DELETE" }),
+
+  // ---------- 사진 ----------
+  // multipart 대신 파일을 통째로 body로 보낸다 (의존성 추가 금지 - 서버도 raw body로 받는다).
+  uploadPhoto: async (playId: number, file: File): Promise<Photo> => {
+    const userId = getUserId();
+    const headers: Record<string, string> = {
+      "Content-Type": file.type || "application/octet-stream",
+      "X-Filename": encodeURIComponent(file.name || "photo.jpg"),
+    };
+    if (userId) headers["X-User-Id"] = userId;
+    const res = await fetch(`${BASE}/plays/${playId}/photos`, { method: "POST", headers, body: file });
+    if (!res.ok) {
+      let msg = `업로드 실패 (${res.status})`;
+      try {
+        const body = await res.json();
+        if (body?.error) msg = body.error;
+      } catch {
+        // JSON이 아니면 기본 메시지 사용
+      }
+      throw new Error(msg);
+    }
+    return res.json();
+  },
+  updatePhoto: (id: number, body: { published?: boolean; caption?: string | null }) =>
+    request<Photo>(`/photos/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deletePhoto: (id: number) =>
+    request<{ ok: boolean }>(`/photos/${id}`, { method: "DELETE" }),
+  photoUrl: (filename: string) => `${BASE}/photos/${filename}`,
+
+  // ---------- 피드 ----------
+  feed: (params: {
+    author?: number; filter?: "photo" | "event"; game_id?: number; category?: string;
+    limit?: number; offset?: number;
+  } = {}) => {
+    const sp = new URLSearchParams();
+    if (params.author) sp.set("author", String(params.author));
+    if (params.filter) sp.set("filter", params.filter);
+    if (params.game_id) sp.set("game_id", String(params.game_id));
+    if (params.category) sp.set("category", params.category);
+    sp.set("limit", String(params.limit ?? 20));
+    sp.set("offset", String(params.offset ?? 0));
+    return request<FeedResponse>(`/feed?${sp}`);
+  },
 };
 
 export { getUserId };

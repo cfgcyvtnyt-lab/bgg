@@ -1,7 +1,7 @@
 import express from "express";
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { extname, join, resolve } from "node:path";
+import { createHash, randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "node:fs";
+import { extname, join, resolve, sep } from "node:path";
 import { openDb } from "./db.js";
 import { runSync } from "./sync.js";
 
@@ -14,7 +14,12 @@ const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const IMAGE_CACHE_DIR = process.env.IMAGE_CACHE_DIR || "data/cache/images";
 // 사용자 업로드 사진 저장 경로. 나중에 도커 볼륨을 따로 붙일 수 있게 상수만 빼둔다 (업로드 기능은 이번 범위 아님).
 const PHOTO_DIR = process.env.PHOTO_DIR || "data/photos";
+// 원본은 그대로 보관 (리사이즈는 외부 발행 때 처리 - 이번 범위 아님)
+const PHOTO_ORIGINAL_DIR = join(PHOTO_DIR, "original");
+const ALLOWED_PHOTO_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic"]);
+const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
 mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
+mkdirSync(PHOTO_ORIGINAL_DIR, { recursive: true });
 
 const db = openDb(DB_PATH);
 const app = express();
@@ -432,6 +437,11 @@ function loadPlayers(playId) {
   return db.prepare("SELECT * FROM play_player WHERE play_id = ?").all(playId);
 }
 
+function loadPhotos(playId) {
+  return db.prepare("SELECT * FROM photo WHERE play_id = ? ORDER BY id").all(playId)
+    .map((p) => ({ ...p, published: !!p.published }));
+}
+
 // 기록 입력에서 장소를 자유 입력 대신 목록에서 고르게 하기 위한 엔드포인트.
 // name_alias(location)를 적용해 표기가 갈린 이름(Home/Home2/H. 등)을 합친 뒤 사용 횟수와 함께 반환한다.
 app.get("/api/locations", (req, res) => {
@@ -477,6 +487,7 @@ app.get("/api/plays", (req, res) => {
     comment: stripBgStatsTag(r.comment),
     expansions: parseJsonArray(r.expansions),
     players: loadPlayers(r.id),
+    photos: loadPhotos(r.id),
   }));
   res.json(result);
 });
@@ -561,6 +572,7 @@ app.get("/api/plays/:id", (req, res) => {
     comment: stripBgStatsTag(play.comment),
     expansions: parseJsonArray(play.expansions),
     players: playersWithFlags,
+    photos: loadPhotos(id),
     comboStats: { matchCount: matched.length, players: comboPlayers },
   });
 });
@@ -602,11 +614,12 @@ app.post("/api/plays", (req, res) => {
                         pl.start_position ?? null, pl.is_automa ? 1 : 0);
     }
     db.exec("COMMIT");
+    invalidateFeedCache();
 
     const row = db.prepare("SELECT * FROM play WHERE id = ?").get(playId);
     res.status(201).json({
       ...row, comment: stripBgStatsTag(row.comment),
-      expansions: parseJsonArray(row.expansions), players: loadPlayers(playId),
+      expansions: parseJsonArray(row.expansions), players: loadPlayers(playId), photos: [],
     });
   } catch (err) {
     db.exec("ROLLBACK");
@@ -660,10 +673,11 @@ app.patch("/api/plays/:id", (req, res) => {
     }
   }
 
+  invalidateFeedCache();
   const row = db.prepare("SELECT * FROM play WHERE id = ?").get(id);
   res.json({
     ...row, comment: stripBgStatsTag(row.comment),
-    expansions: parseJsonArray(row.expansions), players: loadPlayers(id),
+    expansions: parseJsonArray(row.expansions), players: loadPlayers(id), photos: loadPhotos(id),
   });
 });
 
@@ -676,8 +690,352 @@ app.delete("/api/plays/:id", (req, res) => {
   if (!existing) return res.status(404).json({ error: "찾을 수 없습니다" });
   if (existing.user_id !== userId) return res.status(403).json({ error: "본인 기록만 삭제할 수 있습니다" });
 
-  db.prepare("DELETE FROM play WHERE id = ?").run(id); // play_player는 ON DELETE CASCADE
+  // 사진 파일도 같이 지워야 고아 파일이 안 남는다.
+  for (const ph of loadPhotos(id)) {
+    try { unlinkSync(join(PHOTO_ORIGINAL_DIR, ph.filename)); } catch { /* 이미 없으면 무시 */ }
+  }
+  db.prepare("DELETE FROM play WHERE id = ?").run(id); // play_player/photo는 ON DELETE CASCADE
+  invalidateFeedCache();
   res.json({ ok: true });
+});
+
+// ---------- 사진 ----------
+// 의존성 추가 금지라 multer 대신, 파일을 통째로 body로 받는 방식(raw)을 쓴다.
+// 프론트는 FormData가 아니라 fetch(url, {body: file, headers:{'Content-Type': file.type, 'X-Filename': ...}})로 보낸다.
+
+app.post("/api/plays/:id/photos", express.raw({ type: () => true, limit: "20mb" }), (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const playId = Number(req.params.id);
+
+  const play = db.prepare("SELECT * FROM play WHERE id = ?").get(playId);
+  if (!play) return res.status(404).json({ error: "찾을 수 없습니다" });
+  if (play.user_id !== userId) return res.status(403).json({ error: "본인 플레이에만 업로드할 수 있습니다" });
+
+  // 한글 파일명은 HTTP 헤더에 그대로 못 실으므로 프론트에서 encodeURIComponent해 보낸다.
+  let originalName = "";
+  try {
+    originalName = decodeURIComponent(req.header("X-Filename") || "");
+  } catch {
+    originalName = req.header("X-Filename") || "";
+  }
+  const ext = extname(originalName).toLowerCase();
+  if (!ALLOWED_PHOTO_EXT.has(ext)) {
+    return res.status(400).json({ error: "허용되지 않는 확장자입니다 (jpg/jpeg/png/webp/heic만 가능)" });
+  }
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    return res.status(400).json({ error: "파일이 비어 있습니다" });
+  }
+  if (req.body.length > MAX_PHOTO_BYTES) {
+    return res.status(400).json({ error: "파일이 너무 큽니다 (최대 20MB)" });
+  }
+
+  const filename = `${playId}_${Date.now()}_${randomBytes(4).toString("hex")}${ext}`;
+  writeFileSync(join(PHOTO_ORIGINAL_DIR, filename), req.body);
+
+  let caption = null;
+  const capHeader = req.header("X-Caption");
+  if (capHeader) {
+    try { caption = decodeURIComponent(capHeader); } catch { caption = capHeader; }
+  }
+
+  const result = db.prepare(
+    "INSERT INTO photo (play_id, filename, caption) VALUES (?, ?, ?)"
+  ).run(playId, filename, caption);
+  invalidateFeedCache();
+
+  const row = db.prepare("SELECT * FROM photo WHERE id = ?").get(result.lastInsertRowid);
+  res.status(201).json({ ...row, published: !!row.published });
+});
+
+app.get("/api/photos/:filename", (req, res) => {
+  const filename = req.params.filename;
+  // 경로 탈출 차단 - 슬래시/역슬래시/.. 는 파일명에 있을 이유가 없다.
+  if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+    return res.status(400).json({ error: "잘못된 파일명입니다" });
+  }
+  const base = resolve(PHOTO_ORIGINAL_DIR);
+  const filePath = resolve(join(PHOTO_ORIGINAL_DIR, filename));
+  if (!filePath.startsWith(base + sep)) {
+    return res.status(400).json({ error: "잘못된 경로입니다" });
+  }
+  if (!existsSync(filePath)) return res.status(404).json({ error: "찾을 수 없습니다" });
+  res.set("Cache-Control", "public, max-age=31536000");
+  res.sendFile(filePath);
+});
+
+app.patch("/api/photos/:id", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const id = Number(req.params.id);
+
+  const photo = db.prepare(
+    "SELECT ph.*, pl.user_id AS owner_id FROM photo ph JOIN play pl ON pl.id = ph.play_id WHERE ph.id = ?"
+  ).get(id);
+  if (!photo) return res.status(404).json({ error: "찾을 수 없습니다" });
+  if (photo.owner_id !== userId) return res.status(403).json({ error: "본인 사진만 수정할 수 있습니다" });
+
+  const updates = [];
+  const params = [];
+  if ("published" in (req.body || {})) { updates.push("published = ?"); params.push(req.body.published ? 1 : 0); }
+  if ("caption" in (req.body || {})) { updates.push("caption = ?"); params.push(req.body.caption ?? null); }
+  if (updates.length) {
+    params.push(id);
+    db.prepare(`UPDATE photo SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+  }
+  invalidateFeedCache();
+
+  const row = db.prepare("SELECT * FROM photo WHERE id = ?").get(id);
+  res.json({ ...row, published: !!row.published });
+});
+
+app.delete("/api/photos/:id", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const id = Number(req.params.id);
+
+  const photo = db.prepare(
+    "SELECT ph.*, pl.user_id AS owner_id FROM photo ph JOIN play pl ON pl.id = ph.play_id WHERE ph.id = ?"
+  ).get(id);
+  if (!photo) return res.status(404).json({ error: "찾을 수 없습니다" });
+  if (photo.owner_id !== userId) return res.status(403).json({ error: "본인 사진만 삭제할 수 있습니다" });
+
+  db.prepare("DELETE FROM photo WHERE id = ?").run(id);
+  try { unlinkSync(join(PHOTO_ORIGINAL_DIR, photo.filename)); } catch { /* 이미 없으면 무시 */ }
+  invalidateFeedCache();
+  res.json({ ok: true });
+});
+
+// ---------- 피드 ----------
+// 이벤트(첫 플레이/N회 달성/최고·최저점 갱신)와 월간 결산은 저장하지 않고 조회 시 계산한다.
+// 전체 플레이를 날짜순으로 한 번 훑으면 결정적으로 나오기 때문. 다만 1,906판 전체를 매 요청마다
+// 훑으면 느리므로 결과를 메모리에 캐시하고, 플레이/사진이 바뀔 때만 무효화한다.
+let feedCache = null; // { items: [...] } - 전체(필터 전) 피드 아이템, 최신순 정렬
+
+function invalidateFeedCache() {
+  feedCache = null;
+}
+
+const MILESTONES = [3, 10, 20, 50, 100];
+
+function currentMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function nextMonthKey(monthKey) {
+  const [y, m] = monthKey.split("-").map(Number);
+  const nm = m === 12 ? 1 : m + 1;
+  const ny = m === 12 ? y + 1 : y;
+  return `${ny}-${String(nm).padStart(2, "0")}`;
+}
+
+function buildFeedItems() {
+  const users = db.prepare("SELECT id, name FROM user").all();
+  const userName = new Map(users.map((u) => [u.id, u.name]));
+  const playerAlias = loadAliasMap("player");
+
+  const plays = db.prepare(`
+    SELECT p.*, COALESCE(g.custom_name, g.name) AS game_name, g.categories AS game_categories
+    FROM play p JOIN game g ON g.id = p.game_id
+    ORDER BY p.played_at ASC, p.id ASC
+  `).all();
+
+  const photosByPlay = new Map();
+  for (const row of db.prepare("SELECT * FROM photo ORDER BY id").all()) {
+    if (!photosByPlay.has(row.play_id)) photosByPlay.set(row.play_id, []);
+    photosByPlay.get(row.play_id).push({ ...row, published: !!row.published });
+  }
+  const playersByPlay = new Map();
+  for (const row of db.prepare("SELECT * FROM play_player").all()) {
+    if (!playersByPlay.has(row.play_id)) playersByPlay.set(row.play_id, []);
+    playersByPlay.get(row.play_id).push(row);
+  }
+
+  const items = [];
+  // 사용자·게임별 진행 상태: 판수, 1인/2인+ 각각의 최고·최저점
+  const progress = new Map(); // key `${user_id}:${game_id}`
+  // 월별 결산 집계
+  const monthAgg = new Map(); // key YYYY-MM
+  const globalFirstPlayMonth = new Map(); // game_id -> YYYY-MM (그 게임이 처음 기록된 달)
+
+  function getMonthAgg(monthKey) {
+    let a = monthAgg.get(monthKey);
+    if (!a) {
+      a = { totalPlays: 0, totalMinutes: 0, gameCounts: new Map(), newGames: [], bestUpdateCount: 0 };
+      monthAgg.set(monthKey, a);
+    }
+    return a;
+  }
+
+  for (const play of plays) {
+    const players = playersByPlay.get(play.id) || [];
+    const photos = photosByPlay.get(play.id) || [];
+    const comment = stripBgStatsTag(play.comment);
+    const humanCount = players.filter((p) => !p.is_automa).length;
+    const isSolo = humanCount <= 1;
+    const monthKey = play.played_at.slice(0, 7);
+    const author = userName.get(play.user_id) || "?";
+
+    // 카드: 사진이나 코멘트가 있는 플레이만
+    if (photos.length > 0 || (comment && comment.trim())) {
+      items.push({
+        type: "play",
+        date: play.played_at,
+        seq: play.id,
+        userId: play.user_id,
+        play: {
+          id: play.id,
+          user_id: play.user_id,
+          author,
+          game_id: play.game_id,
+          game_name: play.game_name,
+          categories: parseJsonArray(play.game_categories).slice(0, 2),
+          played_at: play.played_at,
+          duration_min: play.duration_min,
+          location: play.location,
+          comment,
+          is_coop: !!play.is_coop,
+          players: players.map((p) => ({ name: p.name, score: p.score, win: !!p.win, is_automa: !!p.is_automa })),
+          photos,
+        },
+      });
+    }
+
+    // 월간 결산 집계
+    const magg = getMonthAgg(monthKey);
+    magg.totalPlays++;
+    if (play.duration_min) magg.totalMinutes += play.duration_min;
+    const gc = magg.gameCounts.get(play.game_id) || { name: play.game_name, count: 0 };
+    gc.count++;
+    magg.gameCounts.set(play.game_id, gc);
+    if (!globalFirstPlayMonth.has(play.game_id)) {
+      globalFirstPlayMonth.set(play.game_id, monthKey);
+      magg.newGames.push(play.game_name);
+    }
+
+    // 이벤트 판정 (그 사용자 기준)
+    const key = `${play.user_id}:${play.game_id}`;
+    const prog = progress.get(key) || { count: 0, bestSolo: null, worstSolo: null, bestMulti: null, worstMulti: null };
+    prog.count++;
+
+    if (prog.count === 1) {
+      items.push({
+        type: "event", kind: "first", date: play.played_at, seq: play.id + 0.1,
+        userId: play.user_id, author, game_id: play.game_id, game_name: play.game_name,
+      });
+    }
+    if (MILESTONES.includes(prog.count)) {
+      items.push({
+        type: "event", kind: "milestone", count: prog.count, date: play.played_at, seq: play.id + 0.2,
+        userId: play.user_id, author, game_id: play.game_id, game_name: play.game_name,
+      });
+    }
+
+    // "나"의 점수: 기록 소유자 이름(별칭 적용)과 일치하는 참가자를 본인으로 본다
+    const myCanonical = applyAlias(playerAlias, author);
+    const myPlayer = players.find((p) => applyAlias(playerAlias, p.name) === myCanonical);
+    const myScore = myPlayer && myPlayer.score != null ? myPlayer.score : null;
+
+    if (myScore != null) {
+      const bestKey = isSolo ? "bestSolo" : "bestMulti";
+      const worstKey = isSolo ? "worstSolo" : "worstMulti";
+      if (prog[bestKey] != null && myScore > prog[bestKey]) {
+        items.push({
+          type: "event", kind: "best", date: play.played_at, seq: play.id + 0.3,
+          userId: play.user_id, author, game_id: play.game_id, game_name: play.game_name,
+          score: myScore, solo: isSolo,
+        });
+        magg.bestUpdateCount++;
+      }
+      if (prog[worstKey] != null && myScore < prog[worstKey]) {
+        items.push({
+          type: "event", kind: "worst", date: play.played_at, seq: play.id + 0.4,
+          userId: play.user_id, author, game_id: play.game_id, game_name: play.game_name,
+          score: myScore, solo: isSolo,
+        });
+      }
+      if (prog[bestKey] == null || myScore > prog[bestKey]) prog[bestKey] = myScore;
+      if (prog[worstKey] == null || myScore < prog[worstKey]) prog[worstKey] = myScore;
+    }
+
+    progress.set(key, prog);
+  }
+
+  // 월간 결산 카드 - 이미 끝난 달만(진행 중인 이번 달은 아직 결산할 수 없다), 다음 달 1일자로 삽입
+  const curMonth = currentMonthKey();
+  for (const [monthKey, agg] of monthAgg) {
+    if (monthKey >= curMonth) continue;
+    const topGames = [...agg.gameCounts.values()].sort((a, b) => b.count - a.count).slice(0, 3);
+    const [y, m] = monthKey.split("-").map(Number);
+    items.push({
+      type: "month",
+      date: `${nextMonthKey(monthKey)}-01`,
+      seq: -1,
+      month: monthKey,
+      year: y,
+      monthNum: m,
+      totalPlays: agg.totalPlays,
+      newGames: agg.newGames,
+      newGameCount: agg.newGames.length,
+      topGames,
+      bestUpdateCount: agg.bestUpdateCount,
+      totalMinutes: agg.totalMinutes,
+    });
+  }
+
+  items.sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return b.seq - a.seq;
+  });
+
+  return items;
+}
+
+function getFeedCache() {
+  if (!feedCache) feedCache = { items: buildFeedItems() };
+  return feedCache;
+}
+
+app.get("/api/feed", (req, res) => {
+  const requesterId = currentUserId(req);
+  const { author, filter, limit, offset, game_id, category } = req.query;
+
+  const lim = Math.min(Number(limit) || 20, 100);
+  const off = Number(offset) || 0;
+
+  const authorId = author ? Number(author) : null;
+  const gameIdFilter = game_id ? Number(game_id) : null;
+  let items = getFeedCache().items;
+
+  items = items.filter((it) => {
+    if (authorId && (it.type === "play" || it.type === "event") && it.userId !== authorId) return false;
+    // 태그(게임/카테고리) 탭 필터 - 월간 결산은 특정 게임에 속하지 않으므로 제외한다.
+    if (gameIdFilter) {
+      if (it.type === "month") return false;
+      if (it.game_id !== gameIdFilter && it.play?.game_id !== gameIdFilter) return false;
+    }
+    if (category) {
+      if (it.type !== "play") return false;
+      if (!it.play.categories.includes(category)) return false;
+    }
+    if (filter === "photo") {
+      return it.type === "play" && it.play.photos.length > 0;
+    }
+    if (filter === "event") {
+      return it.type === "event" || it.type === "month";
+    }
+    return true;
+  });
+
+  const page = items.slice(off, off + lim).map((it) => {
+    if (it.type === "play") {
+      return { ...it, own: requesterId != null && it.userId === requesterId };
+    }
+    return it;
+  });
+
+  res.json({ items: page, hasMore: off + lim < items.length, total: items.length });
 });
 
 // ---------- insights (요청 사용자 기준) ----------

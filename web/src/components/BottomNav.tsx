@@ -2,7 +2,8 @@ import { NavLink } from "react-router-dom";
 import "../styles/BottomNav.css";
 
 const TABS = [
-  { to: "/", label: "컬렉션", icon: "\u{1F4E6}" },
+  { to: "/", label: "피드", icon: "\u{1F3E0}" },
+  { to: "/collection", label: "컬렉션", icon: "\u{1F4E6}" },
   { to: "/plays", label: "기록", icon: "\u{1F4DD}" },
   { to: "/insights", label: "인사이트", icon: "\u{1F4CA}" },
   { to: "/settings", label: "설정", icon: "\u{2699}\u{FE0F}" },

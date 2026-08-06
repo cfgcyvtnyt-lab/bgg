@@ -77,3 +77,14 @@
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
 }
+
+.play-detail-photos {
+  padding: 0;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.play-detail-photos .photo-slider {
+  margin: 0;
+  width: 100%;
+}

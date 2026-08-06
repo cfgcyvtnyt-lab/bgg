@@ -1,10 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { Game, GameDetail, PlayPlayer } from "../api/types";
+import type { Game, GameDetail, Photo, PlayPlayer } from "../api/types";
 import { evalScoreExpression } from "../utils/scoreParser";
 import PlayTimer from "../components/PlayTimer";
 import "../styles/PlayForm.css";
+
+interface PendingPhoto {
+  key: string;
+  file: File;
+  previewUrl: string;
+}
 
 interface PlayerRow {
   name: string;
@@ -55,6 +61,14 @@ export default function PlayFormPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEdit);
 
+  // 사진: 이미 저장된 사진(수정 모드에서 불러옴)과, 아직 업로드 안 한 선택분을 분리해 관리한다.
+  // 새 기록은 play_id가 있어야 업로드할 수 있으므로, 저장 시 play를 먼저 만들고 나서 pendingPhotos를 올린다.
+  const [existingPhotos, setExistingPhotos] = useState<Photo[]>([]);
+  const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     api.locations().then(setLocations).catch(() => setLocations([]));
   }, []);
@@ -88,6 +102,7 @@ export default function PlayFormPage() {
         );
         const startIdx = found.players.findIndex((p) => String(p.start_position) === "1");
         setStartPlayerIndex(startIdx >= 0 ? startIdx : null);
+        setExistingPhotos(found.photos || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "불러오기 실패");
       } finally {
@@ -147,6 +162,50 @@ export default function PlayFormPage() {
     setAddingLocation(false);
   }
 
+  const ALLOWED_PHOTO_EXT = [".jpg", ".jpeg", ".png", ".webp", ".heic"];
+
+  function onFilesSelected(files: FileList | null) {
+    if (!files) return;
+    setPhotoError(null);
+    const next: PendingPhoto[] = [];
+    for (const file of Array.from(files)) {
+      const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+      if (!ALLOWED_PHOTO_EXT.includes(ext)) {
+        setPhotoError("jpg/jpeg/png/webp/heic 파일만 업로드할 수 있습니다");
+        continue;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        setPhotoError("파일이 너무 큽니다 (최대 20MB)");
+        continue;
+      }
+      next.push({ key: `${Date.now()}_${file.name}_${Math.random()}`, file, previewUrl: URL.createObjectURL(file) });
+    }
+    setPendingPhotos((prev) => [...prev, ...next]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removePendingPhoto(key: string) {
+    setPendingPhotos((prev) => prev.filter((p) => p.key !== key));
+  }
+
+  async function deleteExistingPhoto(id: number) {
+    setDeletingPhotoId(id);
+    try {
+      await api.deletePhoto(id);
+      setExistingPhotos((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "사진 삭제 실패");
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  }
+
+  async function uploadPendingPhotos(playId: number) {
+    for (const p of pendingPhotos) {
+      await api.uploadPhoto(playId, p.file);
+    }
+  }
+
   async function handleSave() {
     if (!selectedGame) { setError("게임을 선택하세요"); return; }
     setError(null);
@@ -175,8 +234,10 @@ export default function PlayFormPage() {
 
       if (isEdit) {
         await api.updatePlay(Number(id), body);
+        await uploadPendingPhotos(Number(id));
       } else {
-        await api.addPlay(body);
+        const created = await api.addPlay(body);
+        await uploadPendingPhotos(created.id);
       }
       navigate(-1);
     } catch (err) {
@@ -383,6 +444,41 @@ export default function PlayFormPage() {
       <div className="field">
         <label>코멘트</label>
         <textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
+      </div>
+
+      <div className="field">
+        <label>사진</label>
+        <div className="photo-picker-grid">
+          {existingPhotos.map((p) => (
+            <div className="photo-picker-item" key={`existing-${p.id}`}>
+              <img src={api.photoUrl(p.filename)} alt="" />
+              <button
+                className="photo-picker-remove"
+                onClick={() => deleteExistingPhoto(p.id)}
+                disabled={deletingPhotoId === p.id}
+                aria-label="사진 삭제"
+              >
+                {deletingPhotoId === p.id ? "..." : "✕"}
+              </button>
+            </div>
+          ))}
+          {pendingPhotos.map((p) => (
+            <div className="photo-picker-item" key={p.key}>
+              <img src={p.previewUrl} alt="" />
+              <button className="photo-picker-remove" onClick={() => removePendingPhoto(p.key)} aria-label="사진 제거">✕</button>
+            </div>
+          ))}
+          <button className="photo-picker-add" onClick={() => fileInputRef.current?.click()}>+ 사진</button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic"
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => onFilesSelected(e.target.files)}
+        />
+        {photoError && <p className="error-text">{photoError}</p>}
       </div>
 
       {error && <p className="error-text">{error}</p>}

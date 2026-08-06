@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { UserProvider, useUser } from "./context/UserContext";
 import UserSelectPage from "./pages/UserSelectPage";
+import FeedPage from "./pages/FeedPage";
 import CollectionPage from "./pages/CollectionPage";
 import GameDetailPage from "./pages/GameDetailPage";
 import PlaysPage from "./pages/PlaysPage";
@@ -22,7 +23,8 @@ function AppRoutes() {
   return (
     <Gate>
       <Routes>
-        <Route path="/" element={<CollectionPage />} />
+        <Route path="/" element={<FeedPage />} />
+        <Route path="/collection" element={<CollectionPage />} />
         <Route path="/game/:id" element={<GameDetailPage />} />
         <Route path="/plays" element={<PlaysPage />} />
         <Route path="/plays/new" element={<PlayFormPage />} />

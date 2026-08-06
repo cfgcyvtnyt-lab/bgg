@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { PlayDetail } from "../api/types";
+import PhotoSlider from "../components/PhotoSlider";
 import "../styles/PlayDetail.css";
 
 function fmtNum(n: number | null | undefined) {
@@ -42,6 +43,12 @@ export default function PlayDetailPage() {
         <button className="icon-btn" style={{ background: "none", color: "var(--muted)" }}
           onClick={() => navigate(`/plays/${play.id}/edit`)} aria-label="기록 수정">✎</button>
       </div>
+
+      {play.photos.length > 0 && (
+        <div className="card play-detail-photos">
+          <PhotoSlider photos={play.photos} />
+        </div>
+      )}
 
       <div className="card info-box">
         <div className="info-row"><span className="muted">날짜</span><span>{play.played_at}</span></div>
