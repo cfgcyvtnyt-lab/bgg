@@ -1,0 +1,14 @@
+{
+  "name": "bgg-manager-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "import": "node src/import-bgg.js",
+    "import:sheet": "node src/import-sheet.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

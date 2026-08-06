@@ -1,7 +1,14 @@
 # 이 저장소는 공개다. 구매가·판매가·개인 메모가 담긴 파일은 절대 커밋하지 않는다.
 asset/
-data/*
-!data/aliases.json
+/data/*
+!/data/aliases.json
+
+# 하위 폴더의 data/도 전부 차단한다. server/data/app.db에는 구매가와 메모가 들어 있다.
+data/
+*.db
+*.db-shm
+*.db-wal
+data/photos/
 
 # docs/ 아래 공개용 JSON은 티스토리가 fetch해야 하므로 커밋 대상이다.
 # (가격·메모는 build_dataset.py가 공개용에서 걸러낸다.)
