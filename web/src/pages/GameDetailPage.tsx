@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { GameDetail, Play, ScoreTemplate, TagCount, GameSleeve } from "../api/types";
+import type { GameDetail, Play, ScoreTemplate, TagCount, GameSleeve, GameVersion } from "../api/types";
 import { imgUrl } from "../utils/imgUrl";
 import { ratingColor, weightColor } from "../utils/ratingTier";
 import { bggGameUrl, bggSleevesUrl } from "../utils/bggUrl";
@@ -62,6 +62,42 @@ export default function GameDetailPage() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
+
+  // 대체 이미지 선택 - 이미지를 탭하면 BGG 다른 버전(언어판 등) 목록에서 고를 수 있다.
+  const [showVersions, setShowVersions] = useState(false);
+  const [versions, setVersions] = useState<GameVersion[] | null>(null);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionsError, setVersionsError] = useState<string | null>(null);
+  const [imageSaving, setImageSaving] = useState(false);
+
+  async function openVersions() {
+    setShowVersions(true);
+    if (versions !== null) return; // 이미 받아둔 목록이 있으면 재요청하지 않는다
+    setVersionsLoading(true);
+    setVersionsError(null);
+    try {
+      const list = await api.gameVersions(gameId);
+      setVersions(list);
+    } catch (err) {
+      setVersionsError(err instanceof Error ? err.message : "버전 목록을 불러오지 못했습니다");
+    } finally {
+      setVersionsLoading(false);
+    }
+  }
+
+  async function chooseVersionImage(url: string | null) {
+    if (!game) return;
+    setImageSaving(true);
+    try {
+      await api.updateGame(game.id, { custom_image: url });
+      setShowVersions(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "이미지 저장 실패");
+    } finally {
+      setImageSaving(false);
+    }
+  }
 
   // 소개 섹션: 원문/번역 토글, 번역 진행 상태, 4줄 초과 시 더보기
   const [showOriginal, setShowOriginal] = useState(false);
@@ -240,6 +276,14 @@ export default function GameDetailPage() {
     setEditingName(true);
   }
 
+  // BGG에 등록된 다른 이름들(aliases)을 후보 칩으로 제안한다. 예: 펭귄 파티(56933)처럼
+  // 한글 이름이 여러 개 등록돼 우리가 고른 표시명이 사용자 기대와 다를 수 있어서다.
+  // 한글이 먼저 오게 정렬하고, 현재 표시명과 같은 건 뺀다.
+  const HANGUL_RE = /[가-힣]/;
+  const nameCandidates = (game?.aliases || [])
+    .filter((a) => a && a !== game?.name)
+    .sort((a, b) => Number(HANGUL_RE.test(b)) - Number(HANGUL_RE.test(a)));
+
   // 빈 값으로 저장하면 서버가 custom_name을 NULL로 되돌려 원래(BGG) 이름으로 복귀시킨다.
   async function saveName() {
     if (!game) return;
@@ -341,22 +385,44 @@ export default function GameDetailPage() {
       <button className="back-btn" onClick={() => navigate(-1)}>← 뒤로</button>
 
       <div className="detail-hero">
-        {thumb ? <img src={thumb} alt="" /> : <div className="detail-hero-empty">?</div>}
+        {thumb ? (
+          <button type="button" className="detail-hero-img-btn" onClick={openVersions} aria-label="다른 버전 이미지 선택">
+            <img src={thumb} alt="" />
+          </button>
+        ) : (
+          <button type="button" className="detail-hero-empty" onClick={openVersions} aria-label="다른 버전 이미지 선택">?</button>
+        )}
         <div className="detail-hero-info">
           {editingName ? (
-            <div className="name-edit-row">
-              <input
-                className="name-edit-input"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder={game.original_name || game.name}
-                autoFocus
-              />
-              <button className="btn-small" disabled={savingName} onClick={saveName}>
-                {savingName ? "저장 중..." : "저장"}
-              </button>
-              <button className="btn-small" onClick={() => setEditingName(false)}>취소</button>
-            </div>
+            <>
+              <div className="name-edit-row">
+                <input
+                  className="name-edit-input"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  placeholder={game.original_name || game.name}
+                  autoFocus
+                />
+                <button className="btn-small" disabled={savingName} onClick={saveName}>
+                  {savingName ? "저장 중..." : "저장"}
+                </button>
+                <button className="btn-small" onClick={() => setEditingName(false)}>취소</button>
+              </div>
+              {nameCandidates.length > 0 && (
+                <div className="name-candidate-row">
+                  {nameCandidates.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className="name-candidate-chip"
+                      onClick={() => setNameInput(c)}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             <h1 className="name-view-row">
               {game.name}
@@ -463,28 +529,38 @@ export default function GameDetailPage() {
         {game.stats && game.stats.playCount > 0 ? (
           <>
             <div className="card info-box">
-              <div className="info-row"><span className="muted">플레이 수</span><span>{fmtNum(game.stats.playCount)}회</span></div>
-              <div className="info-row"><span className="muted">승률</span><span>{game.stats.winRate != null ? `${game.stats.winRate}%` : "-"}</span></div>
+              <div className="info-row"><span className="muted">플레이 횟수</span><span>{fmtNum(game.stats.playCount)}회</span></div>
+              {game.stats.winRateSplit?.solo && (
+                <div className="info-row">
+                  <span className="muted">승률 (솔로)</span>
+                  <span>{game.stats.winRateSplit.solo.rate}% ({game.stats.winRateSplit.solo.plays}판)</span>
+                </div>
+              )}
+              {game.stats.winRateSplit?.multi && (
+                <div className="info-row">
+                  <span className="muted">승률 (2인+)</span>
+                  <span>{game.stats.winRateSplit.multi.rate}% ({game.stats.winRateSplit.multi.plays}판)</span>
+                </div>
+              )}
+              {!game.stats.winRateSplit?.solo && !game.stats.winRateSplit?.multi && (
+                <div className="info-row"><span className="muted">승률</span><span>{game.stats.winRate != null ? `${game.stats.winRate}%` : "-"}</span></div>
+              )}
               <div className="info-row"><span className="muted">평균 소요시간</span><span>{game.stats.avgDurationMin != null ? `${game.stats.avgDurationMin}분` : "-"}</span></div>
               <div className="info-row"><span className="muted">마지막 플레이</span><span>{game.stats.lastPlayedAt || "-"}</span></div>
             </div>
 
             {(game.stats.score.solo || game.stats.score.multi) && (
-              <div className="card score-split-box">
+              <div className="card info-box">
                 {game.stats.score.solo && (
-                  <div className="score-split-col">
-                    <div className="score-split-label muted">1인 ({game.stats.score.solo.count}판)</div>
-                    <div className="info-row"><span className="muted">최고</span><span>{fmtNum(game.stats.score.solo.best)}</span></div>
-                    <div className="info-row"><span className="muted">최저</span><span>{fmtNum(game.stats.score.solo.worst)}</span></div>
-                    <div className="info-row"><span className="muted">평균</span><span>{fmtNum(game.stats.score.solo.avg)}</span></div>
+                  <div className="info-row">
+                    <span className="muted">점수 (솔로, {game.stats.score.solo.count}판)</span>
+                    <span>최저 {fmtNum(game.stats.score.solo.worst)} · 평균 {fmtNum(game.stats.score.solo.avg)} · 최고 {fmtNum(game.stats.score.solo.best)}</span>
                   </div>
                 )}
                 {game.stats.score.multi && (
-                  <div className="score-split-col">
-                    <div className="score-split-label muted">2인+ ({game.stats.score.multi.count}판)</div>
-                    <div className="info-row"><span className="muted">최고</span><span>{fmtNum(game.stats.score.multi.best)}</span></div>
-                    <div className="info-row"><span className="muted">최저</span><span>{fmtNum(game.stats.score.multi.worst)}</span></div>
-                    <div className="info-row"><span className="muted">평균</span><span>{fmtNum(game.stats.score.multi.avg)}</span></div>
+                  <div className="info-row">
+                    <span className="muted">점수 (2인+, {game.stats.score.multi.count}판)</span>
+                    <span>최저 {fmtNum(game.stats.score.multi.worst)} · 평균 {fmtNum(game.stats.score.multi.avg)} · 최고 {fmtNum(game.stats.score.multi.best)}</span>
                   </div>
                 )}
               </div>
@@ -558,7 +634,7 @@ export default function GameDetailPage() {
                     className={`tag-suggest-chip${formTagList.includes(t) ? " active" : ""}`}
                     onClick={() => toggleFormTag(t)}
                   >
-                    {t}
+                    #{t}
                   </button>
                 ))}
               </div>
@@ -716,6 +792,49 @@ export default function GameDetailPage() {
       <button className="btn-primary record-btn" onClick={() => navigate(`/plays/new?game_id=${gameId}`)}>
         플레이 기록하기
       </button>
+
+      {showVersions && (
+        <div className="version-modal-overlay" onClick={() => setShowVersions(false)}>
+          <div className="version-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="version-modal-header">
+              <span>다른 버전 이미지 선택</span>
+              <button className="btn-small" onClick={() => setShowVersions(false)}>닫기</button>
+            </div>
+
+            {game.custom_image && (
+              <button className="btn-small version-reset-btn" disabled={imageSaving} onClick={() => chooseVersionImage(null)}>
+                기본 이미지로 되돌리기
+              </button>
+            )}
+
+            {versionsLoading && <p className="muted center-pad">불러오는 중...</p>}
+            {versionsError && <p className="error-text center-pad">{versionsError}</p>}
+            {!versionsLoading && !versionsError && versions && versions.length === 0 && (
+              <p className="muted center-pad">다른 버전 이미지가 없습니다.</p>
+            )}
+            {!versionsLoading && versions && versions.length > 0 && (
+              <div className="version-list">
+                {versions.map((v, i) => {
+                  const vThumb = imgUrl(v.image || v.thumbnail || undefined);
+                  const selected = !!game.custom_image && game.custom_image === v.image;
+                  return (
+                    <button
+                      key={v.id ?? i}
+                      type="button"
+                      className={`version-item${selected ? " selected" : ""}`}
+                      disabled={imageSaving}
+                      onClick={() => chooseVersionImage(v.image)}
+                    >
+                      {vThumb ? <img src={vThumb} alt="" /> : <div className="version-item-empty">?</div>}
+                      <span className="version-item-name">{v.name || "이름 없음"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

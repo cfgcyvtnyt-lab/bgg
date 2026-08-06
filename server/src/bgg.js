@@ -249,6 +249,34 @@ export async function fetchThings(ids, apiKey) {
   return details;
 }
 
+/**
+ * thing?versions=1 응답의 <versions> 안에서 각 버전(언어판 등)의 이름·썸네일·이미지를 뽑는다.
+ * 대체 이미지 선택 기능(게임 상세)용 - custom_image에 저장할 URL 후보를 준다.
+ */
+export async function fetchVersions(id, apiKey) {
+  const url = `${BASE}/thing?id=${id}&versions=1`;
+  const xml = await fetchXml(url, apiKey);
+
+  const versionsMatch = xml.match(/<versions>([\s\S]*?)<\/versions>/);
+  if (!versionsMatch) return [];
+
+  const versions = [];
+  for (const { attrs, body } of extractItems(versionsMatch[1])) {
+    if (attrs.type && attrs.type !== "boardgameversion") continue;
+    const nameAttrs = firstTagAttrs(body, "name");
+    const image = tagText(body, "image");
+    const thumbnail = tagText(body, "thumbnail");
+    if (!image && !thumbnail) continue; // 이미지가 없는 버전은 고를 이유가 없다
+    versions.push({
+      id: toNum(attrs.id, parseInt),
+      name: nameAttrs?.value || null,
+      thumbnail,
+      image,
+    });
+  }
+  return versions;
+}
+
 function parsePlay(attrs, body) {
   const itemAttrs = firstTagAttrs(body, "item") || {};
   const players = [];

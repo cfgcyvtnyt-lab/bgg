@@ -1,7 +1,7 @@
 import type {
   User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
   NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse, ScoreTemplate, Sleeve, GameSleeve,
-  Challenge, ChallengeTarget, TagCount,
+  Challenge, ChallengeTarget, TagCount, GameVersion,
 } from "./types";
 
 const BASE = "/api";
@@ -75,8 +75,9 @@ export const api = {
     };
   },
 
-  updateGame: (id: number, body: { custom_name?: string; coop_default?: boolean; win_condition?: "high" | "low" | "none" }) =>
+  updateGame: (id: number, body: { custom_name?: string; coop_default?: boolean; win_condition?: "high" | "low" | "none"; custom_image?: string | null }) =>
     request<GameDetail>(`/games/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  gameVersions: (id: number) => request<GameVersion[]>(`/games/${id}/versions`),
   translateGame: (id: number) =>
     request<{ description_ko: string }>(`/games/${id}/translate`, { method: "POST" }),
   setRating: (id: number, rating: number | null) =>
@@ -131,10 +132,11 @@ export const api = {
   renameLocation: (from: string, to: string) =>
     request<{ ok: boolean; changed: number }>("/locations", { method: "PATCH", body: JSON.stringify({ from, to }) }),
 
-  insights: (params: { from?: string; to?: string } = {}) => {
+  insights: (params: { from?: string; to?: string; bucket?: "day" | "month" | "year" } = {}) => {
     const sp = new URLSearchParams();
     if (params.from) sp.set("from", params.from);
     if (params.to) sp.set("to", params.to);
+    if (params.bucket) sp.set("bucket", params.bucket);
     const qs = sp.toString();
     return request<Insights>(`/insights${qs ? `?${qs}` : ""}`);
   },

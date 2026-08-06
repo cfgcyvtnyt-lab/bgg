@@ -17,6 +17,9 @@ export interface Game {
   aliases: string[];
   thumbnail: string | null;
   image: string | null;
+  // BGG 다른 버전(언어판 등)에서 고른 대체 이미지. 서버가 image/thumbnail에 이미 우선 반영해서 내려주므로
+  // 화면 표시는 그대로 game.image/thumbnail을 쓰면 되고, 이 필드는 "커스텀 이미지가 지정돼 있는지" 판단용.
+  custom_image?: string | null;
   year_published: number | null;
   min_players: number | null;
   max_players: number | null;
@@ -43,6 +46,14 @@ export interface Game {
   // 게임별 플레이 설정: 협력 게임 기본 체크, 승패 자동 판정 기준
   coop_default?: number | boolean | null;
   win_condition?: "high" | "low" | "none" | null;
+}
+
+// GET /api/games/:id/versions - BGG 다른 버전(언어판 등) 이미지 후보. 대체 이미지 선택 모달용.
+export interface GameVersion {
+  id: number | null;
+  name: string | null;
+  thumbnail: string | null;
+  image: string | null;
 }
 
 export interface GameOpponentRecord {
@@ -203,7 +214,9 @@ export interface Insights {
   totalMinutes: number;
   topGames: TopGame[];
   winRates: WinRate[];
-  monthlyPlays: { month: string; count: number }[];
+  // 기간 그래프 버킷 단위와 그에 맞춰 집계된 계열. label은 bucket에 따라 YYYY / YYYY-MM / YYYY-MM-DD.
+  bucket: "day" | "month" | "year";
+  plays: { label: string; count: number }[];
   byLocation: { location: string; count: number }[];
   byWeekday: { weekday: string; count: number }[];
   hIndex: number;
@@ -359,6 +372,8 @@ export interface FeedPlay {
   is_coop: boolean;
   players: FeedPlayerLite[];
   photos: Photo[];
+  has_rule_error?: boolean;
+  rule_error_note?: string | null;
 }
 
 export interface FeedItemPlay {
@@ -372,7 +387,7 @@ export interface FeedItemPlay {
 
 export interface FeedItemEvent {
   type: "event";
-  kind: "first" | "milestone" | "best" | "worst" | "challenge";
+  kind: "first" | "milestone" | "best" | "worst" | "challenge" | "error";
   date: string;
   seq: number;
   userId: number;
@@ -383,6 +398,8 @@ export interface FeedItemEvent {
   score?: number;
   solo?: boolean;
   challenge_name?: string;
+  // kind === "error"일 때만: 에러플 메모
+  note?: string | null;
 }
 
 export interface FeedItemMonth {

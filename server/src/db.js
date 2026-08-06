@@ -144,6 +144,9 @@ const ALTER_COLUMNS = [
   // 에러플(룰 실수) 기록: 체크 여부 + 메모.
   "ALTER TABLE play ADD COLUMN has_rule_error INTEGER DEFAULT 0",
   "ALTER TABLE play ADD COLUMN rule_error_note TEXT",
+  // 게임 대체 이미지(BGG 다른 버전 이미지 등). 있으면 image/thumbnail보다 우선 표시한다.
+  // 동기화(upsertGames)는 이 컬럼을 절대 건드리지 않는다 - custom_name과 같은 이유.
+  "ALTER TABLE game ADD COLUMN custom_image TEXT",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.
