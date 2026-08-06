@@ -83,10 +83,14 @@ app.get("/api/games/:id", (req, res) => {
 
   const userId = currentUserId(req);
   let playCount = 0;
+  let myRating = null;
   if (userId) {
     const row = db.prepare(
       "SELECT COUNT(*) AS c FROM play WHERE game_id = ? AND user_id = ?").get(id, userId);
     playCount = row.c;
+    const ratingRow = db.prepare(
+      "SELECT rating FROM game_rating WHERE game_id = ? AND user_id = ?").get(id, userId);
+    myRating = ratingRow ? ratingRow.rating : null;
   }
 
   res.json({
@@ -94,34 +98,46 @@ app.get("/api/games/:id", (req, res) => {
     aliases: parseJsonArray(game.aliases),
     collectionHistory,
     playCount,
+    my_rating: myRating,
   });
 });
 
 // ---------- collection (공유) ----------
 
+// 화면에 보일 때 "가장 현재에 가까운" 상태 하나만 고르는 우선순위. 취득 이력 전체는 게임 상세에서만 본다.
+const STATUS_PRIORITY = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
+
 app.get("/api/collection", (req, res) => {
   const { status, tag } = req.query;
-  const clauses = [];
-  const params = [];
-  if (status) {
-    clauses.push("c.status = ?");
-    params.push(status);
-  }
-  if (tag) {
-    clauses.push("c.tags LIKE ?");
-    params.push(`%${tag}%`);
-  }
-  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const userId = currentUserId(req);
+
+  // 취득 이력(팔았다 다시 사기도 함)을 전부 가져온 뒤 게임당 대표 행 하나로 줄인다.
   const rows = db.prepare(`
     SELECT c.*, g.name AS game_name, g.name_en AS game_name_en, g.thumbnail, g.image,
            g.year_published, g.min_players, g.max_players, g.playing_time, g.weight,
-           g.bgg_rating, g.bgg_rank
+           g.bgg_rating, g.bgg_rank,
+           gr.rating AS my_rating
     FROM collection c
     JOIN game g ON g.id = c.game_id
-    ${where}
+    LEFT JOIN game_rating gr ON gr.game_id = c.game_id AND gr.user_id = ?
     ORDER BY c.created_at DESC
-  `).all(...params);
-  res.json(rows.map((r) => ({ ...r, tags: parseJsonArray(r.tags) })));
+  `).all(userId ?? -1);
+
+  const byGame = new Map();
+  for (const r of rows) {
+    const cur = byGame.get(r.game_id);
+    if (!cur) { byGame.set(r.game_id, r); continue; }
+    const curP = STATUS_PRIORITY.indexOf(cur.status);
+    const newP = STATUS_PRIORITY.indexOf(r.status);
+    if (newP !== -1 && (curP === -1 || newP < curP)) byGame.set(r.game_id, r);
+  }
+
+  let entries = [...byGame.values()].map((r) => ({ ...r, tags: parseJsonArray(r.tags) }));
+  if (status) entries = entries.filter((e) => e.status === status);
+  if (tag) entries = entries.filter((e) => e.tags.includes(tag));
+  entries.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+
+  res.json(entries);
 });
 
 app.post("/api/collection", (req, res) => {

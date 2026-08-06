@@ -114,6 +114,14 @@ CREATE TABLE IF NOT EXISTS sync_match (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_match_key ON sync_match(source, source_key);
+
+-- 평점은 사람마다 다르다(각자 BGG 계정 기준). 컬렉션은 공유지만 평점은 계정별로 따로 저장한다.
+CREATE TABLE IF NOT EXISTS game_rating (
+  user_id INTEGER NOT NULL REFERENCES user(id),
+  game_id INTEGER NOT NULL REFERENCES game(id),
+  rating  REAL,
+  UNIQUE(user_id, game_id)
+);
 `;
 
 export function openDb(path = "data/app.db") {

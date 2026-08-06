@@ -1,0 +1,145 @@
+.selected-game {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.game-search-dropdown {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.game-search-dropdown li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 9px 10px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.game-search-dropdown li:last-child button {
+  border-bottom: none;
+}
+
+.play-timer {
+  margin: 12px 0;
+  text-align: center;
+}
+
+.play-timer-display {
+  font-size: 40px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.play-timer-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.play-timer-avg {
+  margin-top: 10px;
+  font-size: 12.5px;
+}
+
+.coop-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row;
+}
+
+.switch-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.coop-result {
+  display: flex;
+  gap: 6px;
+}
+
+.coop-result button {
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+}
+
+.player-row-edit {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.win-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.remove-player-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 15px;
+  padding: 4px;
+}
+
+.score-error, .score-preview {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  margin-bottom: 4px;
+}
+
+.score-error {
+  color: var(--accent);
+}
+
+.add-player-btn {
+  width: 100%;
+  margin: 6px 0 16px;
+}
+
+.play-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.play-form-actions .btn-primary,
+.play-form-actions .btn-secondary {
+  flex: 1;
+}
+
+.btn-secondary.danger {
+  border-color: var(--accent);
+  color: var(--accent);
+}

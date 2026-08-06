@@ -1,0 +1,25 @@
+.user-switch {
+  display: flex;
+  gap: 10px;
+}
+
+.user-switch-btn {
+  flex: 1;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+}
+
+.user-switch-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.bga-note {
+  margin-top: 8px;
+  font-size: 12px;
+}

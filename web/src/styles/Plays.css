@@ -1,0 +1,58 @@
+.play-month-group {
+  margin-bottom: 18px;
+}
+
+.play-month-divider {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 14px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.play-item {
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.play-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.play-item-game {
+  font-weight: 600;
+  font-size: 14.5px;
+}
+
+.play-item-loc {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.play-item-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.player-chip {
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--muted);
+}
+
+.player-chip.win {
+  border-color: var(--accent);
+  color: var(--accent);
+}

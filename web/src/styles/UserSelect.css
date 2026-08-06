@@ -1,0 +1,44 @@
+.user-select {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  gap: 8px;
+}
+
+.user-select h1 {
+  font-size: 22px;
+}
+
+.user-select-sub {
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.user-select-list {
+  display: flex;
+  gap: 16px;
+}
+
+.user-select-btn {
+  min-width: 96px;
+  padding: 20px 24px;
+  font-size: 20px;
+  font-weight: 700;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text);
+}
+
+.user-select-btn:active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}

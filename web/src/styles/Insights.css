@@ -1,0 +1,185 @@
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.summary-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+
+.summary-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.summary-label {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.level-badges {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.level-badge {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 4px;
+  text-align: center;
+  opacity: 0.4;
+}
+
+.level-badge.earned {
+  opacity: 1;
+  border-color: var(--accent);
+}
+
+.level-badge-value {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.level-badge-label {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.streak-card {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.streak-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.bar-row-label {
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-row-track {
+  height: 10px;
+  background: var(--bg);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.bar-row-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 6px;
+  min-width: 3px;
+}
+
+.bar-row-value {
+  font-size: 12px;
+  text-align: right;
+  color: var(--muted);
+}
+
+.winrate-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 90px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.winrate-row:last-child {
+  margin-bottom: 0;
+}
+
+.winrate-name {
+  font-size: 13px;
+}
+
+.winrate-value {
+  font-size: 11.5px;
+  text-align: right;
+}
+
+.monthly-chart {
+  overflow-x: auto;
+}
+
+.monthly-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 120px;
+  min-width: min-content;
+}
+
+.monthly-bar-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  width: 20px;
+  height: 100%;
+  flex: none;
+}
+
+.monthly-bar {
+  width: 10px;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+}
+
+.monthly-bar-label {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 4px;
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+}
+
+.chip-row.wrap {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.cost-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.cost-row:last-child {
+  border-bottom: none;
+}

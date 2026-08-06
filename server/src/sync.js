@@ -37,6 +37,21 @@ function syncCollectionStatuses(db, games) {
   return { updated: 0, added };
 }
 
+// 평점은 계정별로 다르므로 이 사용자(userId) 몫만 upsert한다. myRating이 없는(평가 안 한) 게임은 건드리지 않는다.
+function syncRatings(db, userId, games) {
+  const upsert = db.prepare(`
+    INSERT INTO game_rating (user_id, game_id, rating) VALUES (?, ?, ?)
+    ON CONFLICT(user_id, game_id) DO UPDATE SET rating = excluded.rating
+  `);
+  let updated = 0;
+  for (const g of games) {
+    if (g.myRating == null) continue;
+    upsert.run(userId, g.id, g.myRating);
+    updated++;
+  }
+  return updated;
+}
+
 async function syncUser(db, user, apiKey) {
   const collection = await fetchCollection(user.bgg_username, apiKey);
   await sleep(1000); // 레이트리밋(초당 2회) 여유
@@ -47,6 +62,7 @@ async function syncUser(db, user, apiKey) {
 
   const gamesUpserted = upsertGames(db, games);
   const { updated: statusUpdated, added: statusAdded } = syncCollectionStatuses(db, games);
+  const ratingsUpdated = syncRatings(db, user.id, games);
 
   await sleep(1000);
   const plays = await fetchPlays(user.bgg_username, apiKey);
@@ -59,6 +75,7 @@ async function syncUser(db, user, apiKey) {
     gamesUpserted,
     collectionStatusUpdated: statusUpdated,
     collectionStatusAdded: statusAdded,
+    ratingsUpdated,
     playsAdded,
     stubbedGames: stubbed,
   };
