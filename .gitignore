@@ -6,5 +6,7 @@ data/*
 # docs/ 아래 공개용 JSON은 티스토리가 fetch해야 하므로 커밋 대상이다.
 # (가격·메모는 build_dataset.py가 공개용에서 걸러낸다.)
 
+node_modules/
+dist/
 __pycache__/
 *.pyc
