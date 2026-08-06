@@ -497,6 +497,14 @@
   margin-top: 4px;
 }
 
+/* 협력 모드 토글과 같은 스타일: 체크박스+라벨이 한 줄에 깔끔히 정렬되게 */
+.rule-error-field .switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .rule-error-field textarea {
   margin-top: 6px;
 }

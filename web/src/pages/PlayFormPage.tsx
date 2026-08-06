@@ -789,7 +789,7 @@ export default function PlayFormPage() {
       <div className="field rule-error-field">
         <label className="switch-label settings-toggle-label">
           <input type="checkbox" checked={hasRuleError} onChange={(e) => setHasRuleError(e.target.checked)} />
-          룰 실수 있었음
+          에러플
         </label>
         {hasRuleError && (
           <textarea

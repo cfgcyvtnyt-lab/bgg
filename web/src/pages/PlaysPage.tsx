@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { Game, Play, User } from "../api/types";
+import { useUser } from "../context/UserContext";
 import "../styles/Plays.css";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -23,6 +24,7 @@ function fmtDateHeader(dateStr: string) {
 }
 
 export default function PlaysPage() {
+  const { currentUser } = useUser();
   const [plays, setPlays] = useState<Play[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,7 +227,13 @@ export default function PlaysPage() {
               const humanCount = p.players.filter((pl) => !pl.is_automa).length;
               // 협력/솔로 판은 개인별 승자 표시가 의미 없다 - 성공/실패 아이콘 하나로만 보여준다.
               const isSoloOrCoop = !!p.is_coop || humanCount <= 1;
-              const succeeded = winners.length > 0;
+              // 트로피는 "로그인한 사용자"가 이겼을 때만 붙인다 - name_alias 병합 덕분에
+              // play_player.name과 로그인 사용자 이름이 정확히 일치한다.
+              const myName = currentUser?.name;
+              const myPlayer = myName ? p.players.find((pl) => pl.name === myName) : undefined;
+              const succeeded = myPlayer
+                ? myPlayer.win === true || myPlayer.win === 1
+                : winners.length > 0;
               return (
                 <Link key={p.id} to={`/plays/${p.id}`} className="play-item">
                   <div className="play-item-text">
@@ -237,6 +245,9 @@ export default function PlaysPage() {
                     </div>
                   </div>
                   <div className="play-item-winners">
+                    {!!p.has_rule_error && (
+                      <span className="rule-error-icon" aria-label="에러플" title="에러플">⚠️</span>
+                    )}
                     {isSoloOrCoop ? (
                       succeeded ? (
                         <span className="result-icon" aria-label="성공" title="성공">🏆</span>
@@ -246,9 +257,10 @@ export default function PlaysPage() {
                     ) : (
                       winners.map((w, i) => {
                         const avatar = avatarByName.get(w.name);
+                        const isMyWin = w.name === myName;
                         return (
                           <span key={i} className="winner-slot">
-                            <span className="winner-slot-trophy" aria-hidden="true">🏆</span>
+                            {isMyWin && <span className="winner-slot-trophy" aria-hidden="true">🏆</span>}
                             {avatar ? (
                               <img className="winner-avatar" src={api.avatarUrl(avatar)} alt={w.name} title={w.name} />
                             ) : (

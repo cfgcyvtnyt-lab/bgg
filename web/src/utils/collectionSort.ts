@@ -81,13 +81,11 @@ export function sortFieldLabel(key: SortField): string {
 // 이름순(기본)일 때는 null을 반환해서 카드가 기존처럼 플레이 수만 보여주게 한다.
 export function sortDisplayValue(e: CollectionListEntry, field: SortField): string | null {
   switch (field) {
+    // 이름·최근 플레이·플레이 수는 카드에 이미 기본으로 보이므로 따로 덧붙이지 않는다.
     case "name":
-      return null;
     case "last_played":
-      if (!e.last_played_at) return null;
-      return new Date(e.last_played_at).toLocaleDateString("ko-KR");
     case "play_count":
-      return `${e.play_count}회`;
+      return null;
     case "year":
       return e.year_published != null ? `${e.year_published}년` : null;
     case "price_paid":

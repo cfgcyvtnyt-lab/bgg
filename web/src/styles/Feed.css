@@ -63,6 +63,15 @@
   flex: none;
 }
 
+/* 에러플 뱃지 - 사진/코멘트 카드 안에서 눈에 띄되 태그 줄과는 별도로 한 줄 차지 */
+.feed-error-badge {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 .feed-play-tags {
   display: flex;
   flex-wrap: wrap;

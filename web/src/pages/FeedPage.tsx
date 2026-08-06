@@ -13,6 +13,7 @@ const EVENT_EMOJI: Record<FeedItemEvent["kind"], string> = {
   best: "\u{1F3C6}", // 🏆
   worst: "\u{1F4C9}", // 📉
   challenge: "\u{1F3AF}", // 🎯
+  error: "\u{26A0}\u{FE0F}", // ⚠️
 };
 
 function fmtShortDate(dateStr: string) {
@@ -37,6 +38,7 @@ function eventLabel(item: FeedItemEvent) {
     case "best": return `최고점 갱신 ${fmtScore(item.score)}점`;
     case "worst": return `최저점 갱신 ${fmtScore(item.score)}점`;
     case "challenge": return "달성";
+    case "error": return "에러플";
     default: return "";
   }
 }
@@ -47,6 +49,7 @@ function EventLine({ item }: { item: FeedItemEvent }) {
     <Link to={isChallenge ? "/challenges" : `/game/${item.game_id}`} className="feed-event-line">
       <span className="feed-event-text">
         {EVENT_EMOJI[item.kind]} {item.author} · {isChallenge ? `'${item.challenge_name}'` : item.game_name} {eventLabel(item)}
+        {item.kind === "error" && item.note ? ` — "${item.note}"` : ""}
       </span>
       <span className="muted feed-event-date">{fmtShortDate(item.date)}</span>
     </Link>
@@ -120,6 +123,8 @@ function PlayCard({
       </div>
 
       {p.photos.length > 0 && <PhotoSlider photos={p.photos} />}
+
+      {p.has_rule_error && <span className="feed-error-badge">⚠️ 에러플</span>}
 
       <div className="feed-play-tags">
         <button className="chip chip-static" onClick={() => onTagClick("game", p.game_name, p.game_id)}>

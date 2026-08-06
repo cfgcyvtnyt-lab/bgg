@@ -59,9 +59,20 @@ function pieSlices(items: { label: string; count: number }[]) {
   return { total, slices };
 }
 
+// 항목이 많으면(장소 등) 상위 topN개만 남기고 나머지는 "기타"로 합친다.
+// count 내림차순 정렬해서 반환하므로 앞쪽 몇 개가 곧 "상위"가 된다.
+function aggregateTopN(items: { label: string; count: number }[], topN: number, otherLabel = "기타") {
+  const sorted = [...items].sort((a, b) => b.count - a.count);
+  if (sorted.length <= topN) return sorted;
+  const top = sorted.slice(0, topN);
+  const restSum = sorted.slice(topN).reduce((s, it) => s + it.count, 0);
+  return restSum > 0 ? [...top, { label: otherLabel, count: restSum }] : top;
+}
+
 // mode="letter": 조각 안에 라벨 글자(요일), 범례 없음.
 // mode="percent": 조각 안에 흰색 퍼센트, 옆에 색점+이름만 범례.
-function PieChart({ items, mode }: { items: { label: string; count: number }[]; mode: "letter" | "percent" }) {
+// percentTopN: 퍼센트 글자를 넣을 상위 조각 개수 제한(조각이 작으면 글자가 겹쳐서). 생략 시 전부 표시.
+function PieChart({ items, mode, percentTopN }: { items: { label: string; count: number }[]; mode: "letter" | "percent"; percentTopN?: number }) {
   const { total, slices } = pieSlices(items);
   if (total <= 0) return <p className="muted">기록이 없습니다.</p>;
   return (
@@ -79,7 +90,7 @@ function PieChart({ items, mode }: { items: { label: string; count: number }[]; 
             <text key={s.label} x={s.lx} y={s.ly} className="pie-slice-letter">{s.label}</text>
           ))}
         {mode === "percent" &&
-          slices.map((s) => (
+          slices.map((s, i) => (percentTopN === undefined || i < percentTopN) && (
             <text key={s.label} x={s.lx} y={s.ly} className="pie-slice-percent">{s.percent}%</text>
           ))}
       </svg>
@@ -135,14 +146,15 @@ function periodRange(key: PeriodKey, anchor: Date, customFrom: string, customTo:
 type Bucket = "day" | "month" | "year";
 
 // 기간 탭에 따라 그래프 버킷을 정한다: 전체=연도별, 올해=월별, 이번달=일별.
-// 직접 지정은 기간 길이로 자동 판단(1년 초과면 월별, 아니면 일별).
+// 직접 지정은 기간 길이로 자동 판단: 1년 초과=연도별, 1개월 초과~1년 이하=월별, 1개월 이하=일별.
+// (서버 /api/insights의 기본 판단 로직과 동일한 기준으로 맞춘다.)
 function bucketForPeriod(key: PeriodKey, from?: string, to?: string): Bucket {
   if (key === "month") return "day";
   if (key === "year") return "month";
   if (key === "all") return "year";
   if (from && to) {
     const days = (new Date(to).getTime() - new Date(from).getTime()) / 86400000;
-    return days > 366 ? "month" : "day";
+    return days > 366 ? "year" : days > 31 ? "month" : "day";
   }
   return "day";
 }
@@ -322,7 +334,11 @@ export default function InsightsPage() {
         <div className="pie-two-item">
           <div className="section-title">장소별 분포</div>
           <div className="card">
-            <PieChart items={data.byLocation.map((l) => ({ label: l.location, count: l.count }))} mode="percent" />
+            <PieChart
+              items={aggregateTopN(data.byLocation.map((l) => ({ label: l.location, count: l.count })), 5)}
+              mode="percent"
+              percentTopN={3}
+            />
           </div>
         </div>
       </div>

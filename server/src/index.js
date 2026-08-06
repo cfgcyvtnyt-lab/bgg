@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "node:fs";
 import { extname, join, resolve, sep } from "node:path";
 import { openDb } from "./db.js";
 import { runSync } from "./sync.js";
+import { fetchVersions } from "./bgg.js";
 
 const DB_PATH = process.env.DB_PATH || "data/app.db";
 const PORT = process.env.PORT || 3001;
@@ -162,14 +163,18 @@ app.get("/api/games", (req, res) => {
     // custom_name도 검색 대상에 포함해야 사용자가 지정한 한글 이름으로도 찾을 수 있다.
     const like = `%${q}%`;
     rows = db.prepare(`
-      SELECT *, COALESCE(custom_name, name) AS name FROM game
+      SELECT *, COALESCE(custom_name, name) AS name,
+             COALESCE(custom_image, thumbnail) AS thumbnail, COALESCE(custom_image, image) AS image
+      FROM game
       WHERE name LIKE ? OR name_en LIKE ? OR aliases LIKE ? OR custom_name LIKE ?
       ORDER BY COALESCE(custom_name, name)
       LIMIT ? OFFSET ?
     `).all(like, like, like, like, limit, offset);
   } else {
     rows = db.prepare(`
-      SELECT *, COALESCE(custom_name, name) AS name FROM game
+      SELECT *, COALESCE(custom_name, name) AS name,
+             COALESCE(custom_image, thumbnail) AS thumbnail, COALESCE(custom_image, image) AS image
+      FROM game
       ORDER BY COALESCE(custom_name, name) LIMIT ? OFFSET ?
     `).all(limit, offset);
   }
@@ -179,9 +184,11 @@ app.get("/api/games", (req, res) => {
 app.get("/api/games/:id", (req, res) => {
   const id = Number(req.params.id);
   // name은 표시용(custom_name 우선), original_name은 BGG에서 온 원래 이름 - 편집 UI에서 같이 보여준다.
-  const game = db.prepare(
-    "SELECT *, name AS original_name, COALESCE(custom_name, name) AS name FROM game WHERE id = ?"
-  ).get(id);
+  const game = db.prepare(`
+    SELECT *, name AS original_name, COALESCE(custom_name, name) AS name,
+           COALESCE(custom_image, thumbnail) AS thumbnail, COALESCE(custom_image, image) AS image
+    FROM game WHERE id = ?
+  `).get(id);
   if (!game) return res.status(404).json({ error: "게임을 찾을 수 없습니다" });
 
   const collectionHistory = db.prepare(
@@ -274,31 +281,72 @@ app.patch("/api/games/:id/want-to-play", (req, res) => {
   res.json({ want_to_play: row ? row.want_to_play : 0 });
 });
 
-// 무료 구글 gtx 엔드포인트로 번역. 공식 API 키가 필요 없는 대신 한 번에 보낼 수 있는 길이가
-// 제한적이라 문장 단위로 잘라 여러 번 호출한 뒤 이어붙인다.
-async function translateToKorean(text) {
+function sleepMs(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// 문장 단위로 잘라 chunkChars 이내로 뭉친다. 구글/MyMemory 둘 다 한 번에 보낼 수 있는
+// 길이가 제한적이라 공통으로 쓴다.
+function splitIntoChunks(text, chunkChars) {
   const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
   const chunks = [];
   let cur = "";
   for (const s of sentences) {
-    if (cur && cur.length + s.length > 1500) {
+    if (cur && cur.length + s.length > chunkChars) {
       chunks.push(cur);
       cur = "";
     }
     cur += (cur ? " " : "") + s;
   }
   if (cur) chunks.push(cur);
-  if (chunks.length === 0) return "";
+  return chunks;
+}
 
+// 구글 무료 gtx 엔드포인트. 공식 API 키가 필요 없는 대신 요즘 429로 자주 막힌다.
+async function translateViaGoogle(text) {
+  const chunks = splitIntoChunks(text, 1500);
+  if (chunks.length === 0) return "";
   const parts = [];
   for (const chunk of chunks) {
     const url = `https://translate.googleapis.com/translate_a/single?client=gt&sl=en&tl=ko&dt=t&q=${encodeURIComponent(chunk)}`;
     const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`번역 요청 실패 (HTTP ${resp.status})`);
+    if (!resp.ok) throw new Error(`구글 번역 요청 실패 (HTTP ${resp.status})`);
     const data = await resp.json();
     parts.push((data[0] || []).map((piece) => piece[0]).join(""));
   }
   return parts.join(" ");
+}
+
+// MyMemory API (키 불필요). 구글 gtx가 429로 막혔을 때 쓰는 폴백 - 한 번에 보낼 수 있는
+// 길이가 500자 안팎으로 더 짧아서 청크를 작게 쪼개고, 요청 사이 300ms씩 쉬어 과호출을 피한다.
+async function translateViaMyMemory(text) {
+  const chunks = splitIntoChunks(text, 480);
+  if (chunks.length === 0) return "";
+  const parts = [];
+  for (let i = 0; i < chunks.length; i++) {
+    if (i > 0) await sleepMs(300);
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunks[i])}&langpair=en|ko`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`MyMemory 번역 요청 실패 (HTTP ${resp.status})`);
+    const data = await resp.json();
+    const translated = data?.responseData?.translatedText;
+    if (data?.responseStatus !== 200 || !translated) {
+      throw new Error("MyMemory 번역 실패");
+    }
+    parts.push(translated);
+  }
+  return parts.join(" ");
+}
+
+// 구글 gtx 먼저 시도하고, 429 등으로 막히면 MyMemory로 폴백한다. 둘 다 실패하면 그대로 던져서
+// 호출부가 조용히 실패 처리(영문 표시)하게 둔다.
+async function translateToKorean(text) {
+  try {
+    return await translateViaGoogle(text);
+  } catch (err) {
+    console.log(`구글 번역 실패, MyMemory로 폴백: ${err.message || err}`);
+    return await translateViaMyMemory(text);
+  }
 }
 
 // 설명 번역. 캐시(description_ko)가 있으면 재번역하지 않는다.
@@ -420,8 +468,9 @@ function computeGameStats(gameId, userId, playCount) {
   };
 }
 
-// custom_name/coop_default/win_condition 중 보낸 필드만 수정한다.
+// custom_name/coop_default/win_condition/custom_image 중 보낸 필드만 수정한다.
 // custom_name이 빈 문자열이면 NULL로 되돌려 원래(BGG) 이름으로 복귀시킨다.
+// custom_image도 마찬가지로 null/빈 문자열이면 "기본으로 되돌리기" - BGG 원본 이미지로 복귀.
 app.patch("/api/games/:id", (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare("SELECT id FROM game WHERE id = ?").get(id);
@@ -430,8 +479,9 @@ app.patch("/api/games/:id", (req, res) => {
   const hasCustomName = "custom_name" in body;
   const hasCoopDefault = "coop_default" in body;
   const hasWinCondition = "win_condition" in body;
-  if (!hasCustomName && !hasCoopDefault && !hasWinCondition) {
-    return res.status(400).json({ error: "custom_name, coop_default, win_condition 중 하나가 필요합니다" });
+  const hasCustomImage = "custom_image" in body;
+  if (!hasCustomName && !hasCoopDefault && !hasWinCondition && !hasCustomImage) {
+    return res.status(400).json({ error: "custom_name, coop_default, win_condition, custom_image 중 하나가 필요합니다" });
   }
 
   if (hasCustomName) {
@@ -447,11 +497,39 @@ app.patch("/api/games/:id", (req, res) => {
     const wc = ["high", "low", "none"].includes(body.win_condition) ? body.win_condition : "high";
     db.prepare("UPDATE game SET win_condition = ? WHERE id = ?").run(wc, id);
   }
+  if (hasCustomImage) {
+    let customImage = body.custom_image;
+    if (typeof customImage === "string") customImage = customImage.trim();
+    if (!customImage) customImage = null;
+    db.prepare("UPDATE game SET custom_image = ? WHERE id = ?").run(customImage, id);
+  }
 
-  const row = db.prepare(
-    "SELECT *, name AS original_name, COALESCE(custom_name, name) AS name FROM game WHERE id = ?"
-  ).get(id);
+  const row = db.prepare(`
+    SELECT *, name AS original_name, COALESCE(custom_name, name) AS name,
+           COALESCE(custom_image, thumbnail) AS thumbnail, COALESCE(custom_image, image) AS image
+    FROM game WHERE id = ?
+  `).get(id);
   res.json({ ...row, aliases: parseJsonArray(row.aliases) });
+});
+
+// BGG 다른 버전(언어판 등) 이미지 목록 - 대체 이미지 선택 모달용.
+// 같은 게임을 반복 호출하지 않게 메모리 캐시만으로 충분(재시작하면 비워짐, 서버 재기동이 잦지 않다).
+const versionsCache = new Map(); // gameId -> versions[]
+
+app.get("/api/games/:id/versions", async (req, res) => {
+  const id = Number(req.params.id);
+  const game = db.prepare("SELECT id FROM game WHERE id = ?").get(id);
+  if (!game) return res.status(404).json({ error: "게임을 찾을 수 없습니다" });
+
+  if (versionsCache.has(id)) return res.json(versionsCache.get(id));
+
+  try {
+    const versions = await fetchVersions(id, BGG_API_KEY);
+    versionsCache.set(id, versions);
+    res.json(versions);
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
 });
 
 // ---------- 점수 시트 템플릿 (게임에 속한 공유 값) ----------
@@ -500,7 +578,8 @@ app.get("/api/collection", (req, res) => {
   // 취득 이력(팔았다 다시 사기도 함)을 전부 가져온 뒤 게임당 대표 행 하나로 줄인다.
   // c.want_to_play(공유 테이블)는 더 이상 쓰지 않는다 - 아래 gr.want_to_play(사용자별)로 덮어써서 무시한다.
   const rows = db.prepare(`
-    SELECT c.*, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en, g.thumbnail, g.image,
+    SELECT c.*, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en,
+           COALESCE(g.custom_image, g.thumbnail) AS thumbnail, COALESCE(g.custom_image, g.image) AS image,
            g.year_published, g.min_players, g.max_players, g.playing_time, g.weight,
            g.bgg_rating, g.bgg_rank, g.item_type,
            gr.rating AS my_rating,
@@ -526,7 +605,8 @@ app.get("/api/collection", (req, res) => {
   // collection 행을 새로 만들면 소유 개수(보유 95 등)가 오염되므로 조회에서만 합친다.
   const unownedRows = db.prepare(`
     SELECT g.id AS game_id, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en,
-           g.thumbnail, g.image, g.year_published, g.min_players, g.max_players, g.playing_time,
+           COALESCE(g.custom_image, g.thumbnail) AS thumbnail, COALESCE(g.custom_image, g.image) AS image,
+           g.year_published, g.min_players, g.max_players, g.playing_time,
            g.weight, g.bgg_rating, g.bgg_rank, g.item_type, gr.rating AS my_rating,
            COALESCE(gr.want_to_play, 0) AS want_to_play
     FROM game g
@@ -1130,7 +1210,18 @@ function buildFeedItems() {
           is_coop: !!play.is_coop,
           players: players.map((p) => ({ name: p.name, score: p.score, win: !!p.win, is_automa: !!p.is_automa })),
           photos,
+          has_rule_error: !!play.has_rule_error,
+          rule_error_note: play.rule_error_note || null,
         },
+      });
+    }
+
+    // 에러플 이벤트 - 사진/코멘트 카드와 별개로, 에러플이면 피드에 한 줄 이벤트를 추가한다.
+    if (play.has_rule_error) {
+      items.push({
+        type: "event", kind: "error", date: play.played_at, seq: play.id + 0.05,
+        userId: play.user_id, author, game_id: play.game_id, game_name: play.game_name,
+        note: play.rule_error_note || null,
       });
     }
 
@@ -1293,11 +1384,27 @@ app.get("/api/feed", (req, res) => {
 
 // ---------- insights (요청 사용자 기준) ----------
 
+// 두 자리 0채움 (그래프 버킷 날짜/월 문자열 생성용)
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
 app.get("/api/insights", (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
 
   const { from, to, player, location, player_count } = req.query;
+  // bucket 미지정 시 from~to 길이로 자동 판단: 1년 초과=연도별, 1개월 초과~1년 이하=월별, 1개월 이하=일별.
+  let bucket = req.query.bucket;
+  if (bucket !== "day" && bucket !== "month" && bucket !== "year") {
+    if (from && to) {
+      const days = (new Date(to) - new Date(from)) / 86400000;
+      bucket = days > 366 ? "year" : days > 31 ? "month" : "day";
+    } else {
+      // 기간 지정이 없으면 "전체"다. 일별로 쪼개면 수백 개 구간이 나와 쓸모없으니 연도별로 묶는다.
+      bucket = "year";
+    }
+  }
 
   // player, location, player_count 필터는 play_player/play 조인이 필요해서
   // 먼저 조건에 맞는 play id 목록을 뽑아두고 이후 통계는 전부 이 집합 기준으로 계산한다.
@@ -1362,14 +1469,53 @@ app.get("/api/insights", (req, res) => {
     .map((s) => ({ ...s, winRate: s.plays ? s.wins / s.plays : 0 }))
     .sort((a, b) => b.plays - a.plays);
 
-  // 월별 플레이 수
-  const monthly = new Map();
-  for (const p of plays) {
-    const month = p.played_at.slice(0, 7); // YYYY-MM
-    monthly.set(month, (monthly.get(month) || 0) + 1);
+  // 기간 그래프: bucket 단위(day/month/year)로 집계. 빈 구간도 0으로 채워서
+  // BGStats처럼 축이 끊기지 않게 한다. from/to가 없으면(전체) 실제 플레이 데이터의
+  // 최소~최대 날짜 범위를 사용한다.
+  const sliceLen = bucket === "year" ? 4 : bucket === "month" ? 7 : 10;
+  const bucketKey = (dateStr) => dateStr.slice(0, sliceLen);
+
+  let rangeFrom = from, rangeTo = to;
+  if (!rangeFrom || !rangeTo) {
+    if (plays.length) {
+      rangeFrom = rangeFrom || plays[0].played_at;
+      rangeTo = rangeTo || plays[plays.length - 1].played_at;
+    }
   }
-  const monthlyPlays = [...monthly.entries()].sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, count]) => ({ month, count }));
+
+  const playsCounts = new Map();
+  for (const p of plays) {
+    const key = bucketKey(p.played_at);
+    playsCounts.set(key, (playsCounts.get(key) || 0) + 1);
+  }
+
+  const playsSeries = [];
+  if (rangeFrom && rangeTo) {
+    if (bucket === "year") {
+      const y0 = Number(rangeFrom.slice(0, 4)), y1 = Number(rangeTo.slice(0, 4));
+      for (let y = y0; y <= y1; y++) {
+        const key = String(y);
+        playsSeries.push({ label: key, count: playsCounts.get(key) || 0 });
+      }
+    } else if (bucket === "month") {
+      let y = Number(rangeFrom.slice(0, 4)), m = Number(rangeFrom.slice(5, 7));
+      const y1 = Number(rangeTo.slice(0, 4)), m1 = Number(rangeTo.slice(5, 7));
+      while (y < y1 || (y === y1 && m <= m1)) {
+        const key = `${y}-${pad2(m)}`;
+        playsSeries.push({ label: key, count: playsCounts.get(key) || 0 });
+        m++;
+        if (m > 12) { m = 1; y++; }
+      }
+    } else {
+      let d = new Date(`${rangeFrom}T00:00:00`);
+      const dEnd = new Date(`${rangeTo}T00:00:00`);
+      while (d <= dEnd) {
+        const key = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        playsSeries.push({ label: key, count: playsCounts.get(key) || 0 });
+        d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+      }
+    }
+  }
 
   // 장소별 분포
   const locationCounts = new Map();
@@ -1486,7 +1632,8 @@ app.get("/api/insights", (req, res) => {
     totalMinutes,
     topGames,
     winRates,
-    monthlyPlays,
+    bucket,
+    plays: playsSeries,
     byLocation,
     byWeekday,
     hIndex,
