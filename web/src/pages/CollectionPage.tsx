@@ -4,6 +4,7 @@ import type { CollectionListEntry } from "../api/types";
 import GameCard from "../components/GameCard";
 import AlphaIndex from "../components/AlphaIndex";
 import BggSearchModal from "../components/BggSearchModal";
+import CollectionTable from "../components/CollectionTable";
 import {
   VIEW_DEFS, STATUS_DEFS, matchesFilter, filterLabel,
   PRIMARY_SORTS, MORE_SORTS, sortFieldLabel, compareEntries,
@@ -33,7 +34,9 @@ export default function CollectionPage() {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [sort, setSort] = useState(loadSort);
-  const [view, setView] = useState<"grid" | "list">(() => (localStorage.getItem("bgg_view") as "grid" | "list") || "grid");
+  const [view, setView] = useState<"grid" | "list" | "table">(() => (localStorage.getItem("bgg_view") as "grid" | "list" | "table") || "grid");
+  // 표 뷰는 PC 전용. 모바일에서 버튼을 숨기고, 화면이 좁아지면 표 모드였어도 격자로 되돌린다.
+  const [isWide, setIsWide] = useState(() => window.innerWidth >= 900);
   const [showSearch, setShowSearch] = useState(false);
   const [includeExpansions, setIncludeExpansions] = useState(
     () => localStorage.getItem("bgg_include_expansions") === "1"
@@ -55,6 +58,14 @@ export default function CollectionPage() {
 
   useEffect(() => { load(includeExpansions); }, [includeExpansions]);
   useEffect(() => { localStorage.setItem("bgg_view", view); }, [view]);
+  useEffect(() => {
+    function onResize() { setIsWide(window.innerWidth >= 900); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  useEffect(() => {
+    if (view === "table" && !isWide) setView("grid");
+  }, [isWide, view]);
   useEffect(() => { localStorage.setItem(SORT_KEY, JSON.stringify(sort)); }, [sort]);
   useEffect(() => {
     localStorage.setItem("bgg_include_expansions", includeExpansions ? "1" : "0");
@@ -194,6 +205,9 @@ export default function CollectionPage() {
       <div className="view-toggle">
         <button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")}>격자</button>
         <button className={view === "list" ? "active" : ""} onClick={() => setView("list")}>목록</button>
+        {isWide && (
+          <button className={view === "table" ? "active" : ""} onClick={() => setView("table")}>표</button>
+        )}
         <span className="view-toggle-count muted">{sorted.length} 게임</span>
       </div>
 
@@ -203,14 +217,18 @@ export default function CollectionPage() {
         <p className="muted center-pad">표시할 게임이 없습니다.</p>
       )}
 
-      <div className="collection-list-wrap">
-        <div ref={listRef} className={view === "grid" ? "game-grid" : "game-list"}>
-          {sorted.map((e) => (
-            <GameCard key={e.id ?? `u${e.game_id}`} entry={e} view={view} />
-          ))}
+      {view === "table" ? (
+        <CollectionTable entries={sorted} />
+      ) : (
+        <div className="collection-list-wrap">
+          <div ref={listRef} className={view === "grid" ? "game-grid" : "game-list"}>
+            {sorted.map((e) => (
+              <GameCard key={e.id ?? `u${e.game_id}`} entry={e} view={view} />
+            ))}
+          </div>
+          {sorted.length > 20 && <AlphaIndex activeGroups={activeGroups} onJump={jumpToGroup} />}
         </div>
-        {sorted.length > 20 && <AlphaIndex activeGroups={activeGroups} onJump={jumpToGroup} />}
-      </div>
+      )}
 
       {showSearch && (
         <BggSearchModal onClose={() => setShowSearch(false)} onAdded={() => load(includeExpansions)} />
