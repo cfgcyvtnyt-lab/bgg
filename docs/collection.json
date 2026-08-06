@@ -1,5 +1,4016 @@
 {
-  "generatedAt": "2026-08-06T05:51:40+00:00",
-  "count": 0,
-  "games": []
+  "generatedAt": "2026-08-06T06:01:24+00:00",
+  "count": 401,
+  "games": [
+    {
+      "id": 192458,
+      "name": "51st State: Master Set",
+      "yearPublished": 2016,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/192458"
+    },
+    {
+      "id": 432,
+      "name": "6 nimmt!",
+      "yearPublished": 2019,
+      "myRating": 8.0,
+      "numPlays": 6,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/432"
+    },
+    {
+      "id": 316377,
+      "name": "7 Wonders (Second Edition)",
+      "yearPublished": 2020,
+      "myRating": 9.0,
+      "numPlays": 8,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/316377"
+    },
+    {
+      "id": 173346,
+      "name": "7 Wonders Duel",
+      "yearPublished": 2015,
+      "myRating": 5.9,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/173346"
+    },
+    {
+      "id": 177736,
+      "name": "A Feast for Odin",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/177736"
+    },
+    {
+      "id": 338376,
+      "name": "A Gest of Robin Hood",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/338376"
+    },
+    {
+      "id": 429861,
+      "name": "Ace of Spades",
+      "yearPublished": 2025,
+      "myRating": 5.5,
+      "numPlays": 4,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/429861"
+    },
+    {
+      "id": 413469,
+      "name": "Ada's Dream",
+      "yearPublished": 2025,
+      "myRating": 6.0,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/413469"
+    },
+    {
+      "id": 191189,
+      "name": "Aeon's End",
+      "yearPublished": 2016,
+      "myRating": 7.5,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/191189"
+    },
+    {
+      "id": 264647,
+      "name": "Age of Civilization",
+      "yearPublished": 2019,
+      "myRating": 7.0,
+      "numPlays": 11,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/264647"
+    },
+    {
+      "id": 422732,
+      "name": "Agent Avenue",
+      "yearPublished": 2024,
+      "myRating": 7.0,
+      "numPlays": 8,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/422732"
+    },
+    {
+      "id": 31260,
+      "name": "Agricola",
+      "yearPublished": 2007,
+      "myRating": 8.9,
+      "numPlays": 7,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/31260"
+    },
+    {
+      "id": 359402,
+      "name": "Ahoy",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/359402"
+    },
+    {
+      "id": 247367,
+      "name": "Air, Land, & Sea",
+      "yearPublished": 2019,
+      "myRating": 8.0,
+      "numPlays": 8,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/247367"
+    },
+    {
+      "id": 358981,
+      "name": "Air, Land, & Sea: Spies, Lies, & Supplies",
+      "yearPublished": 2022,
+      "myRating": 8.5,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/358981"
+    },
+    {
+      "id": 357563,
+      "name": "Akropolis",
+      "yearPublished": 2022,
+      "myRating": 7.0,
+      "numPlays": 5,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/357563"
+    },
+    {
+      "id": 137408,
+      "name": "Amerigo",
+      "yearPublished": 2013,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/137408"
+    },
+    {
+      "id": 185343,
+      "name": "Anachrony",
+      "yearPublished": 2017,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/185343"
+    },
+    {
+      "id": 124742,
+      "name": "Android: Netrunner",
+      "yearPublished": 2012,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/124742"
+    },
+    {
+      "id": 358661,
+      "name": "Andromeda's Edge",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/358661"
+    },
+    {
+      "id": 285967,
+      "name": "Ankh: Gods of Egypt",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/285967"
+    },
+    {
+      "id": 311193,
+      "name": "Anno 1800: The Board Game",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/311193"
+    },
+    {
+      "id": 140934,
+      "name": "Arboretum",
+      "yearPublished": 2015,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/140934"
+    },
+    {
+      "id": 359871,
+      "name": "Arcs",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/359871"
+    },
+    {
+      "id": 342942,
+      "name": "Ark Nova",
+      "yearPublished": 2023,
+      "myRating": 7.1,
+      "numPlays": 6,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/342942"
+    },
+    {
+      "id": 359609,
+      "name": "Arkham Horror: The Card Game (Revised Core Set)",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/359609"
+    },
+    {
+      "id": 370020,
+      "name": "Assault on Vimy Ridge: A Solitaire Wargame",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/370020"
+    },
+    {
+      "id": 230802,
+      "name": "Azul",
+      "yearPublished": 2017,
+      "myRating": 2.5,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/230802"
+    },
+    {
+      "id": 266164,
+      "name": "Babylonia",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/266164"
+    },
+    {
+      "id": 191925,
+      "name": "Bandido",
+      "yearPublished": 2016,
+      "myRating": 3.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/191925"
+    },
+    {
+      "id": 251247,
+      "name": "Barrage",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/251247"
+    },
+    {
+      "id": 224678,
+      "name": "Baseball Highlights: 2045 – Spring Training",
+      "yearPublished": 2017,
+      "myRating": 7.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/224678"
+    },
+    {
+      "id": 760,
+      "name": "Battle Line",
+      "yearPublished": 2000,
+      "myRating": 4.5,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/760"
+    },
+    {
+      "id": 54137,
+      "name": "Battle Sheep",
+      "yearPublished": 2010,
+      "myRating": 1.0,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/54137"
+    },
+    {
+      "id": 438287,
+      "name": "Battlefields of the Napoleonic Wars",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/438287"
+    },
+    {
+      "id": 369880,
+      "name": "Beer & Bread",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/369880"
+    },
+    {
+      "id": 317985,
+      "name": "Beyond the Sun",
+      "yearPublished": 2020,
+      "myRating": 7.5,
+      "numPlays": 4,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/317985"
+    },
+    {
+      "id": 34219,
+      "name": "Biblios",
+      "yearPublished": 2007,
+      "myRating": 7.0,
+      "numPlays": 6,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/34219"
+    },
+    {
+      "id": 231218,
+      "name": "Black Sonata",
+      "yearPublished": 2017,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/231218"
+    },
+    {
+      "id": 347521,
+      "name": "Blitzkrieg!: World War Two in 20 Minutes (Second Edition)",
+      "yearPublished": 2021,
+      "myRating": 7.0,
+      "numPlays": 8,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/347521"
+    },
+    {
+      "id": 244331,
+      "name": "Blue Lagoon",
+      "yearPublished": 2018,
+      "myRating": 5.9,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/244331"
+    },
+    {
+      "id": 366994,
+      "name": "Bonsai",
+      "yearPublished": 2023,
+      "myRating": 5.0,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/366994"
+    },
+    {
+      "id": 422336,
+      "name": "Bonsai: Wabi Sabi",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/422336"
+    },
+    {
+      "id": 343905,
+      "name": "Boonlake",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/343905"
+    },
+    {
+      "id": 383579,
+      "name": "BOOoop.",
+      "yearPublished": 2023,
+      "myRating": 4.5,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/383579"
+    },
+    {
+      "id": 127060,
+      "name": "Bora Bora",
+      "yearPublished": 2013,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/127060"
+    },
+    {
+      "id": 224517,
+      "name": "Brass: Birmingham",
+      "yearPublished": 2018,
+      "myRating": 9.8,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/224517"
+    },
+    {
+      "id": 28720,
+      "name": "Brass: Lancashire",
+      "yearPublished": 2007,
+      "myRating": 8.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/28720"
+    },
+    {
+      "id": 452264,
+      "name": "Brass: Pittsburgh",
+      "yearPublished": 2027,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/452264"
+    },
+    {
+      "id": 227466,
+      "name": "Break the Code",
+      "yearPublished": 2017,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/227466"
+    },
+    {
+      "id": 307305,
+      "name": "Bullet♥︎",
+      "yearPublished": 2021,
+      "myRating": 7.0,
+      "numPlays": 9,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/307305"
+    },
+    {
+      "id": 184921,
+      "name": "Bunny Kingdom",
+      "yearPublished": 2017,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/184921"
+    },
+    {
+      "id": 172081,
+      "name": "Burgle Bros.",
+      "yearPublished": 2015,
+      "myRating": 7.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/172081"
+    },
+    {
+      "id": 284229,
+      "name": "Butterfly",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/284229"
+    },
+    {
+      "id": 219513,
+      "name": "Bärenpark",
+      "yearPublished": 2017,
+      "myRating": 7.0,
+      "numPlays": 5,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/219513"
+    },
+    {
+      "id": 264238,
+      "name": "Bärenpark: The Bad News Bears",
+      "yearPublished": 2019,
+      "myRating": 7.5,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/264238"
+    },
+    {
+      "id": 338957,
+      "name": "Caesar!: Seize Rome in 20 Minutes!",
+      "yearPublished": 2021,
+      "myRating": 6.5,
+      "numPlays": 9,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/338957"
+    },
+    {
+      "id": 41,
+      "name": "Can't Stop",
+      "yearPublished": 1980,
+      "myRating": 3.5,
+      "numPlays": 5,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/41"
+    },
+    {
+      "id": 328565,
+      "name": "Caper: Europe",
+      "yearPublished": 2022,
+      "myRating": 8.9,
+      "numPlays": 19,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/328565"
+    },
+    {
+      "id": 393325,
+      "name": "Captain Flip",
+      "yearPublished": 2024,
+      "myRating": 7.5,
+      "numPlays": 32,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/393325"
+    },
+    {
+      "id": 458424,
+      "name": "Captain Flip: Isla Bomba",
+      "yearPublished": 2026,
+      "myRating": 7.9,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/458424"
+    },
+    {
+      "id": 822,
+      "name": "Carcassonne",
+      "yearPublished": 2000,
+      "myRating": 6.9,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/822"
+    },
+    {
+      "id": 163370,
+      "name": "Carcassonne: Gold Rush",
+      "yearPublished": 2014,
+      "myRating": null,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/163370"
+    },
+    {
+      "id": 7717,
+      "name": "Carcassonne: The Castle",
+      "yearPublished": 2003,
+      "myRating": 6.8,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/7717"
+    },
+    {
+      "id": 310873,
+      "name": "Carnegie",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/310873"
+    },
+    {
+      "id": 481,
+      "name": "Carolus Magnus",
+      "yearPublished": 2000,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/481"
+    },
+    {
+      "id": 263918,
+      "name": "Cartographers",
+      "yearPublished": 2019,
+      "myRating": 5.5,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/263918"
+    },
+    {
+      "id": 401216,
+      "name": "Cascadero",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/401216"
+    },
+    {
+      "id": 295947,
+      "name": "Cascadia",
+      "yearPublished": 2021,
+      "myRating": 5.9,
+      "numPlays": 5,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/295947"
+    },
+    {
+      "id": 416851,
+      "name": "Castle Combo",
+      "yearPublished": 2024,
+      "myRating": 7.5,
+      "numPlays": 25,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/416851"
+    },
+    {
+      "id": 18602,
+      "name": "Caylus",
+      "yearPublished": 2005,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/18602"
+    },
+    {
+      "id": 478,
+      "name": "Citadels",
+      "yearPublished": 2000,
+      "myRating": 6.8,
+      "numPlays": 7,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/478"
+    },
+    {
+      "id": 400602,
+      "name": "Civolution",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/400602"
+    },
+    {
+      "id": 216132,
+      "name": "Clans of Caledonia",
+      "yearPublished": 2017,
+      "myRating": 7.5,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/216132"
+    },
+    {
+      "id": 224037,
+      "name": "Codenames: Duet",
+      "yearPublished": 2017,
+      "myRating": 7.5,
+      "numPlays": 7,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/224037"
+    },
+    {
+      "id": 5782,
+      "name": "Coloretto",
+      "yearPublished": 2003,
+      "myRating": 5.0,
+      "numPlays": 7,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/5782"
+    },
+    {
+      "id": 406652,
+      "name": "Compile: Main 1",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/406652"
+    },
+    {
+      "id": 124361,
+      "name": "Concordia",
+      "yearPublished": 2013,
+      "myRating": 8.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/124361"
+    },
+    {
+      "id": 396895,
+      "name": "Corps of Discovery: A Game Set in the World of Manifest Destiny",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/396895"
+    },
+    {
+      "id": 415108,
+      "name": "Crisps!",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/415108"
+    },
+    {
+      "id": 249411,
+      "name": "Cuzco",
+      "yearPublished": 2018,
+      "myRating": 6.5,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/249411"
+    },
+    {
+      "id": 176165,
+      "name": "Dale of Merchants",
+      "yearPublished": 2015,
+      "myRating": 4.5,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/176165"
+    },
+    {
+      "id": 334986,
+      "name": "Daybreak",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/334986"
+    },
+    {
+      "id": 150376,
+      "name": "Dead of Winter: A Crossroads Game",
+      "yearPublished": 2014,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/150376"
+    },
+    {
+      "id": 443306,
+      "name": "Deckers",
+      "yearPublished": 2025,
+      "myRating": 7.0,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/443306"
+    },
+    {
+      "id": 162082,
+      "name": "Deus",
+      "yearPublished": 2014,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/162082"
+    },
+    {
+      "id": 318009,
+      "name": "Dinosaur Island: Rawr 'n Write",
+      "yearPublished": 2021,
+      "myRating": 7.5,
+      "numPlays": 6,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/318009"
+    },
+    {
+      "id": 256382,
+      "name": "Disney Villainous: The Worst Takes it All",
+      "yearPublished": 2018,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/256382"
+    },
+    {
+      "id": 409787,
+      "name": "Dog Poker",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/409787"
+    },
+    {
+      "id": 262941,
+      "name": "Dominant Species: Marine",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/262941"
+    },
+    {
+      "id": 36218,
+      "name": "Dominion",
+      "yearPublished": 2008,
+      "myRating": 7.0,
+      "numPlays": 11,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/36218"
+    },
+    {
+      "id": 447243,
+      "name": "Duel for Cardia",
+      "yearPublished": 2025,
+      "myRating": 4.5,
+      "numPlays": 5,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/447243"
+    },
+    {
+      "id": 316554,
+      "name": "Dune: Imperium",
+      "yearPublished": 2020,
+      "myRating": 7.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/316554"
+    },
+    {
+      "id": 97207,
+      "name": "Dungeon Petz",
+      "yearPublished": 2011,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/97207"
+    },
+    {
+      "id": 12995,
+      "name": "Dungeon Twister",
+      "yearPublished": 2004,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/12995"
+    },
+    {
+      "id": 350184,
+      "name": "Earth",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/350184"
+    },
+    {
+      "id": 342900,
+      "name": "Earthborne Rangers",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/342900"
+    },
+    {
+      "id": 368386,
+      "name": "El Burro: A La Granja Game",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/368386"
+    },
+    {
+      "id": 93,
+      "name": "El Grande",
+      "yearPublished": 1995,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/93"
+    },
+    {
+      "id": 146021,
+      "name": "Eldritch Horror",
+      "yearPublished": 2013,
+      "myRating": 8.0,
+      "numPlays": 5,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/146021"
+    },
+    {
+      "id": 163968,
+      "name": "Elysium",
+      "yearPublished": 2015,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/163968"
+    },
+    {
+      "id": 367966,
+      "name": "Endeavor: Deep Sea",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/367966"
+    },
+    {
+      "id": 424981,
+      "name": "Eternal Decks",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/424981"
+    },
+    {
+      "id": 223040,
+      "name": "Fantasy Realms",
+      "yearPublished": 2017,
+      "myRating": 7.0,
+      "numPlays": 16,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/223040"
+    },
+    {
+      "id": 385761,
+      "name": "Faraway",
+      "yearPublished": 2023,
+      "myRating": 7.5,
+      "numPlays": 11,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/385761"
+    },
+    {
+      "id": 159675,
+      "name": "Fields of Arle",
+      "yearPublished": 2014,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/159675"
+    },
+    {
+      "id": 428280,
+      "name": "Final Titan",
+      "yearPublished": 2026,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/428280"
+    },
+    {
+      "id": 40628,
+      "name": "Finca",
+      "yearPublished": 2009,
+      "myRating": 5.5,
+      "numPlays": 4,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/40628"
+    },
+    {
+      "id": 362868,
+      "name": "Fire & Stone: Siege of Vienna 1683",
+      "yearPublished": 2022,
+      "myRating": 7.5,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/362868"
+    },
+    {
+      "id": 311031,
+      "name": "Five Three Five",
+      "yearPublished": 2020,
+      "myRating": 7.0,
+      "numPlays": 12,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/311031"
+    },
+    {
+      "id": 176677,
+      "name": "Five Tribes: The Artisans of Naqala",
+      "yearPublished": 2015,
+      "myRating": 8.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/176677"
+    },
+    {
+      "id": 100901,
+      "name": "Flash Point: Fire Rescue",
+      "yearPublished": 2011,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/100901"
+    },
+    {
+      "id": 409693,
+      "name": "Flatiron",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/409693"
+    },
+    {
+      "id": 420087,
+      "name": "Flip 7",
+      "yearPublished": 2024,
+      "myRating": 5.0,
+      "numPlays": 10,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/420087"
+    },
+    {
+      "id": 449185,
+      "name": "FlipToons",
+      "yearPublished": 2025,
+      "myRating": 7.5,
+      "numPlays": 30,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/449185"
+    },
+    {
+      "id": 352418,
+      "name": "Fliptown",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/352418"
+    },
+    {
+      "id": 175914,
+      "name": "Food Chain Magnate",
+      "yearPublished": 2015,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/175914"
+    },
+    {
+      "id": 334590,
+      "name": "For Northwood! A Solo Trick-Taking Game",
+      "yearPublished": 2021,
+      "myRating": 5.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/334590"
+    },
+    {
+      "id": 172,
+      "name": "For Sale",
+      "yearPublished": 1997,
+      "myRating": 8.0,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/172"
+    },
+    {
+      "id": 65244,
+      "name": "Forbidden Island",
+      "yearPublished": 2010,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/65244"
+    },
+    {
+      "id": 391163,
+      "name": "Forest Shuffle",
+      "yearPublished": 2023,
+      "myRating": 7.0,
+      "numPlays": 20,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/391163"
+    },
+    {
+      "id": 412576,
+      "name": "Forest Shuffle: Alpine",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/412576"
+    },
+    {
+      "id": 438402,
+      "name": "Forest Shuffle: Dartmoor",
+      "yearPublished": 2025,
+      "myRating": 1.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/438402"
+    },
+    {
+      "id": 424129,
+      "name": "Forest Shuffle: Woodland Edge",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/424129"
+    },
+    {
+      "id": 284189,
+      "name": "Foundations of Rome",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/284189"
+    },
+    {
+      "id": 391560,
+      "name": "Four Clans Conflict",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/391560"
+    },
+    {
+      "id": 43570,
+      "name": "Friday",
+      "yearPublished": 2011,
+      "myRating": 5.1,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/43570"
+    },
+    {
+      "id": 220308,
+      "name": "Gaia Project",
+      "yearPublished": 2017,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/220308"
+    },
+    {
+      "id": 391137,
+      "name": "Galactic Cruise",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/391137"
+    },
+    {
+      "id": 434425,
+      "name": "General Orders: Sengoku Jidai",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/434425"
+    },
+    {
+      "id": 381435,
+      "name": "General Orders: World War II",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/381435"
+    },
+    {
+      "id": 128271,
+      "name": "Ginkgopolis",
+      "yearPublished": 2012,
+      "myRating": 6.9,
+      "numPlays": 5,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/128271"
+    },
+    {
+      "id": 246192,
+      "name": "Gizmos",
+      "yearPublished": 2018,
+      "myRating": 6.5,
+      "numPlays": 12,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/246192"
+    },
+    {
+      "id": 143693,
+      "name": "Glass Road",
+      "yearPublished": 2013,
+      "myRating": 7.0,
+      "numPlays": 2,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/143693"
+    },
+    {
+      "id": 265188,
+      "name": "Glen More II: Chronicles",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/265188"
+    },
+    {
+      "id": 9216,
+      "name": "Goa",
+      "yearPublished": 2004,
+      "myRating": 8.0,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/9216"
+    },
+    {
+      "id": 154086,
+      "name": "Gold West",
+      "yearPublished": 2015,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/154086"
+    },
+    {
+      "id": 182874,
+      "name": "Grand Austria Hotel",
+      "yearPublished": 2015,
+      "myRating": 7.2,
+      "numPlays": 6,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/182874"
+    },
+    {
+      "id": 330036,
+      "name": "Great Plains",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/330036"
+    },
+    {
+      "id": 364011,
+      "name": "Great Western Trail: Argentina",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/364011"
+    },
+    {
+      "id": 380607,
+      "name": "Great Western Trail: New Zealand",
+      "yearPublished": 2023,
+      "myRating": 8.5,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/380607"
+    },
+    {
+      "id": 341169,
+      "name": "Great Western Trail: Second Edition",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/341169"
+    },
+    {
+      "id": 329873,
+      "name": "Grove: 9 card solitaire game",
+      "yearPublished": 2021,
+      "myRating": 4.0,
+      "numPlays": 2,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/329873"
+    },
+    {
+      "id": 352228,
+      "name": "HacKClaD",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/352228"
+    },
+    {
+      "id": 37628,
+      "name": "Haggis",
+      "yearPublished": 2010,
+      "myRating": 5.9,
+      "numPlays": 2,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/37628"
+    },
+    {
+      "id": 300322,
+      "name": "Hallertau",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/300322"
+    },
+    {
+      "id": 158600,
+      "name": "Hanamikoji",
+      "yearPublished": 2013,
+      "myRating": 6.3,
+      "numPlays": 12,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/158600"
+    },
+    {
+      "id": 286749,
+      "name": "Hansa Teutonica: Big Box",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/286749"
+    },
+    {
+      "id": 414317,
+      "name": "Harmonies",
+      "yearPublished": 2024,
+      "myRating": 4.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/414317"
+    },
+    {
+      "id": 131904,
+      "name": "Heart of Crown",
+      "yearPublished": 2011,
+      "myRating": null,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/131904"
+    },
+    {
+      "id": 366013,
+      "name": "Heat: Pedal to the Metal",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/366013"
+    },
+    {
+      "id": 2655,
+      "name": "Hive",
+      "yearPublished": 2001,
+      "myRating": null,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/2655"
+    },
+    {
+      "id": 14634,
+      "name": "Homeworlds",
+      "yearPublished": 2001,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/14634"
+    },
+    {
+      "id": 282524,
+      "name": "Horrified",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/282524"
+    },
+    {
+      "id": 343562,
+      "name": "Horrified: American Monsters",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/343562"
+    },
+    {
+      "id": 419130,
+      "name": "Hutan: Life in the Rainforest",
+      "yearPublished": 2025,
+      "myRating": 7.0,
+      "numPlays": 7,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/419130"
+    },
+    {
+      "id": 198928,
+      "name": "Iberia",
+      "yearPublished": 2016,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/198928"
+    },
+    {
+      "id": 420915,
+      "name": "Ichor",
+      "yearPublished": 2025,
+      "myRating": 1.5,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/420915"
+    },
+    {
+      "id": 177478,
+      "name": "IKI",
+      "yearPublished": 2015,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/177478"
+    },
+    {
+      "id": 420914,
+      "name": "Iliad",
+      "yearPublished": 2025,
+      "myRating": 4.0,
+      "numPlays": 8,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/420914"
+    },
+    {
+      "id": 270844,
+      "name": "Imperial Settlers: Empires of the North",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/270844"
+    },
+    {
+      "id": 318184,
+      "name": "Imperium: Classics",
+      "yearPublished": 2021,
+      "myRating": 8.0,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/318184"
+    },
+    {
+      "id": 155821,
+      "name": "Inis",
+      "yearPublished": 2016,
+      "myRating": 8.5,
+      "numPlays": 2,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/155821"
+    },
+    {
+      "id": 63888,
+      "name": "Innovation",
+      "yearPublished": 2010,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/63888"
+    },
+    {
+      "id": 347305,
+      "name": "Inventions: Evolution of Ideas",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/347305"
+    },
+    {
+      "id": 407343,
+      "name": "Ironwood",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/407343"
+    },
+    {
+      "id": 271324,
+      "name": "It's a Wonderful World",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/271324"
+    },
+    {
+      "id": 297129,
+      "name": "Jekyll vs. Hyde",
+      "yearPublished": 2021,
+      "myRating": 6.5,
+      "numPlays": 11,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/297129"
+    },
+    {
+      "id": 429845,
+      "name": "Jisogi: Anime Studio Tycoon",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/429845"
+    },
+    {
+      "id": 438018,
+      "name": "Kanal",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/438018"
+    },
+    {
+      "id": 284378,
+      "name": "Kanban EV",
+      "yearPublished": 2020,
+      "myRating": 8.0,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/284378"
+    },
+    {
+      "id": 122515,
+      "name": "Keyflower",
+      "yearPublished": 2012,
+      "myRating": 8.9,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/122515"
+    },
+    {
+      "id": 107529,
+      "name": "Kingdom Builder",
+      "yearPublished": 2011,
+      "myRating": 7.5,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/107529"
+    },
+    {
+      "id": 415776,
+      "name": "Kingdom Legacy: Feudal Kingdom",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/415776"
+    },
+    {
+      "id": 204583,
+      "name": "Kingdomino",
+      "yearPublished": 2016,
+      "myRating": null,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/204583"
+    },
+    {
+      "id": 340041,
+      "name": "Kingdomino Origins",
+      "yearPublished": 2021,
+      "myRating": 6.0,
+      "numPlays": 5,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/340041"
+    },
+    {
+      "id": 379629,
+      "name": "Knarr",
+      "yearPublished": 2024,
+      "myRating": 7.0,
+      "numPlays": 4,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/379629"
+    },
+    {
+      "id": 270143,
+      "name": "Kōhaku",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/270143"
+    },
+    {
+      "id": 146886,
+      "name": "La Granja",
+      "yearPublished": 2014,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/146886"
+    },
+    {
+      "id": 276497,
+      "name": "La Viña",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/276497"
+    },
+    {
+      "id": 285984,
+      "name": "Last Bastion",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/285984"
+    },
+    {
+      "id": 35677,
+      "name": "Le Havre",
+      "yearPublished": 2008,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/35677"
+    },
+    {
+      "id": 432716,
+      "name": "Leaders",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/432716"
+    },
+    {
+      "id": 173064,
+      "name": "Leaving Earth",
+      "yearPublished": 2015,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/173064"
+    },
+    {
+      "id": 354934,
+      "name": "Legacy of Yu",
+      "yearPublished": 2023,
+      "myRating": 7.5,
+      "numPlays": 8,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/354934"
+    },
+    {
+      "id": 146652,
+      "name": "Legendary Encounters: An Alien Deck Building Game",
+      "yearPublished": 2014,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/146652"
+    },
+    {
+      "id": 56796,
+      "name": "Let's Catch the Lion!",
+      "yearPublished": 2008,
+      "myRating": 3.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/56796"
+    },
+    {
+      "id": 368173,
+      "name": "Let's Go! To Japan",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/368173"
+    },
+    {
+      "id": 358737,
+      "name": "Leviathan Wilds",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/358737"
+    },
+    {
+      "id": 140620,
+      "name": "Lewis & Clark: The Expedition",
+      "yearPublished": 2013,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/140620"
+    },
+    {
+      "id": 161533,
+      "name": "Lisboa",
+      "yearPublished": 2017,
+      "myRating": 8.5,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/161533"
+    },
+    {
+      "id": 422374,
+      "name": "Lone Wolves",
+      "yearPublished": 2024,
+      "myRating": 7.5,
+      "numPlays": 4,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/422374"
+    },
+    {
+      "id": 203993,
+      "name": "Lorenzo il Magnifico",
+      "yearPublished": 2016,
+      "myRating": 8.0,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/203993"
+    },
+    {
+      "id": 50,
+      "name": "Lost Cities",
+      "yearPublished": 1999,
+      "myRating": 8.0,
+      "numPlays": 12,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/50"
+    },
+    {
+      "id": 312484,
+      "name": "Lost Ruins of Arnak",
+      "yearPublished": 2020,
+      "myRating": 7.1,
+      "numPlays": 8,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/312484"
+    },
+    {
+      "id": 277085,
+      "name": "Love Letter",
+      "yearPublished": 2019,
+      "myRating": 7.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/277085"
+    },
+    {
+      "id": 454103,
+      "name": "Magical Athlete",
+      "yearPublished": 2025,
+      "myRating": 7.0,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/454103"
+    },
+    {
+      "id": 264241,
+      "name": "Mandala",
+      "yearPublished": 2019,
+      "myRating": 7.0,
+      "numPlays": 6,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/264241"
+    },
+    {
+      "id": 403265,
+      "name": "Marabunta",
+      "yearPublished": 2023,
+      "myRating": 6.2,
+      "numPlays": 2,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/403265"
+    },
+    {
+      "id": 276025,
+      "name": "Maracaibo",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/276025"
+    },
+    {
+      "id": 342810,
+      "name": "Marrakesh",
+      "yearPublished": 2022,
+      "myRating": 7.5,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/342810"
+    },
+    {
+      "id": 285774,
+      "name": "Marvel Champions: The Card Game",
+      "yearPublished": 2019,
+      "myRating": 8.5,
+      "numPlays": 93,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/285774"
+    },
+    {
+      "id": 359152,
+      "name": "Marvel: Remix",
+      "yearPublished": 2022,
+      "myRating": 5.0,
+      "numPlays": 10,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/359152"
+    },
+    {
+      "id": 314491,
+      "name": "Meadow",
+      "yearPublished": 2023,
+      "myRating": 6.0,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/314491"
+    },
+    {
+      "id": 355957,
+      "name": "Meadow: Downstream",
+      "yearPublished": 2022,
+      "myRating": 7.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/355957"
+    },
+    {
+      "id": 10630,
+      "name": "Memoir '44",
+      "yearPublished": 2004,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/10630"
+    },
+    {
+      "id": 404431,
+      "name": "Men-Nefer",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/404431"
+    },
+    {
+      "id": 238799,
+      "name": "Messina 1347",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/238799"
+    },
+    {
+      "id": 2955,
+      "name": "Mexica",
+      "yearPublished": 2002,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/2955"
+    },
+    {
+      "id": 284653,
+      "name": "Mind MGMT: The Psychic Espionage “Game.”",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/284653"
+    },
+    {
+      "id": 345584,
+      "name": "Mindbug: First Contact",
+      "yearPublished": 2022,
+      "myRating": 8.0,
+      "numPlays": 56,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/345584"
+    },
+    {
+      "id": 358124,
+      "name": "Mists over Carcassonne",
+      "yearPublished": 2022,
+      "myRating": 8.0,
+      "numPlays": 5,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/358124"
+    },
+    {
+      "id": 387378,
+      "name": "MLEM: Space Agency",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/387378"
+    },
+    {
+      "id": 395846,
+      "name": "Mojo",
+      "yearPublished": 2023,
+      "myRating": 5.0,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/395846"
+    },
+    {
+      "id": 122298,
+      "name": "Morels",
+      "yearPublished": 2012,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/122298"
+    },
+    {
+      "id": 63975,
+      "name": "Mountain Goats",
+      "yearPublished": 2010,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/63975"
+    },
+    {
+      "id": 21763,
+      "name": "Mr. Jack",
+      "yearPublished": 2006,
+      "myRating": 7.0,
+      "numPlays": 4,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/21763"
+    },
+    {
+      "id": 295486,
+      "name": "My City",
+      "yearPublished": 2020,
+      "myRating": 4.0,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/295486"
+    },
+    {
+      "id": 423648,
+      "name": "Naishi",
+      "yearPublished": 2024,
+      "myRating": 8.0,
+      "numPlays": 20,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/423648"
+    },
+    {
+      "id": 449831,
+      "name": "National Economy",
+      "yearPublished": 2025,
+      "myRating": 7.0,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/449831"
+    },
+    {
+      "id": 244711,
+      "name": "Newton",
+      "yearPublished": 2018,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/244711"
+    },
+    {
+      "id": 378979,
+      "name": "Nusfjord: Big Box",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/378979"
+    },
+    {
+      "id": 231733,
+      "name": "Obsession",
+      "yearPublished": 2018,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/231733"
+    },
+    {
+      "id": 406854,
+      "name": "Odin",
+      "yearPublished": 2024,
+      "myRating": 4.0,
+      "numPlays": 6,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/406854"
+    },
+    {
+      "id": 183840,
+      "name": "Oh My Goods!",
+      "yearPublished": 2015,
+      "myRating": 7.0,
+      "numPlays": 3,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/183840"
+    },
+    {
+      "id": 184267,
+      "name": "On Mars",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/184267"
+    },
+    {
+      "id": 416952,
+      "name": "ONDA",
+      "yearPublished": 2024,
+      "myRating": 6.9,
+      "numPlays": 3,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/416952"
+    },
+    {
+      "id": 179275,
+      "name": "One Deck Dungeon",
+      "yearPublished": 2016,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/179275"
+    },
+    {
+      "id": 156336,
+      "name": "Onirim (Second Edition)",
+      "yearPublished": 2014,
+      "myRating": 5.9,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/156336"
+    },
+    {
+      "id": 424152,
+      "name": "Orapa Mine",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/424152"
+    },
+    {
+      "id": 164928,
+      "name": "Orléans",
+      "yearPublished": 2014,
+      "myRating": 7.0,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/164928"
+    },
+    {
+      "id": 420068,
+      "name": "Orléans: Big Box",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/420068"
+    },
+    {
+      "id": 347767,
+      "name": "Ostia",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/347767"
+    },
+    {
+      "id": 439685,
+      "name": "Pacts",
+      "yearPublished": 2025,
+      "myRating": 8.5,
+      "numPlays": 4,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/439685"
+    },
+    {
+      "id": 319910,
+      "name": "Pagan: Fate of Roanoke",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/319910"
+    },
+    {
+      "id": 266810,
+      "name": "Paladins of the West Kingdom",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/266810"
+    },
+    {
+      "id": 303057,
+      "name": "Pan Am",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/303057"
+    },
+    {
+      "id": 30549,
+      "name": "Pandemic",
+      "yearPublished": 2008,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/30549"
+    },
+    {
+      "id": 221107,
+      "name": "Pandemic Legacy: Season 2",
+      "yearPublished": 2017,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/221107"
+    },
+    {
+      "id": 39534,
+      "name": "Paper Safari",
+      "yearPublished": 2008,
+      "myRating": 3.5,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/39534"
+    },
+    {
+      "id": 56692,
+      "name": "Parade",
+      "yearPublished": 2007,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/56692"
+    },
+    {
+      "id": 163412,
+      "name": "Patchwork",
+      "yearPublished": 2014,
+      "myRating": 4.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/163412"
+    },
+    {
+      "id": 369862,
+      "name": "Pathogen",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/369862"
+    },
+    {
+      "id": 379583,
+      "name": "Patterns",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/379583"
+    },
+    {
+      "id": 256960,
+      "name": "Pax Pamir: Second Edition",
+      "yearPublished": 2019,
+      "myRating": 8.0,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/256960"
+    },
+    {
+      "id": 308119,
+      "name": "Pax Renaissance: 2nd Edition",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/308119"
+    },
+    {
+      "id": 56933,
+      "name": "Penguin Party",
+      "yearPublished": 2008,
+      "myRating": 6.5,
+      "numPlays": 6,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/56933"
+    },
+    {
+      "id": 419704,
+      "name": "Phoenix New Horizon",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/419704"
+    },
+    {
+      "id": 215471,
+      "name": "Photograph",
+      "yearPublished": 2016,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/215471"
+    },
+    {
+      "id": 397385,
+      "name": "Pirates of Maracaibo",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/397385"
+    },
+    {
+      "id": 258779,
+      "name": "Planet Unknown",
+      "yearPublished": 2022,
+      "myRating": 8.5,
+      "numPlays": 5,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/258779"
+    },
+    {
+      "id": 303551,
+      "name": "Polis",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/303551"
+    },
+    {
+      "id": 156009,
+      "name": "Port Royal",
+      "yearPublished": 2014,
+      "myRating": 7.5,
+      "numPlays": 13,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/156009"
+    },
+    {
+      "id": 181960,
+      "name": "Portal of Heroes",
+      "yearPublished": 2015,
+      "myRating": 5.9,
+      "numPlays": 3,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/181960"
+    },
+    {
+      "id": 2651,
+      "name": "Power Grid",
+      "yearPublished": 2004,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/2651"
+    },
+    {
+      "id": 308765,
+      "name": "Praga Caput Regni",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/308765"
+    },
+    {
+      "id": 3228,
+      "name": "Pueblo",
+      "yearPublished": 2002,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/3228"
+    },
+    {
+      "id": 228341,
+      "name": "Pulsar 2849",
+      "yearPublished": 2017,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/228341"
+    },
+    {
+      "id": 244521,
+      "name": "Quacks",
+      "yearPublished": 2018,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/244521"
+    },
+    {
+      "id": 12,
+      "name": "Ra",
+      "yearPublished": 1999,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/12"
+    },
+    {
+      "id": 28143,
+      "name": "Race for the Galaxy",
+      "yearPublished": 2021,
+      "myRating": 9.0,
+      "numPlays": 14,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/28143"
+    },
+    {
+      "id": 329082,
+      "name": "Radlands",
+      "yearPublished": 2021,
+      "myRating": 8.0,
+      "numPlays": 5,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/329082"
+    },
+    {
+      "id": 301880,
+      "name": "Raiders of Scythia",
+      "yearPublished": 2020,
+      "myRating": 6.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/301880"
+    },
+    {
+      "id": 365357,
+      "name": "Railways of the Lost Atlas",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/365357"
+    },
+    {
+      "id": 177639,
+      "name": "Raptor",
+      "yearPublished": 2015,
+      "myRating": 6.4,
+      "numPlays": 15,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/177639"
+    },
+    {
+      "id": 387780,
+      "name": "Rats of Wistar",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/387780"
+    },
+    {
+      "id": 358816,
+      "name": "Rear Window",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/358816"
+    },
+    {
+      "id": 417197,
+      "name": "Rebirth",
+      "yearPublished": 2024,
+      "myRating": 7.0,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/417197"
+    },
+    {
+      "id": 307002,
+      "name": "Regicide",
+      "yearPublished": 2020,
+      "myRating": 6.0,
+      "numPlays": 6,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/307002"
+    },
+    {
+      "id": 300001,
+      "name": "Renature",
+      "yearPublished": 2020,
+      "myRating": 7.0,
+      "numPlays": 2,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/300001"
+    },
+    {
+      "id": 262712,
+      "name": "Res Arcana",
+      "yearPublished": 2019,
+      "myRating": 7.5,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/262712"
+    },
+    {
+      "id": 352697,
+      "name": "Resist!",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/352697"
+    },
+    {
+      "id": 332772,
+      "name": "Revive",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/332772"
+    },
+    {
+      "id": 51,
+      "name": "Ricochet Robots",
+      "yearPublished": 1999,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/51"
+    },
+    {
+      "id": 291859,
+      "name": "Riftforce",
+      "yearPublished": 2021,
+      "myRating": 7.0,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/291859"
+    },
+    {
+      "id": 199561,
+      "name": "Sagrada",
+      "yearPublished": 2017,
+      "myRating": 4.5,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/199561"
+    },
+    {
+      "id": 244262,
+      "name": "Sagrada: 5-6 Player Expansion",
+      "yearPublished": 2018,
+      "myRating": 5.1,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/244262"
+    },
+    {
+      "id": 377470,
+      "name": "Sail",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/377470"
+    },
+    {
+      "id": 422674,
+      "name": "Saltfjord",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/422674"
+    },
+    {
+      "id": 402663,
+      "name": "Salton Sea",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/402663"
+    },
+    {
+      "id": 194655,
+      "name": "Santorini",
+      "yearPublished": 2016,
+      "myRating": 8.0,
+      "numPlays": 5,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/194655"
+    },
+    {
+      "id": 367041,
+      "name": "Scholars of the South Tigris",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/367041"
+    },
+    {
+      "id": 372,
+      "name": "Schotten Totten",
+      "yearPublished": 1999,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/372"
+    },
+    {
+      "id": 367220,
+      "name": "Sea Salt & Paper",
+      "yearPublished": 2022,
+      "myRating": 6.0,
+      "numPlays": 11,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/367220"
+    },
+    {
+      "id": 442250,
+      "name": "Sea Salt & Paper: Extra Pepper",
+      "yearPublished": 2025,
+      "myRating": 6.9,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/442250"
+    },
+    {
+      "id": 396545,
+      "name": "Sea Salt & Paper: Extra Salt",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/396545"
+    },
+    {
+      "id": 406660,
+      "name": "Seaside",
+      "yearPublished": 2024,
+      "myRating": 4.5,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/406660"
+    },
+    {
+      "id": 108745,
+      "name": "Seasons",
+      "yearPublished": 2012,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/108745"
+    },
+    {
+      "id": 278553,
+      "name": "Silver",
+      "yearPublished": 2019,
+      "myRating": 5.5,
+      "numPlays": 7,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/278553"
+    },
+    {
+      "id": 278554,
+      "name": "Silver Bullet",
+      "yearPublished": 2019,
+      "myRating": 6.0,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/278554"
+    },
+    {
+      "id": 92415,
+      "name": "Skull",
+      "yearPublished": 2011,
+      "myRating": 6.9,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/92415"
+    },
+    {
+      "id": 150145,
+      "name": "Skull King",
+      "yearPublished": 2013,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/150145"
+    },
+    {
+      "id": 373106,
+      "name": "Sky Team",
+      "yearPublished": 2023,
+      "myRating": 6.9,
+      "numPlays": 23,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/373106"
+    },
+    {
+      "id": 359438,
+      "name": "Skymines",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/359438"
+    },
+    {
+      "id": 255984,
+      "name": "Sleeping Gods",
+      "yearPublished": 2021,
+      "myRating": 7.0,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/255984"
+    },
+    {
+      "id": 295262,
+      "name": "Sniper Elite: The Board Game",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/295262"
+    },
+    {
+      "id": 329839,
+      "name": "So Clover!",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/329839"
+    },
+    {
+      "id": 411255,
+      "name": "Solstis",
+      "yearPublished": 2024,
+      "myRating": 5.1,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/411255"
+    },
+    {
+      "id": 242302,
+      "name": "Space Base",
+      "yearPublished": 2018,
+      "myRating": 6.9,
+      "numPlays": 3,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/242302"
+    },
+    {
+      "id": 375459,
+      "name": "Speakeasy",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/375459"
+    },
+    {
+      "id": 162886,
+      "name": "Spirit Island",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/162886"
+    },
+    {
+      "id": 148228,
+      "name": "Splendor",
+      "yearPublished": 2014,
+      "myRating": 4.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/148228"
+    },
+    {
+      "id": 364073,
+      "name": "Splendor Duel",
+      "yearPublished": 2022,
+      "myRating": 8.0,
+      "numPlays": 8,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/364073"
+    },
+    {
+      "id": 372559,
+      "name": "Spots",
+      "yearPublished": 2022,
+      "myRating": 7.0,
+      "numPlays": 20,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/372559"
+    },
+    {
+      "id": 251658,
+      "name": "Sprawlopolis",
+      "yearPublished": 2018,
+      "myRating": 7.0,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/251658"
+    },
+    {
+      "id": 370913,
+      "name": "Star Wars: The Clone Wars",
+      "yearPublished": 2022,
+      "myRating": 6.0,
+      "numPlays": 3,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/370913"
+    },
+    {
+      "id": 374173,
+      "name": "Star Wars: The Deckbuilding Game",
+      "yearPublished": 2023,
+      "myRating": 7.5,
+      "numPlays": 8,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/374173"
+    },
+    {
+      "id": 34635,
+      "name": "Stone Age",
+      "yearPublished": 2008,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/34635"
+    },
+    {
+      "id": 58281,
+      "name": "Summoner Wars",
+      "yearPublished": 2009,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/58281"
+    },
+    {
+      "id": 332800,
+      "name": "Summoner Wars (Second Edition)",
+      "yearPublished": 2021,
+      "myRating": 8.5,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/332800"
+    },
+    {
+      "id": 434906,
+      "name": "Tag Team",
+      "yearPublished": 2025,
+      "myRating": 7.0,
+      "numPlays": 42,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/434906"
+    },
+    {
+      "id": 145976,
+      "name": "Talon",
+      "yearPublished": 2016,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/145976"
+    },
+    {
+      "id": 24508,
+      "name": "Taluva",
+      "yearPublished": 2006,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/24508"
+    },
+    {
+      "id": 118048,
+      "name": "Targi",
+      "yearPublished": 2012,
+      "myRating": 7.0,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/118048"
+    },
+    {
+      "id": 329281,
+      "name": "Targi: Alternative Border Cards",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/329281"
+    },
+    {
+      "id": 202453,
+      "name": "Targi: The Expansion",
+      "yearPublished": 2016,
+      "myRating": 7.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/202453"
+    },
+    {
+      "id": 146278,
+      "name": "Tash-Kalar: Arena of Legends",
+      "yearPublished": 2013,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/146278"
+    },
+    {
+      "id": 297030,
+      "name": "Tekhenu: Obelisk of the Sun",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/297030"
+    },
+    {
+      "id": 229853,
+      "name": "Teotihuacan: City of Gods",
+      "yearPublished": 2018,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/229853"
+    },
+    {
+      "id": 167791,
+      "name": "Terraforming Mars",
+      "yearPublished": 2016,
+      "myRating": 7.1,
+      "numPlays": 8,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/167791"
+    },
+    {
+      "id": 247030,
+      "name": "Terraforming Mars: Prelude",
+      "yearPublished": 2018,
+      "myRating": 7.2,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/247030"
+    },
+    {
+      "id": 344258,
+      "name": "That Time You Killed Me",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/344258"
+    },
+    {
+      "id": 180263,
+      "name": "The 7th Continent",
+      "yearPublished": 2017,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/180263"
+    },
+    {
+      "id": 408637,
+      "name": "The Anarchy",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/408637"
+    },
+    {
+      "id": 180593,
+      "name": "The Bloody Inn",
+      "yearPublished": 2015,
+      "myRating": 7.0,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/180593"
+    },
+    {
+      "id": 271320,
+      "name": "The Castles of Burgundy",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/271320"
+    },
+    {
+      "id": 84876,
+      "name": "The Castles of Burgundy",
+      "yearPublished": 2011,
+      "myRating": 7.5,
+      "numPlays": 19,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/84876"
+    },
+    {
+      "id": 397099,
+      "name": "The Gilded Realms",
+      "yearPublished": 2025,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/397099"
+    },
+    {
+      "id": 289081,
+      "name": "The Grand Carnival",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/289081"
+    },
+    {
+      "id": 350933,
+      "name": "The Guild of Merchant Explorers",
+      "yearPublished": 2022,
+      "myRating": 7.0,
+      "numPlays": 2,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/350933"
+    },
+    {
+      "id": 319966,
+      "name": "The King Is Dead: Second Edition",
+      "yearPublished": 2020,
+      "myRating": 9.0,
+      "numPlays": 16,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/319966"
+    },
+    {
+      "id": 316412,
+      "name": "The LOOP",
+      "yearPublished": 2020,
+      "myRating": 7.0,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/316412"
+    },
+    {
+      "id": 450429,
+      "name": "The Lord of the Rings: Duel for Middle-Earth – Allies",
+      "yearPublished": 2025,
+      "myRating": 7.9,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/450429"
+    },
+    {
+      "id": 349067,
+      "name": "The Lord of the Rings: The Card Game – Revised Core Set",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/349067"
+    },
+    {
+      "id": 18833,
+      "name": "The Lord of the Rings: The Confrontation",
+      "yearPublished": 2005,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/18833"
+    },
+    {
+      "id": 244992,
+      "name": "The Mind",
+      "yearPublished": 2018,
+      "myRating": 6.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/244992"
+    },
+    {
+      "id": 217372,
+      "name": "The Quest for El Dorado",
+      "yearPublished": 2017,
+      "myRating": 6.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/217372"
+    },
+    {
+      "id": 246431,
+      "name": "The Quest for El Dorado: Heroes & Hexes",
+      "yearPublished": 2018,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/246431"
+    },
+    {
+      "id": 150293,
+      "name": "The Ravens of Thri Sahashri",
+      "yearPublished": 2013,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/150293"
+    },
+    {
+      "id": 227224,
+      "name": "The Red Cathedral",
+      "yearPublished": 2020,
+      "myRating": 7.0,
+      "numPlays": 6,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/227224"
+    },
+    {
+      "id": 201,
+      "name": "The Rose King",
+      "yearPublished": 2025,
+      "myRating": 6.2,
+      "numPlays": 3,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/201"
+    },
+    {
+      "id": 279537,
+      "name": "The Search for Planet X",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/279537"
+    },
+    {
+      "id": 269207,
+      "name": "The Taverns of Tiefenthal",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/269207"
+    },
+    {
+      "id": 385529,
+      "name": "The Vale of Eternity",
+      "yearPublished": 2023,
+      "myRating": 8.5,
+      "numPlays": 25,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/385529"
+    },
+    {
+      "id": 421904,
+      "name": "The Vale of Eternity: Artifacts",
+      "yearPublished": 2024,
+      "myRating": 7.5,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/421904"
+    },
+    {
+      "id": 436651,
+      "name": "The Vale of Eternity: Curse",
+      "yearPublished": 2025,
+      "myRating": 7.0,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/436651"
+    },
+    {
+      "id": 171623,
+      "name": "The Voyages of Marco Polo",
+      "yearPublished": 2015,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/171623"
+    },
+    {
+      "id": 371942,
+      "name": "The White Castle",
+      "yearPublished": 2023,
+      "myRating": 7.0,
+      "numPlays": 10,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/371942"
+    },
+    {
+      "id": 438936,
+      "name": "The White Castle Duel",
+      "yearPublished": 2025,
+      "myRating": 4.5,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/438936"
+    },
+    {
+      "id": 182028,
+      "name": "Through the Ages: A New Story of Civilization",
+      "yearPublished": 2015,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/182028"
+    },
+    {
+      "id": 503,
+      "name": "Through the Desert",
+      "yearPublished": 1998,
+      "myRating": 9.0,
+      "numPlays": 5,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/503"
+    },
+    {
+      "id": 54,
+      "name": "Tikal",
+      "yearPublished": 1999,
+      "myRating": 5.9,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/54"
+    },
+    {
+      "id": 351913,
+      "name": "Tiletum",
+      "yearPublished": 2022,
+      "myRating": 8.0,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/351913"
+    },
+    {
+      "id": 291508,
+      "name": "Tiny Epic Dinosaurs",
+      "yearPublished": 2020,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/291508"
+    },
+    {
+      "id": 331787,
+      "name": "Tiny Epic Dungeons",
+      "yearPublished": 2021,
+      "myRating": 7.0,
+      "numPlays": 13,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/331787"
+    },
+    {
+      "id": 163967,
+      "name": "Tiny Epic Galaxies",
+      "yearPublished": 2015,
+      "myRating": 7.5,
+      "numPlays": 19,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/163967"
+    },
+    {
+      "id": 88,
+      "name": "Torres",
+      "yearPublished": 1999,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/88"
+    },
+    {
+      "id": 434654,
+      "name": "Toy Battle",
+      "yearPublished": 2025,
+      "myRating": 7.0,
+      "numPlays": 25,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/434654"
+    },
+    {
+      "id": 102680,
+      "name": "Trajan",
+      "yearPublished": 2011,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/102680"
+    },
+    {
+      "id": 436931,
+      "name": "Trinket Trove",
+      "yearPublished": 2025,
+      "myRating": 6.2,
+      "numPlays": 6,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/436931"
+    },
+    {
+      "id": 73439,
+      "name": "Troyes",
+      "yearPublished": 2010,
+      "myRating": 8.0,
+      "numPlays": 3,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/73439"
+    },
+    {
+      "id": 352238,
+      "name": "Turncoats",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/352238"
+    },
+    {
+      "id": 31999,
+      "name": "TZAAR",
+      "yearPublished": 2007,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/31999"
+    },
+    {
+      "id": 126163,
+      "name": "Tzolk'in: The Mayan Calendar",
+      "yearPublished": 2012,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/126163"
+    },
+    {
+      "id": 329591,
+      "name": "Ultimate Railroads",
+      "yearPublished": 2021,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/329591"
+    },
+    {
+      "id": 268864,
+      "name": "Undaunted: Normandy",
+      "yearPublished": 2019,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/268864"
+    },
+    {
+      "id": 247763,
+      "name": "Underwater Cities",
+      "yearPublished": 2018,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/247763"
+    },
+    {
+      "id": 170561,
+      "name": "Valeria: Card Kingdoms",
+      "yearPublished": 2016,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/170561"
+    },
+    {
+      "id": 104006,
+      "name": "Village",
+      "yearPublished": 2011,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/104006"
+    },
+    {
+      "id": 365056,
+      "name": "Village: Big Box",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/365056"
+    },
+    {
+      "id": 337627,
+      "name": "Voidfall",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": true,
+      "bggUrl": "https://boardgamegeek.com/boardgame/337627"
+    },
+    {
+      "id": 249259,
+      "name": "War Chest",
+      "yearPublished": 2018,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/249259"
+    },
+    {
+      "id": 115746,
+      "name": "War of the Ring: Second Edition",
+      "yearPublished": 2011,
+      "myRating": 9.9,
+      "numPlays": 5,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/115746"
+    },
+    {
+      "id": 274364,
+      "name": "Watergate",
+      "yearPublished": 2019,
+      "myRating": 6.5,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/274364"
+    },
+    {
+      "id": 350316,
+      "name": "Wayfarers of the South Tigris",
+      "yearPublished": 2022,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/350316"
+    },
+    {
+      "id": 301255,
+      "name": "Whistle Mountain",
+      "yearPublished": 2020,
+      "myRating": 6.9,
+      "numPlays": 2,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/301255"
+    },
+    {
+      "id": 266192,
+      "name": "Wingspan",
+      "yearPublished": 2019,
+      "myRating": 5.5,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/266192"
+    },
+    {
+      "id": 366161,
+      "name": "Wingspan Asia",
+      "yearPublished": 2022,
+      "myRating": 7.5,
+      "numPlays": 10,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/366161"
+    },
+    {
+      "id": 300580,
+      "name": "Wingspan: Oceania Expansion",
+      "yearPublished": 2020,
+      "myRating": 5.6,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/300580"
+    },
+    {
+      "id": 383499,
+      "name": "Witchcraft!",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/383499"
+    },
+    {
+      "id": 1465,
+      "name": "Wizard",
+      "yearPublished": 1984,
+      "myRating": null,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/1465"
+    },
+    {
+      "id": 178336,
+      "name": "World's Fair 1893",
+      "yearPublished": 2021,
+      "myRating": 7.0,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/178336"
+    },
+    {
+      "id": 2243,
+      "name": "Yahtzee",
+      "yearPublished": 1956,
+      "myRating": 7.0,
+      "numPlays": 28,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/2243"
+    },
+    {
+      "id": 7854,
+      "name": "YINSH",
+      "yearPublished": 2003,
+      "myRating": 6.1,
+      "numPlays": 6,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/7854"
+    },
+    {
+      "id": 196340,
+      "name": "Yokohama",
+      "yearPublished": 2016,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/196340"
+    },
+    {
+      "id": 424219,
+      "name": "Zenith",
+      "yearPublished": 2025,
+      "myRating": 6.9,
+      "numPlays": 6,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/424219"
+    },
+    {
+      "id": 381819,
+      "name": "Zhanguo: The First Empire",
+      "yearPublished": 2023,
+      "myRating": 7.9,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/381819"
+    },
+    {
+      "id": 3,
+      "name": "仙岛侠踪 (The Legend of Xiandao)",
+      "yearPublished": 2024,
+      "myRating": 7.0,
+      "numPlays": 6,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/3"
+    },
+    {
+      "id": 304042,
+      "name": "新幕 桜降る代に決闘を 基本セット (A Duel for Falling Cherry Blossoms: New Act – Basic Set)",
+      "yearPublished": 2018,
+      "myRating": null,
+      "numPlays": 0,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/304042"
+    },
+    {
+      "id": 98778,
+      "name": "花火",
+      "yearPublished": 2023,
+      "myRating": 7.5,
+      "numPlays": 1,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/98778"
+    },
+    {
+      "id": 157354,
+      "name": "다섯 부족",
+      "yearPublished": 2022,
+      "myRating": 8.0,
+      "numPlays": 10,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/157354"
+    },
+    {
+      "id": 39683,
+      "name": "뤄양의 사람들",
+      "yearPublished": 2021,
+      "myRating": 7.1,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/39683"
+    },
+    {
+      "id": 421006,
+      "name": "반지의 제왕: 가운데땅에서의 대결",
+      "yearPublished": 2024,
+      "myRating": 6.0,
+      "numPlays": 15,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/421006"
+    },
+    {
+      "id": 39242,
+      "name": "블랙 프라이데이",
+      "yearPublished": 2023,
+      "myRating": 7.0,
+      "numPlays": 1,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/39242"
+    },
+    {
+      "id": 25021,
+      "name": "세키가하라",
+      "yearPublished": 2023,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/25021"
+    },
+    {
+      "id": 418059,
+      "name": "세티: 외계 지성체를 찾아서",
+      "yearPublished": 2025,
+      "myRating": 9.0,
+      "numPlays": 4,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/418059"
+    },
+    {
+      "id": 406291,
+      "name": "스플렌더: Pokémon (Splendor: Pokémon)",
+      "yearPublished": 2023,
+      "myRating": 4.5,
+      "numPlays": 8,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/406291"
+    },
+    {
+      "id": 54043,
+      "name": "자이푸르",
+      "yearPublished": 2018,
+      "myRating": 8.5,
+      "numPlays": 9,
+      "own": false,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/54043"
+    },
+    {
+      "id": 367272,
+      "name": "푸에르토리코 1897",
+      "yearPublished": 2024,
+      "myRating": 8.0,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/367272"
+    },
+    {
+      "id": 190082,
+      "name": "화이트홀 미스터리",
+      "yearPublished": 2019,
+      "myRating": 6.0,
+      "numPlays": 3,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/190082"
+    },
+    {
+      "id": 12333,
+      "name": "황혼의 투쟁",
+      "yearPublished": 2024,
+      "myRating": null,
+      "numPlays": 0,
+      "own": true,
+      "wishlist": false,
+      "bggUrl": "https://boardgamegeek.com/boardgame/12333"
+    }
+  ]
 }
