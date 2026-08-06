@@ -37,19 +37,28 @@ function syncCollectionStatuses(db, games) {
   return { updated: 0, added };
 }
 
-// 평점은 계정별로 다르므로 이 사용자(userId) 몫만 upsert한다. myRating이 없는(평가 안 한) 게임은 건드리지 않는다.
-function syncRatings(db, userId, games) {
+// 평점과 "플레이 희망"은 둘 다 사람마다 다른 값이라(각자 BGG 계정 기준) 공유 테이블인 collection이 아니라
+// 사용자별 game_rating에 upsert한다. 예전에는 want_to_play를 collection에 썼는데, 공유 테이블이다 보니
+// 나중에 동기화되는 사용자가 먼저 동기화된 사용자의 값을 밀어써버리는 버그가 있었다.
+// - rating: myRating이 없는(평가 안 한) 게임은 건드리지 않는다(기존 값 유지).
+// - want_to_play: BGG가 매 동기화마다 명확한 true/false를 주므로 항상 그대로 반영한다(꺼진 것도 0으로 갱신).
+// 평점만 있고 want_to_play가 없던 행, 혹은 그 반대인 행도 같은 (user_id, game_id) 행에 합쳐 저장한다.
+function syncUserGameFlags(db, userId, games) {
   const upsert = db.prepare(`
-    INSERT INTO game_rating (user_id, game_id, rating) VALUES (?, ?, ?)
-    ON CONFLICT(user_id, game_id) DO UPDATE SET rating = excluded.rating
+    INSERT INTO game_rating (user_id, game_id, rating, want_to_play) VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id, game_id) DO UPDATE SET
+      want_to_play = excluded.want_to_play,
+      rating = CASE WHEN excluded.rating IS NOT NULL THEN excluded.rating ELSE rating END
   `);
-  let updated = 0;
+  let wantToPlayUpdated = 0;
+  let ratingsUpdated = 0;
   for (const g of games) {
-    if (g.myRating == null) continue;
-    upsert.run(userId, g.id, g.myRating);
-    updated++;
+    const wantToPlay = g.wantToPlay ? 1 : 0;
+    upsert.run(userId, g.id, g.myRating ?? null, wantToPlay);
+    if (wantToPlay) wantToPlayUpdated++;
+    if (g.myRating != null) ratingsUpdated++;
   }
-  return updated;
+  return { wantToPlayUpdated, ratingsUpdated };
 }
 
 async function syncUser(db, user, apiKey) {
@@ -62,7 +71,7 @@ async function syncUser(db, user, apiKey) {
 
   const gamesUpserted = upsertGames(db, games);
   const { updated: statusUpdated, added: statusAdded } = syncCollectionStatuses(db, games);
-  const ratingsUpdated = syncRatings(db, user.id, games);
+  const { wantToPlayUpdated, ratingsUpdated } = syncUserGameFlags(db, user.id, games);
 
   await sleep(1000);
   const plays = await fetchPlays(user.bgg_username, apiKey);
@@ -75,6 +84,7 @@ async function syncUser(db, user, apiKey) {
     gamesUpserted,
     collectionStatusUpdated: statusUpdated,
     collectionStatusAdded: statusAdded,
+    wantToPlayUpdated,
     ratingsUpdated,
     playsAdded,
     stubbedGames: stubbed,

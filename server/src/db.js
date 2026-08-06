@@ -4,6 +4,8 @@ import { dirname } from "node:path";
 
 // 컬렉션은 두 사람이 공유하고, 플레이 기록은 계정별로 따로 쌓인다.
 // 그래서 collection에는 user_id가 없고 play에는 있다.
+// game_rating: 사용자별 게임 속성(평점·플레이 희망)을 담는 테이블. 이름은 rating 전용처럼 보이지만
+// want_to_play도 같은 이유(사람마다 다름)로 여기 얹었다 - 새 테이블 대신 기존 테이블을 확장했다.
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS user (
   id            INTEGER PRIMARY KEY,
@@ -94,6 +96,12 @@ const ALTER_COLUMNS = [
   // BGG에서 오는 이름이 영문뿐인 게임이 있어 사용자가 직접 표시 이름을 지정할 수 있게 한다.
   // 동기화는 이 컬럼을 절대 건드리지 않는다(upsertGames 참고).
   "ALTER TABLE game ADD COLUMN custom_name TEXT",
+  // BGG 컬렉션의 "want to play" 플래그. 위시리스트와 별개 개념이라 status가 아닌 독립 플래그로 둔다.
+  // 주의: 이 컬럼은 공유 테이블(collection)에 있어 두 사용자가 값을 덮어쓰는 버그가 있었다.
+  // game_rating.want_to_play로 이전했으니 이 컬럼은 더 이상 읽지도 쓰지도 않는다(삭제는 SQLite에서 위험해 컬럼만 방치).
+  "ALTER TABLE collection ADD COLUMN want_to_play INTEGER DEFAULT 0",
+  // rating과 마찬가지로 사용자마다 다른 값이라 공유 테이블이 아닌 game_rating에 사용자별로 저장한다.
+  "ALTER TABLE game_rating ADD COLUMN want_to_play INTEGER NOT NULL DEFAULT 0",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.
@@ -118,7 +126,8 @@ CREATE TABLE IF NOT EXISTS sync_match (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_match_key ON sync_match(source, source_key);
 
--- 평점은 사람마다 다르다(각자 BGG 계정 기준). 컬렉션은 공유지만 평점은 계정별로 따로 저장한다.
+-- 평점/플레이 희망은 사람마다 다르다(각자 BGG 계정 기준). 컬렉션은 공유지만 이 값들은 계정별로 따로 저장한다.
+-- want_to_play는 ALTER_COLUMNS에서 뒤늦게 추가됨(위 주석 참고).
 CREATE TABLE IF NOT EXISTS game_rating (
   user_id INTEGER NOT NULL REFERENCES user(id),
   game_id INTEGER NOT NULL REFERENCES game(id),

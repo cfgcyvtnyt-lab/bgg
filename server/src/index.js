@@ -235,11 +235,13 @@ app.get("/api/collection", (req, res) => {
   const userId = currentUserId(req);
 
   // 취득 이력(팔았다 다시 사기도 함)을 전부 가져온 뒤 게임당 대표 행 하나로 줄인다.
+  // c.want_to_play(공유 테이블)는 더 이상 쓰지 않는다 - 아래 gr.want_to_play(사용자별)로 덮어써서 무시한다.
   const rows = db.prepare(`
     SELECT c.*, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en, g.thumbnail, g.image,
            g.year_published, g.min_players, g.max_players, g.playing_time, g.weight,
            g.bgg_rating, g.bgg_rank,
-           gr.rating AS my_rating
+           gr.rating AS my_rating,
+           COALESCE(gr.want_to_play, 0) AS want_to_play
     FROM collection c
     JOIN game g ON g.id = c.game_id
     LEFT JOIN game_rating gr ON gr.game_id = c.game_id AND gr.user_id = ?
@@ -256,9 +258,46 @@ app.get("/api/collection", (req, res) => {
   }
 
   let entries = [...byGame.values()].map((r) => ({ ...r, tags: parseJsonArray(r.tags) }));
+
+  // 플레이 기록은 있지만 collection 행이 없는 게임(빌려서 한 판 등)도 컬렉션 화면에서 보여야 한다.
+  // collection 행을 새로 만들면 소유 개수(보유 95 등)가 오염되므로 조회에서만 합친다.
+  const unownedRows = db.prepare(`
+    SELECT g.id AS game_id, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en,
+           g.thumbnail, g.image, g.year_published, g.min_players, g.max_players, g.playing_time,
+           g.weight, g.bgg_rating, g.bgg_rank, gr.rating AS my_rating,
+           COALESCE(gr.want_to_play, 0) AS want_to_play
+    FROM game g
+    LEFT JOIN game_rating gr ON gr.game_id = g.id AND gr.user_id = ?
+    WHERE EXISTS (SELECT 1 FROM play p WHERE p.game_id = g.id)
+      AND NOT EXISTS (SELECT 1 FROM collection c WHERE c.game_id = g.id)
+  `).all(userId ?? -1);
+  for (const r of unownedRows) {
+    entries.push({
+      id: null, game_id: r.game_id, status: null, want_to_play: r.want_to_play,
+      price_paid: null, price_sold: null, tags: [], note: null, acquired_at: null, created_at: null,
+      game_name: r.game_name, game_name_en: r.game_name_en, thumbnail: r.thumbnail, image: r.image,
+      year_published: r.year_published, min_players: r.min_players, max_players: r.max_players,
+      playing_time: r.playing_time, weight: r.weight, bgg_rating: r.bgg_rating, bgg_rank: r.bgg_rank,
+      my_rating: r.my_rating,
+    });
+  }
+
+  // 요청 사용자 기준 플레이 횟수/최근 플레이일 - BGStats 스타일 정렬·뷰 필터에 쓴다.
+  // 플레이 기록은 계정별로 분리되므로 X-User-Id가 없으면(userId=-1) 전부 0건으로 처리한다.
+  const playAgg = new Map(
+    db.prepare("SELECT game_id, COUNT(*) AS cnt, MAX(played_at) AS last FROM play WHERE user_id = ? GROUP BY game_id")
+      .all(userId ?? -1)
+      .map((r) => [r.game_id, { count: r.cnt, last: r.last }])
+  );
+  entries = entries.map((e) => ({
+    ...e,
+    play_count: playAgg.get(e.game_id)?.count || 0,
+    last_played_at: playAgg.get(e.game_id)?.last || null,
+  }));
+
   if (status) entries = entries.filter((e) => e.status === status);
   if (tag) entries = entries.filter((e) => e.tags.includes(tag));
-  entries.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+  entries.sort((a, b) => ((a.created_at || "") < (b.created_at || "") ? 1 : (a.created_at || "") > (b.created_at || "") ? -1 : 0));
 
   res.json(entries);
 });

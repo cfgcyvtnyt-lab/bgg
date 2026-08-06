@@ -64,6 +64,16 @@ export interface CollectionEntry {
   my_rating?: number | null;
 }
 
+// /api/collection 전용 응답. id/status는 "플레이했지만 collection 행이 없는 게임"에서 null이 될 수 있다.
+// play_count/last_played_at은 요청 사용자(X-User-Id) 기준.
+export interface CollectionListEntry extends Omit<CollectionEntry, "id" | "status"> {
+  id: number | null;
+  status: string | null;
+  want_to_play: number;
+  play_count: number;
+  last_played_at: string | null;
+}
+
 export interface GameDetail extends Game {
   collectionHistory: CollectionEntry[];
   playCount: number;

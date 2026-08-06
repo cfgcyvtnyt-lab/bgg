@@ -100,6 +100,7 @@ export async function fetchCollection(username, apiKey) {
       prevOwned: status.prevowned === "1",
       wishlist: status.wishlist === "1",
       preordered: status.preordered === "1",
+      wantToPlay: status.wanttoplay === "1",
     });
   }
   return games;

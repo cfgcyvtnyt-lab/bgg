@@ -1,5 +1,5 @@
 import type {
-  User, Game, GameDetail, CollectionEntry, Play, PlayInput, Insights, BggSearchResult,
+  User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
   NameAlias, NameCount,
 } from "./types";
 
@@ -79,7 +79,7 @@ export const api = {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (tag) params.set("tag", tag);
-    return request<CollectionEntry[]>(`/collection?${params}`);
+    return request<CollectionListEntry[]>(`/collection?${params}`);
   },
   addCollection: (body: Partial<CollectionEntry> & { game_id: number }) =>
     request<CollectionEntry>("/collection", { method: "POST", body: JSON.stringify(body) }),
