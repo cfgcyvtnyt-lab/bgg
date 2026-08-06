@@ -141,6 +141,9 @@ const ALTER_COLUMNS = [
   // 게임별 플레이 설정: 협력 게임 기본 체크 여부, 승패 자동 판정 기준(high/low/none).
   "ALTER TABLE game ADD COLUMN coop_default INTEGER DEFAULT 0",
   "ALTER TABLE game ADD COLUMN win_condition TEXT DEFAULT 'high'",
+  // 에러플(룰 실수) 기록: 체크 여부 + 메모.
+  "ALTER TABLE play ADD COLUMN has_rule_error INTEGER DEFAULT 0",
+  "ALTER TABLE play ADD COLUMN rule_error_note TEXT",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.

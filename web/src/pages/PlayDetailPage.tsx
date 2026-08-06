@@ -46,8 +46,6 @@ export default function PlayDetailPage() {
   if (error || !play) return <div className="page center-pad error-text">{error || "기록을 찾을 수 없습니다"}</div>;
 
   const comboMap = new Map(play.comboStats.players.map((c) => [c.name, c]));
-  const humanCount = play.players.filter((p) => !p.is_automa).length;
-  const winnerNames = play.players.filter((p) => p.win === true || p.win === 1).map((p) => p.name);
   const avatarByName = new Map(users.filter((u) => u.avatar).map((u) => [u.name, u.avatar as string]));
   const boxArt = imgUrl(play.game_thumbnail || play.game_image);
 
@@ -69,15 +67,13 @@ export default function PlayDetailPage() {
 
       <div className="card info-box">
         <div className="info-row"><span className="muted">위치</span><span>{play.location || "미기록"}</span></div>
-        <div className="info-row"><span className="muted">승자</span><span>{winnerNames.length > 0 ? winnerNames.join(", ") : "-"}</span></div>
-        <div className="info-row"><span className="muted">의견</span><span>{play.comment || "없음"}</span></div>
         <div className="info-row"><span className="muted">시간</span><span>{play.duration_min ? `${play.duration_min}분` : "-"}</span></div>
-        <div className="info-row"><span className="muted">인원</span><span>{humanCount <= 1 ? "1인" : `${humanCount}인+`}{play.is_coop ? " · 협력" : ""}</span></div>
       </div>
 
-      {play.photos.length > 0 && (
-        <div className="card play-detail-photos">
-          <PhotoSlider photos={play.photos} />
+      {!!play.has_rule_error && (
+        <div className="card rule-error-box">
+          <span className="rule-error-tag">⚠️ 룰 실수</span>
+          {play.rule_error_note && <span className="rule-error-note">{play.rule_error_note}</span>}
         </div>
       )}
 
@@ -90,20 +86,20 @@ export default function PlayDetailPage() {
           return (
             <div key={i} className="play-detail-player-row">
               <div className="play-detail-player-left">
-                {isWinner && <span className="player-wreath" aria-label="승자" title="승자">🏆</span>}
                 {avatar ? (
                   <img className="player-avatar" src={api.avatarUrl(avatar)} alt="" />
                 ) : (
                   <div className="player-initial" style={{ background: colorForName(p.name) }}>{p.name.slice(0, 1)}</div>
                 )}
                 <span className="play-detail-player-name">{p.name}{p.is_automa ? " 🤖" : ""}</span>
+                {isWinner && <span className="player-wreath" aria-label="승자" title="승자">🏆</span>}
               </div>
               <div className="play-detail-player-right">
-                <span className="play-detail-player-score">{p.score != null ? fmtNum(p.score) : "-"}</span>
                 {p.isBestScore && <span className="badge badge-best">최고 점수!</span>}
                 {combo && combo.currentStreak >= 2 && (
                   <span className="badge badge-streak">{combo.currentStreak} 연승</span>
                 )}
+                <span className="play-detail-player-score">{p.score != null ? fmtNum(p.score) : "-"}</span>
               </div>
             </div>
           );
@@ -151,6 +147,19 @@ export default function PlayDetailPage() {
             ))}
           </div>
         </>
+      )}
+
+      {play.comment && (
+        <>
+          <div className="section-title">코멘트</div>
+          <div className="card play-detail-comment">{play.comment}</div>
+        </>
+      )}
+
+      {play.photos.length > 0 && (
+        <div className="card play-detail-photos">
+          <PhotoSlider photos={play.photos} />
+        </div>
       )}
     </div>
   );

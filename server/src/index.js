@@ -334,7 +334,7 @@ function computeGameStats(gameId, userId, playCount) {
   if (playRows.length === 0) {
     return {
       playCount: 0, winRate: null, avgDurationMin: null, lastPlayedAt: null,
-      score: { solo: null, multi: null }, opponents: [],
+      score: { solo: null, multi: null }, winRateSplit: { solo: null, multi: null }, opponents: [],
     };
   }
 
@@ -374,6 +374,18 @@ function computeGameStats(gameId, userId, playCount) {
   };
   const score = { solo: scoreBucket(soloScores), multi: scoreBucket(multiScores) };
 
+  // 새 기록 화면 미리보기용: 점수 유무와 무관하게 1인/2인+ 승률만 따로 뽑는다
+  // (점수 기록이 없는 게임도 승률은 보여줘야 해서 score 버킷과 별도로 낸다).
+  let soloWins = 0, soloPlays = 0, multiWins = 0, multiPlays = 0;
+  for (const [playId, win] of myWinByPlay) {
+    if (isSoloPlay(playId)) { soloPlays++; if (win) soloWins++; }
+    else { multiPlays++; if (win) multiWins++; }
+  }
+  const winRateSplit = {
+    solo: soloPlays ? { rate: Math.round((soloWins / soloPlays) * 100), plays: soloPlays } : null,
+    multi: multiPlays ? { rate: Math.round((multiWins / multiPlays) * 100), plays: multiPlays } : null,
+  };
+
   const durations = playRows.map((p) => p.duration_min).filter((n) => n != null && n > 0);
   const avgDurationMin = durations.length
     ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
@@ -403,6 +415,7 @@ function computeGameStats(gameId, userId, playCount) {
     avgDurationMin,
     lastPlayedAt,
     score,
+    winRateSplit,
     opponents,
   };
 }
@@ -795,6 +808,7 @@ app.post("/api/plays", (req, res) => {
   const {
     game_id, played_at, duration_min, location, comment,
     is_coop, expansions, incomplete, players,
+    has_rule_error, rule_error_note,
   } = req.body || {};
 
   if (!game_id || !played_at) {
@@ -808,11 +822,12 @@ app.post("/api/plays", (req, res) => {
   try {
     const result = db.prepare(`
       INSERT INTO play (user_id, game_id, played_at, duration_min, location, comment,
-                        incomplete, source, expansions, is_coop)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'app', ?, ?)
+                        incomplete, source, expansions, is_coop, has_rule_error, rule_error_note)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'app', ?, ?, ?, ?)
     `).run(userId, game_id, played_at, duration_min ?? null, location ?? null,
            comment ?? null, incomplete ? 1 : 0,
-           expansions ? JSON.stringify(expansions) : null, is_coop ? 1 : 0);
+           expansions ? JSON.stringify(expansions) : null, is_coop ? 1 : 0,
+           has_rule_error ? 1 : 0, rule_error_note ?? null);
 
     const playId = result.lastInsertRowid;
     const insertPlayer = db.prepare(`
@@ -848,7 +863,7 @@ app.patch("/api/plays/:id", (req, res) => {
   if (!existing) return res.status(404).json({ error: "찾을 수 없습니다" });
   if (existing.user_id !== userId) return res.status(403).json({ error: "본인 기록만 수정할 수 있습니다" });
 
-  const fields = ["played_at", "duration_min", "location", "comment", "incomplete", "is_coop", "expansions"];
+  const fields = ["played_at", "duration_min", "location", "comment", "incomplete", "is_coop", "expansions", "has_rule_error", "rule_error_note"];
   const updates = [];
   const params = [];
   for (const f of fields) {
@@ -856,7 +871,7 @@ app.patch("/api/plays/:id", (req, res) => {
       updates.push(`${f} = ?`);
       let v = req.body[f];
       if (f === "expansions" && v != null) v = JSON.stringify(v);
-      if ((f === "incomplete" || f === "is_coop") && v != null) v = v ? 1 : 0;
+      if ((f === "incomplete" || f === "is_coop" || f === "has_rule_error") && v != null) v = v ? 1 : 0;
       params.push(v);
     }
   }

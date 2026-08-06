@@ -193,15 +193,33 @@ export default function FeedPage() {
   }, [authorFilter, contentFilter, tagFilter]);
 
   useEffect(() => {
+    // IntersectionObserver만 쓰면 일부 환경에서 콜백이 아예 안 불려 더 안 불러온다.
+    // 스크롤 위치 계산을 폴백으로 같이 둔다.
+    if (!hasMore) return;
+
+    function maybeLoad() {
+      if (!hasMore || loadingRef.current) return;
+      const remaining = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+      if (remaining < 300) loadMore(false);
+    }
+
     const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
-        loadMore(false);
-      }
-    }, { rootMargin: "200px" });
-    observer.observe(el);
-    return () => observer.disconnect();
+    const observer = el
+      ? new IntersectionObserver((entries) => {
+          if (entries[0].isIntersecting) maybeLoad();
+        }, { rootMargin: "200px" })
+      : null;
+    observer?.observe(el!);
+
+    window.addEventListener("scroll", maybeLoad, { passive: true });
+    window.addEventListener("resize", maybeLoad);
+    maybeLoad();
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("scroll", maybeLoad);
+      window.removeEventListener("resize", maybeLoad);
+    };
   }, [hasMore, loadMore]);
 
   function handleTagClick(kind: "game" | "category", value: string, gameId?: number) {

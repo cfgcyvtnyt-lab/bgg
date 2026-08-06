@@ -1,8 +1,3 @@
-.plays-total {
-  font-size: 13px;
-  margin: -2px 0 10px;
-}
-
 /* 필터로 진입했을 때만 보이는 안내 배너 (game_id 쿼리 파라미터로 들어온 경우) */
 .plays-scoped-banner {
   display: flex;
@@ -49,8 +44,13 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 2px;
-  border-bottom: 1px solid var(--border);
   color: var(--text);
+}
+
+/* 그룹에 항목이 하나뿐이면 구분선이 없어야 한다 - 항목이 2개 이상일 때 사이에만 보이게
+   마지막 항목에는 선을 안 그린다(마지막이 곧 유일한 항목인 경우도 포함). */
+.play-day-group .play-item:not(:last-of-type) {
+  border-bottom: 1px solid var(--border);
 }
 
 .play-item-text {
@@ -100,4 +100,91 @@
   font-size: 14px;
   font-weight: 700;
   color: #fff;
+}
+
+/* 경쟁전(개인전) 승자: 프로필 사진 앞에 작은 트로피를 붙인다 */
+.winner-slot {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.winner-slot-trophy {
+  font-size: 13px;
+  flex: none;
+}
+
+/* 협력/솔로 판: 승패를 아바타 대신 아이콘 하나로만 보여준다 */
+.result-icon {
+  font-size: 22px;
+  flex: none;
+  line-height: 1;
+}
+
+.result-icon-loss {
+  color: var(--muted);
+  filter: grayscale(1);
+}
+
+/* ---------- 기록 헤더: + 버튼 옆 필터(깔때기) ---------- */
+
+.plays-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plays-filter-wrap {
+  position: relative;
+}
+
+.plays-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 240px;
+  max-width: calc(100vw - 32px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  z-index: 20;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.plays-filter-dropdown input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+}
+
+.plays-filter-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.plays-filter-results li button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 6px 4px;
+  font-size: 13.5px;
+}
+
+.plays-scroll-sentinel {
+  height: 1px;
+}
+
+.plays-loading-more {
+  text-align: center;
+  font-size: 12.5px;
+  padding: 10px 0;
 }

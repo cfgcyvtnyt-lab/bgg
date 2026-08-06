@@ -262,11 +262,51 @@
   margin-bottom: 10px;
 }
 
+/* shared.css의 `.field label { color: var(--muted); font-size:13px }`가 하위 라벨까지
+   전부 흐리게 만들어서(섹션 제목과 구분 안 됨) 이 안의 라벨 색은 여기서 명시적으로 되돌린다. */
+.settings-toggle-label {
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* 승패 자동 판정: 세로 나열 대신 가로 세그먼트(칩) 형태로 - 선택된 것만 accent로 표시 */
 .win-condition-options {
   display: flex;
-  flex-direction: column;
   gap: 6px;
   margin-top: 4px;
+}
+
+/* `.field label`(shared.css)이 클래스 1개짜리 선택자보다 명시도가 높아 색을 덮어써버려서
+   여기는 `.win-condition-options .win-condition-chip`처럼 두 단계로 잡아 확실히 이긴다. */
+.win-condition-options .win-condition-chip {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 4px;
+  font-size: 12.5px;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.win-condition-chip input {
+  /* 라디오 자체는 숨기고 칩 테두리 색으로 선택 상태를 표시한다 */
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.win-condition-options .win-condition-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .add-player-row {
@@ -319,17 +359,6 @@
 
 .preview-score-line {
   font-size: 14px;
-}
-
-.preview-meta {
-  display: flex;
-  gap: 12px;
-  font-size: 12.5px;
-  margin-bottom: 4px;
-}
-
-.preview-opponents {
-  font-size: 12.5px;
 }
 
 .preview-empty {
@@ -466,6 +495,10 @@
   width: 100%;
   box-sizing: border-box;
   margin-top: 4px;
+}
+
+.rule-error-field textarea {
+  margin-top: 6px;
 }
 
 .player-score-readonly {

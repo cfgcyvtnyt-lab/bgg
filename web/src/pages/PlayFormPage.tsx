@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { Game, GameDetail, Photo, PlayPlayer, ScoreTemplate } from "../api/types";
+import type { Game, GameDetail, Photo, PlayPlayer, ScoreBucket, ScoreTemplate, WinRateSplitBucket } from "../api/types";
 import { evalScoreExpression } from "../utils/scoreParser";
 import { imgUrl } from "../utils/imgUrl";
 import { useUser } from "../context/UserContext";
@@ -41,6 +41,17 @@ function fmtNum(n: number | null | undefined) {
   return Math.round(n).toLocaleString();
 }
 
+// 미리보기 요약: 평균 -> 최고 -> 승률 순. 점수 기록이 없는 게임은 승률만 보여준다.
+function previewScoreLine(bucket: ScoreBucket | null | undefined, winRate: WinRateSplitBucket | null | undefined) {
+  const parts: string[] = [];
+  if (bucket) {
+    parts.push(`평균 ${fmtNum(bucket.avg)}`);
+    parts.push(`최고 ${fmtNum(bucket.best)}`);
+  }
+  if (winRate) parts.push(`승률 ${winRate.rate}%`);
+  return parts.join(" · ");
+}
+
 export default function PlayFormPage() {
   const { id } = useParams();
   const isEdit = !!id;
@@ -63,6 +74,8 @@ export default function PlayFormPage() {
   const [defaultLocation, setDefaultLocation] = useState("");
 
   const [comment, setComment] = useState("");
+  const [hasRuleError, setHasRuleError] = useState(false);
+  const [ruleErrorNote, setRuleErrorNote] = useState("");
   const [isCoop, setIsCoop] = useState(false);
   const [coopSuccess, setCoopSuccess] = useState(true);
   const [players, setPlayers] = useState<PlayerRow[]>([emptyPlayer(), emptyPlayer()]);
@@ -151,6 +164,8 @@ export default function PlayFormPage() {
         setPlayedAt(found.played_at);
         setLocation(found.location || "");
         setComment(found.comment || "");
+        setHasRuleError(!!found.has_rule_error);
+        setRuleErrorNote(found.rule_error_note || "");
         setIsCoop(!!found.is_coop);
         setDurationMin(found.duration_min);
         if (found.is_coop) {
@@ -424,6 +439,8 @@ export default function PlayFormPage() {
         location: location || null,
         comment: comment || null,
         is_coop: isCoop,
+        has_rule_error: hasRuleError,
+        rule_error_note: hasRuleError ? (ruleErrorNote || null) : null,
         players: finalPlayers,
       };
 
@@ -489,7 +506,10 @@ export default function PlayFormPage() {
   if (loading) return <div className="page center-pad muted">불러오는 중...</div>;
 
   const stats = gameDetail?.stats;
-  const hasScorePreview = stats && (stats.score.solo || stats.score.multi);
+  const soloWinRate = stats?.winRateSplit?.solo ?? null;
+  const multiWinRate = stats?.winRateSplit?.multi ?? null;
+  // 점수 기록이 없어도 승률은 있을 수 있어서(winRateSplit) 점수 버킷과 별도로 존재 여부를 판단한다.
+  const hasScorePreview = stats && (stats.score.solo || stats.score.multi || soloWinRate || multiWinRate);
 
   // 현재 위치가 목록에 없으면(예: 수정 화면에서 예전 값) 칩 목록에 추가해서 놓치지 않게 한다.
   const locationChips = location && !locations.some((l) => l.name === location)
@@ -539,22 +559,18 @@ export default function PlayFormPage() {
         <div className="card preview-box">
           <div className="section-title" style={{ margin: "0 0 8px" }}>이 게임의 내 기록</div>
           <div className="preview-score-split">
-            {stats!.score.solo && (
+            {(stats!.score.solo || soloWinRate) && (
               <div className="preview-score-col">
-                <div className="muted preview-score-label">1인 ({stats!.score.solo.count}판)</div>
-                <div className="preview-score-line">최고 {fmtNum(stats!.score.solo.best)} · 최저 {fmtNum(stats!.score.solo.worst)} · 평균 {fmtNum(stats!.score.solo.avg)}</div>
+                <div className="muted preview-score-label">1인 ({stats!.score.solo?.count ?? soloWinRate?.plays ?? 0}판)</div>
+                <div className="preview-score-line">{previewScoreLine(stats!.score.solo, soloWinRate)}</div>
               </div>
             )}
-            {stats!.score.multi && (
+            {(stats!.score.multi || multiWinRate) && (
               <div className="preview-score-col">
-                <div className="muted preview-score-label">2인+ ({stats!.score.multi.count}판)</div>
-                <div className="preview-score-line">최고 {fmtNum(stats!.score.multi.best)} · 최저 {fmtNum(stats!.score.multi.worst)} · 평균 {fmtNum(stats!.score.multi.avg)}</div>
+                <div className="muted preview-score-label">2인+ ({stats!.score.multi?.count ?? multiWinRate?.plays ?? 0}판)</div>
+                <div className="preview-score-line">{previewScoreLine(stats!.score.multi, multiWinRate)}</div>
               </div>
             )}
-          </div>
-          <div className="preview-meta muted">
-            {stats!.avgDurationMin != null && <span>평균 {stats!.avgDurationMin}분</span>}
-            {stats!.lastPlayedAt && <span>최근 {stats!.lastPlayedAt}</span>}
           </div>
         </div>
       )}
@@ -635,22 +651,22 @@ export default function PlayFormPage() {
 
       {editingGameSettings && (
         <div className="card game-settings-edit">
-          <label className="switch-label">
+          <label className="switch-label settings-toggle-label">
             <input type="checkbox" checked={settingsCoop} onChange={(e) => setSettingsCoop(e.target.checked)} />
             협력 게임 기본 체크
           </label>
           <div className="field" style={{ marginTop: 8 }}>
             <label>승패 자동 판정</label>
             <div className="win-condition-options">
-              <label className="switch-label">
+              <label className={`win-condition-chip${settingsWinCondition === "high" ? " active" : ""}`}>
                 <input type="radio" name="win_condition" checked={settingsWinCondition === "high"} onChange={() => setSettingsWinCondition("high")} />
                 최고점 승
               </label>
-              <label className="switch-label">
+              <label className={`win-condition-chip${settingsWinCondition === "low" ? " active" : ""}`}>
                 <input type="radio" name="win_condition" checked={settingsWinCondition === "low"} onChange={() => setSettingsWinCondition("low")} />
                 최저점 승
               </label>
-              <label className="switch-label">
+              <label className={`win-condition-chip${settingsWinCondition === "none" ? " active" : ""}`}>
                 <input type="radio" name="win_condition" checked={settingsWinCondition === "none"} onChange={() => setSettingsWinCondition("none")} />
                 수동
               </label>
@@ -768,6 +784,21 @@ export default function PlayFormPage() {
       <div className="field">
         <label>코멘트</label>
         <textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
+      </div>
+
+      <div className="field rule-error-field">
+        <label className="switch-label settings-toggle-label">
+          <input type="checkbox" checked={hasRuleError} onChange={(e) => setHasRuleError(e.target.checked)} />
+          룰 실수 있었음
+        </label>
+        {hasRuleError && (
+          <textarea
+            rows={2}
+            placeholder="어떤 룰을 틀렸는지 메모"
+            value={ruleErrorNote}
+            onChange={(e) => setRuleErrorNote(e.target.value)}
+          />
+        )}
       </div>
 
       <div className="field">

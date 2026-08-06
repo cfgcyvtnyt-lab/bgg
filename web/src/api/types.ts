@@ -58,6 +58,12 @@ export interface ScoreBucket {
   count: number;
 }
 
+// 점수 유무와 무관하게 승률만 뽑은 값 (새 기록 화면 미리보기용) - PlayFormPage 참고.
+export interface WinRateSplitBucket {
+  rate: number;
+  plays: number;
+}
+
 export interface GameStats {
   playCount: number;
   winRate: number | null; // 0~100 정수(%)
@@ -65,6 +71,8 @@ export interface GameStats {
   lastPlayedAt: string | null;
   // 1인 판과 2인+ 판을 섞으면 의미가 없어서 분리한다.
   score: { solo: ScoreBucket | null; multi: ScoreBucket | null };
+  // score와 별개로 승률만 1인/2인+로 나눈 값(점수 기록이 없는 게임도 승률은 있을 수 있어서).
+  winRateSplit?: { solo: WinRateSplitBucket | null; multi: WinRateSplitBucket | null };
   opponents: GameOpponentRecord[];
 }
 
@@ -163,6 +171,9 @@ export interface Play {
   expansions: string[];
   players: PlayPlayer[];
   photos: Photo[];
+  // 에러플(룰 실수) 기록
+  has_rule_error?: number | boolean;
+  rule_error_note?: string | null;
 }
 
 export interface TopGame {
@@ -255,6 +266,8 @@ export interface PlayInput {
   is_coop?: boolean;
   expansions?: string[];
   players?: PlayPlayer[];
+  has_rule_error?: boolean;
+  rule_error_note?: string | null;
 }
 
 export interface NameAlias {

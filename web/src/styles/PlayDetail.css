@@ -70,6 +70,26 @@
   text-align: right;
 }
 
+/* ---------- 룰 실수(에러플) 표시 ---------- */
+
+.rule-error-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.rule-error-tag {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.rule-error-note {
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
 /* ---------- 플레이어 목록 ---------- */
 
 .play-detail-players {
@@ -143,6 +163,8 @@
 .play-detail-player-score {
   font-size: 14.5px;
   font-weight: 600;
+  min-width: 40px;
+  text-align: right;
 }
 
 .badge {
@@ -219,6 +241,12 @@
   text-transform: uppercase;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
+}
+
+.play-detail-comment {
+  font-size: 14px;
+  white-space: pre-wrap;
+  margin-bottom: 14px;
 }
 
 .play-detail-photos {
