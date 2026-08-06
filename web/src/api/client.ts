@@ -1,6 +1,6 @@
 import type {
   User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
-  NameAlias, NameCount,
+  NameAlias, NameCount, LocationCount, PlayDetail,
 } from "./types";
 
 const BASE = "/api";
@@ -97,12 +97,15 @@ export const api = {
     sp.set("offset", String(params.offset ?? 0));
     return request<Play[]>(`/plays?${sp}`);
   },
+  play: (id: number) => request<PlayDetail>(`/plays/${id}`),
   addPlay: (body: PlayInput) =>
     request<Play>("/plays", { method: "POST", body: JSON.stringify(body) }),
   updatePlay: (id: number, body: PlayInput) =>
     request<Play>(`/plays/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deletePlay: (id: number) =>
     request<{ ok: boolean }>(`/plays/${id}`, { method: "DELETE" }),
+
+  locations: () => request<LocationCount[]>("/locations"),
 
   insights: () => request<Insights>("/insights"),
 

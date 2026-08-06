@@ -92,8 +92,77 @@
   grid-template-columns: 1fr 1fr auto auto;
   gap: 6px;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
   position: relative;
+}
+
+.automa-checkbox {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.start-player-tag {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 1px 8px;
+  width: fit-content;
+}
+
+.preview-box {
+  margin-bottom: 12px;
+}
+
+.preview-score-split {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.preview-score-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.preview-score-line {
+  font-size: 14px;
+}
+
+.preview-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12.5px;
+  margin-bottom: 4px;
+}
+
+.preview-opponents {
+  font-size: 12.5px;
+}
+
+.preview-empty {
+  font-size: 12.5px;
+  margin-bottom: 12px;
+}
+
+.new-location-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.new-location-row input {
+  flex: 1;
+  min-width: 0;
 }
 
 /* input의 기본 너비가 grid 트랙보다 넓어서(1fr인데 안 줄어듦) 좁은 화면에서

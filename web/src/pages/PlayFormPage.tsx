@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { Game, Play, PlayPlayer } from "../api/types";
+import type { Game, GameDetail, PlayPlayer } from "../api/types";
 import { evalScoreExpression } from "../utils/scoreParser";
 import PlayTimer from "../components/PlayTimer";
 import "../styles/PlayForm.css";
@@ -10,6 +10,7 @@ interface PlayerRow {
   name: string;
   scoreText: string;
   win: boolean;
+  isAutoma: boolean;
 }
 
 function todayStr() {
@@ -17,7 +18,12 @@ function todayStr() {
 }
 
 function emptyPlayer(): PlayerRow {
-  return { name: "", scoreText: "", win: false };
+  return { name: "", scoreText: "", win: false, isAutoma: false };
+}
+
+function fmtNum(n: number | null | undefined) {
+  if (n == null) return "-";
+  return Math.round(n).toLocaleString();
 }
 
 export default function PlayFormPage() {
@@ -29,36 +35,38 @@ export default function PlayFormPage() {
   const [gameQuery, setGameQuery] = useState("");
   const [gameResults, setGameResults] = useState<Game[]>([]);
   const [selectedGame, setSelectedGame] = useState<{ id: number; name: string } | null>(null);
+  const [gameDetail, setGameDetail] = useState<GameDetail | null>(null);
   const [playedAt, setPlayedAt] = useState(todayStr());
+
+  // 장소는 드롭다운/칩으로만 고른다 - 자유 입력을 허용하면 Home/Home2/H. 처럼 표기가 갈린다.
+  const [locations, setLocations] = useState<{ name: string; count: number }[]>([]);
   const [location, setLocation] = useState("");
+  const [addingLocation, setAddingLocation] = useState(false);
+  const [newLocationText, setNewLocationText] = useState("");
+
   const [comment, setComment] = useState("");
   const [isCoop, setIsCoop] = useState(false);
   const [coopSuccess, setCoopSuccess] = useState(true);
   const [players, setPlayers] = useState<PlayerRow[]>([emptyPlayer(), emptyPlayer()]);
+  const [startPlayerIndex, setStartPlayerIndex] = useState<number | null>(null);
   const [durationMin, setDurationMin] = useState<number | null>(null);
-  const [avgMinutes, setAvgMinutes] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEdit);
 
-  // 수정 모드: 전체 플레이 목록에서 id로 찾는다 (단건 조회 엔드포인트가 없어서 페이지를 넘기며 찾는다)
+  useEffect(() => {
+    api.locations().then(setLocations).catch(() => setLocations([]));
+  }, []);
+
+  // 수정 모드: 단건 조회 엔드포인트로 바로 가져온다.
   useEffect(() => {
     if (!isEdit) return;
     const targetId = Number(id);
     (async () => {
       setLoading(true);
       try {
-        let found: Play | null = null;
-        for (let offset = 0; offset < 1500 && !found; offset += 500) {
-          const page = await api.plays({ limit: 500, offset });
-          found = page.find((p) => p.id === targetId) || null;
-          if (page.length < 500) break;
-        }
-        if (!found) {
-          setError("기록을 찾을 수 없습니다");
-          return;
-        }
+        const found = await api.play(targetId);
         setSelectedGame({ id: found.game_id, name: found.game_name || "" });
         setPlayedAt(found.played_at);
         setLocation(found.location || "");
@@ -70,9 +78,16 @@ export default function PlayFormPage() {
         }
         setPlayers(
           found.players.length
-            ? found.players.map((p) => ({ name: p.name, scoreText: p.score != null ? String(p.score) : "", win: !!p.win }))
+            ? found.players.map((p) => ({
+                name: p.name,
+                scoreText: p.score != null ? String(p.score) : "",
+                win: !!p.win,
+                isAutoma: !!p.is_automa,
+              }))
             : [emptyPlayer(), emptyPlayer()],
         );
+        const startIdx = found.players.findIndex((p) => String(p.start_position) === "1");
+        setStartPlayerIndex(startIdx >= 0 ? startIdx : null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "불러오기 실패");
       } finally {
@@ -89,14 +104,10 @@ export default function PlayFormPage() {
     api.game(Number(gid)).then((g) => setSelectedGame({ id: g.id, name: g.name })).catch(() => {});
   }, [isEdit, searchParams]);
 
-  // 선택된 게임의 평균 소요시간 계산
+  // 게임을 고르면 그 게임의 내 기록 요약(최고/최저/평균, 평균시간, 최근 플레이, 상대 전적)을 미리보기로 보여준다.
   useEffect(() => {
-    if (!selectedGame) { setAvgMinutes(null); return; }
-    api.plays({ game_id: selectedGame.id, limit: 500 }).then((list) => {
-      const durations = list.map((p) => p.duration_min).filter((n): n is number => n != null && n > 0);
-      if (durations.length === 0) { setAvgMinutes(null); return; }
-      setAvgMinutes(durations.reduce((a, b) => a + b, 0) / durations.length);
-    }).catch(() => setAvgMinutes(null));
+    if (!selectedGame) { setGameDetail(null); return; }
+    api.game(selectedGame.id).then(setGameDetail).catch(() => setGameDetail(null));
   }, [selectedGame]);
 
   useEffect(() => {
@@ -111,12 +122,30 @@ export default function PlayFormPage() {
     setPlayers((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
   function addPlayer() { setPlayers((prev) => [...prev, emptyPlayer()]); }
-  function removePlayer(i: number) { setPlayers((prev) => prev.filter((_, idx) => idx !== i)); }
+  function removePlayer(i: number) {
+    setPlayers((prev) => prev.filter((_, idx) => idx !== i));
+    setStartPlayerIndex((cur) => (cur === i ? null : cur != null && cur > i ? cur - 1 : cur));
+  }
 
   const parsedScores = useMemo(
     () => players.map((p) => (p.scoreText.trim() === "" ? null : evalScoreExpression(p.scoreText))),
     [players],
   );
+
+  // "사람 플레이어가 1명 이하"면 솔로 - 오토마만 상대인 판도 솔로다.
+  const humanCount = players.filter((p) => p.name.trim() && !p.isAutoma).length;
+
+  function pickStartPlayer() {
+    const filledIdx = players.map((p, i) => (p.name.trim() ? i : -1)).filter((i) => i >= 0);
+    if (filledIdx.length === 0) return;
+    const pick = filledIdx[Math.floor(Math.random() * filledIdx.length)];
+    setStartPlayerIndex(pick);
+  }
+
+  function selectLocation(name: string) {
+    setLocation(name);
+    setAddingLocation(false);
+  }
 
   async function handleSave() {
     if (!selectedGame) { setError("게임을 선택하세요"); return; }
@@ -130,6 +159,8 @@ export default function PlayFormPage() {
           score: parsedScores[i],
           win: isCoop ? coopSuccess : p.win,
           team: isCoop ? "coop" : undefined,
+          is_automa: p.isAutoma,
+          start_position: startPlayerIndex === i ? "1" : null,
         }));
 
       const body = {
@@ -171,6 +202,14 @@ export default function PlayFormPage() {
 
   if (loading) return <div className="page center-pad muted">불러오는 중...</div>;
 
+  const stats = gameDetail?.stats;
+  const hasScorePreview = stats && (stats.score.solo || stats.score.multi);
+
+  // 현재 위치가 목록에 없으면(예: 수정 화면에서 예전 값) 칩 목록에 추가해서 놓치지 않게 한다.
+  const locationChips = location && !locations.some((l) => l.name === location)
+    ? [{ name: location, count: 0 }, ...locations]
+    : locations;
+
   return (
     <div className="page play-form-page">
       <div className="page-header">
@@ -203,18 +242,81 @@ export default function PlayFormPage() {
         )}
       </div>
 
+      {hasScorePreview && (
+        <div className="card preview-box">
+          <div className="section-title" style={{ margin: "0 0 8px" }}>이 게임의 내 기록</div>
+          <div className="preview-score-split">
+            {stats!.score.solo && (
+              <div className="preview-score-col">
+                <div className="muted preview-score-label">1인 ({stats!.score.solo.count}판)</div>
+                <div className="preview-score-line">최고 {fmtNum(stats!.score.solo.best)} · 최저 {fmtNum(stats!.score.solo.worst)} · 평균 {fmtNum(stats!.score.solo.avg)}</div>
+              </div>
+            )}
+            {stats!.score.multi && (
+              <div className="preview-score-col">
+                <div className="muted preview-score-label">2인+ ({stats!.score.multi.count}판)</div>
+                <div className="preview-score-line">최고 {fmtNum(stats!.score.multi.best)} · 최저 {fmtNum(stats!.score.multi.worst)} · 평균 {fmtNum(stats!.score.multi.avg)}</div>
+              </div>
+            )}
+          </div>
+          <div className="preview-meta muted">
+            {stats!.avgDurationMin != null && <span>평균 {stats!.avgDurationMin}분</span>}
+            {stats!.lastPlayedAt && <span>최근 {stats!.lastPlayedAt}</span>}
+          </div>
+          {stats!.opponents.length > 0 && (
+            <div className="preview-opponents muted">
+              {stats!.opponents.map((o) => `${o.name} ${o.games}판 ${o.myWins}승`).join(" · ")}
+            </div>
+          )}
+        </div>
+      )}
+      {gameDetail && !hasScorePreview && gameDetail.playCount === 0 && (
+        <p className="muted preview-empty">아직 이 게임의 기록이 없습니다.</p>
+      )}
+
       <div className="field-row">
         <div className="field">
           <label>날짜</label>
           <input type="date" value={playedAt} onChange={(e) => setPlayedAt(e.target.value)} />
         </div>
-        <div className="field">
-          <label>장소</label>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="예: 우리집" />
-        </div>
       </div>
 
-      <PlayTimer avgMinutes={avgMinutes} onDurationChange={setDurationMin} />
+      <div className="field">
+        <label>장소</label>
+        {location && !addingLocation ? (
+          <div className="selected-game">
+            <span>{location}</span>
+            <button className="btn-small" onClick={() => setAddingLocation(true)}>변경</button>
+          </div>
+        ) : (
+          <>
+            <div className="chip-row">
+              {locationChips.map((l) => (
+                <button key={l.name} className={`chip${location === l.name ? " chip-active" : ""}`}
+                  onClick={() => selectLocation(l.name)}>
+                  {l.name}{l.count > 0 ? ` (${l.count})` : ""}
+                </button>
+              ))}
+              <button className="chip" onClick={() => setAddingLocation(true)}>+ 새 장소</button>
+            </div>
+            {addingLocation && (
+              <div className="new-location-row">
+                <input
+                  placeholder="새 장소 이름"
+                  value={newLocationText}
+                  onChange={(e) => setNewLocationText(e.target.value)}
+                  autoFocus
+                />
+                <button className="btn-small" onClick={() => { if (newLocationText.trim()) selectLocation(newLocationText.trim()); setNewLocationText(""); }}>
+                  추가
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <PlayTimer avgMinutes={stats?.avgDurationMin ?? null} onDurationChange={setDurationMin} />
 
       <div className="field">
         <label>플레이 시간 (분, 직접 수정 가능)</label>
@@ -238,7 +340,9 @@ export default function PlayFormPage() {
         )}
       </div>
 
-      <div className="section-title">플레이어</div>
+      <div className="section-title">
+        플레이어 <span className="muted" style={{ textTransform: "none" }}>({humanCount <= 1 ? "1인 · 솔로" : `${humanCount}인+`})</span>
+      </div>
       {players.map((p, i) => (
         <div key={i} className="player-row-edit">
           <input
@@ -260,6 +364,11 @@ export default function PlayFormPage() {
             </label>
           )}
           <button className="remove-player-btn" onClick={() => removePlayer(i)} aria-label="플레이어 제거">✕</button>
+          <label className="automa-checkbox">
+            <input type="checkbox" checked={p.isAutoma} onChange={(e) => updatePlayer(i, { isAutoma: e.target.checked })} />
+            오토마/봇
+          </label>
+          {startPlayerIndex === i && <span className="start-player-tag">시작 플레이어</span>}
           {p.scoreText.trim() && parsedScores[i] == null && (
             <div className="score-error">식을 계산할 수 없습니다</div>
           )}
@@ -269,6 +378,7 @@ export default function PlayFormPage() {
         </div>
       ))}
       <button className="btn-secondary add-player-btn" onClick={addPlayer}>+ 플레이어 추가</button>
+      <button className="btn-secondary add-player-btn" onClick={pickStartPlayer}>🎲 시작 플레이어 뽑기</button>
 
       <div className="field">
         <label>코멘트</label>

@@ -1,0 +1,79 @@
+.play-detail-page .page-header h1 {
+  font-size: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.play-detail-players {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.play-detail-player-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.play-detail-player-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.play-detail-player-main {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14.5px;
+}
+
+.play-detail-player-name {
+  font-weight: 600;
+}
+
+.play-detail-badges {
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 11px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+.badge-best {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.combo-stats-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.combo-stats-header, .combo-stats-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 0.8fr 0.8fr 0.8fr;
+  gap: 4px;
+  font-size: 12.5px;
+  text-align: right;
+}
+
+.combo-stats-header span:first-child, .combo-stats-row span:first-child {
+  text-align: left;
+}
+
+.combo-stats-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}

@@ -1,13 +1,25 @@
-.play-month-group {
-  margin-bottom: 18px;
+.plays-total {
+  font-size: 13px;
+  margin: -6px 0 12px;
 }
 
-.play-month-divider {
+.play-day-group {
+  margin-bottom: 14px;
+}
+
+.play-day-divider {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   font-size: 13px;
-  color: var(--muted);
   margin: 14px 0 8px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
+}
+
+.play-day-weekday {
+  font-weight: 700;
+  color: var(--text);
 }
 
 .play-item {
@@ -24,16 +36,28 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 8px;
 }
 
 .play-item-game {
   font-weight: 600;
   font-size: 14.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.play-item-winner {
+  font-size: 12px;
+  color: var(--accent);
+  flex: none;
+  white-space: nowrap;
 }
 
 .play-item-loc {
   font-size: 12px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .play-item-players {

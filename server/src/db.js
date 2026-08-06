@@ -102,6 +102,8 @@ const ALTER_COLUMNS = [
   "ALTER TABLE collection ADD COLUMN want_to_play INTEGER DEFAULT 0",
   // rating과 마찬가지로 사용자마다 다른 값이라 공유 테이블이 아닌 game_rating에 사용자별로 저장한다.
   "ALTER TABLE game_rating ADD COLUMN want_to_play INTEGER NOT NULL DEFAULT 0",
+  // 오토마/봇 플레이어 표시. "사람 플레이어 1명 이하"를 솔로로 판정할 때 이 플래그로 사람 수를 센다.
+  "ALTER TABLE play_player ADD COLUMN is_automa INTEGER DEFAULT 0",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.

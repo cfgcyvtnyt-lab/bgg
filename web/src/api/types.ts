@@ -29,12 +29,20 @@ export interface GameOpponentRecord {
   myWins: number;
 }
 
+export interface ScoreBucket {
+  best: number;
+  worst: number;
+  avg: number;
+  count: number;
+}
+
 export interface GameStats {
   playCount: number;
   winRate: number | null; // 0~100 정수(%)
   avgDurationMin: number | null;
   lastPlayedAt: string | null;
-  score: { best: number; worst: number; avg: number } | null;
+  // 1인 판과 2인+ 판을 섞으면 의미가 없어서 분리한다.
+  score: { solo: ScoreBucket | null; multi: ScoreBucket | null };
   opponents: GameOpponentRecord[];
 }
 
@@ -92,6 +100,9 @@ export interface PlayPlayer {
   team?: string | null;
   is_new?: boolean | number;
   start_position?: string | null;
+  is_automa?: boolean | number;
+  // /api/plays/:id 에서만 내려온다: 이번 점수가 같은 조합에서의 최고점인지
+  isBestScore?: boolean;
 }
 
 export interface Play {
@@ -175,4 +186,23 @@ export interface BggSearchResult {
   name: string;
   yearPublished: number | null;
   inCollection: boolean;
+}
+
+export interface LocationCount {
+  name: string;
+  count: number;
+}
+
+export interface ComboPlayerStat {
+  name: string;
+  plays: number;
+  wins: number;
+  winRate: number | null;
+  avgScore: number | null;
+  bestScore: number | null;
+  currentStreak: number;
+}
+
+export interface PlayDetail extends Play {
+  comboStats: { matchCount: number; players: ComboPlayerStat[] };
 }

@@ -5,6 +5,7 @@ import UserSelectPage from "./pages/UserSelectPage";
 import CollectionPage from "./pages/CollectionPage";
 import GameDetailPage from "./pages/GameDetailPage";
 import PlaysPage from "./pages/PlaysPage";
+import PlayDetailPage from "./pages/PlayDetailPage";
 import PlayFormPage from "./pages/PlayFormPage";
 import InsightsPage from "./pages/InsightsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -26,6 +27,7 @@ function AppRoutes() {
         <Route path="/plays" element={<PlaysPage />} />
         <Route path="/plays/new" element={<PlayFormPage />} />
         <Route path="/plays/:id/edit" element={<PlayFormPage />} />
+        <Route path="/plays/:id" element={<PlayDetailPage />} />
         <Route path="/insights" element={<InsightsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

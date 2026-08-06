@@ -169,16 +169,30 @@ export default function GameDetailPage() {
           <div className="card info-box">
             <div className="info-row"><span className="muted">플레이 수</span><span>{fmtNum(game.stats.playCount)}회</span></div>
             <div className="info-row"><span className="muted">승률</span><span>{game.stats.winRate != null ? `${game.stats.winRate}%` : "-"}</span></div>
-            {game.stats.score && (
-              <>
-                <div className="info-row"><span className="muted">최고점</span><span>{fmtNum(game.stats.score.best)}</span></div>
-                <div className="info-row"><span className="muted">최저점</span><span>{fmtNum(game.stats.score.worst)}</span></div>
-                <div className="info-row"><span className="muted">평균점</span><span>{fmtNum(game.stats.score.avg)}</span></div>
-              </>
-            )}
             <div className="info-row"><span className="muted">평균 소요시간</span><span>{game.stats.avgDurationMin != null ? `${game.stats.avgDurationMin}분` : "-"}</span></div>
             <div className="info-row"><span className="muted">마지막 플레이</span><span>{game.stats.lastPlayedAt || "-"}</span></div>
           </div>
+
+          {(game.stats.score.solo || game.stats.score.multi) && (
+            <div className="card score-split-box">
+              {game.stats.score.solo && (
+                <div className="score-split-col">
+                  <div className="score-split-label muted">1인 ({game.stats.score.solo.count}판)</div>
+                  <div className="info-row"><span className="muted">최고</span><span>{fmtNum(game.stats.score.solo.best)}</span></div>
+                  <div className="info-row"><span className="muted">최저</span><span>{fmtNum(game.stats.score.solo.worst)}</span></div>
+                  <div className="info-row"><span className="muted">평균</span><span>{fmtNum(game.stats.score.solo.avg)}</span></div>
+                </div>
+              )}
+              {game.stats.score.multi && (
+                <div className="score-split-col">
+                  <div className="score-split-label muted">2인+ ({game.stats.score.multi.count}판)</div>
+                  <div className="info-row"><span className="muted">최고</span><span>{fmtNum(game.stats.score.multi.best)}</span></div>
+                  <div className="info-row"><span className="muted">최저</span><span>{fmtNum(game.stats.score.multi.worst)}</span></div>
+                  <div className="info-row"><span className="muted">평균</span><span>{fmtNum(game.stats.score.multi.avg)}</span></div>
+                </div>
+              )}
+            </div>
+          )}
 
           {game.stats.opponents.length > 0 && (
             <div className="card opponent-box">
@@ -244,7 +258,7 @@ export default function GameDetailPage() {
       {plays.length === 0 && <p className="muted center-pad">아직 플레이 기록이 없습니다.</p>}
       <div className="play-list">
         {plays.map((p) => (
-          <Link key={p.id} to={`/plays/${p.id}/edit`} className="play-row">
+          <Link key={p.id} to={`/plays/${p.id}`} className="play-row">
             <div className="play-row-date">{p.played_at}</div>
             <div className="play-row-detail muted">
               {p.location || "장소 미기록"}

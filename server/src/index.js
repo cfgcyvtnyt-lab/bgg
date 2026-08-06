@@ -132,6 +132,8 @@ app.get("/api/games/:id", (req, res) => {
 });
 
 // 게임 상세 화면용 요청 사용자 기준 통계: 승률, 점수, 평균 소요시간, 마지막 플레이, 상대 전적.
+// 점수(최고/최저/평균)는 1인 판과 2인+ 판을 섞으면 의미가 없어서 solo/multi로 나눠서 낸다.
+// 솔로 판정은 "사람 플레이어(is_automa=0)가 1명 이하"인 판 - 오토마만 상대인 판도 솔로로 본다.
 function computeGameStats(gameId, userId, playCount) {
   const user = db.prepare("SELECT name FROM user WHERE id = ?").get(userId);
   if (!user) return null;
@@ -145,33 +147,45 @@ function computeGameStats(gameId, userId, playCount) {
   if (playRows.length === 0) {
     return {
       playCount: 0, winRate: null, avgDurationMin: null, lastPlayedAt: null,
-      score: null, opponents: [],
+      score: { solo: null, multi: null }, opponents: [],
     };
   }
 
   const playIds = playRows.map((p) => p.id);
   const placeholders = playIds.map(() => "?").join(",");
   const allPlayers = db.prepare(
-    `SELECT play_id, name, score, win FROM play_player WHERE play_id IN (${placeholders})`
+    `SELECT play_id, name, score, win, is_automa FROM play_player WHERE play_id IN (${placeholders})`
   ).all(...playIds);
+
+  // 판별 사람 플레이어 수 (오토마 제외) - 1명 이하면 솔로.
+  const humanCountByPlay = new Map();
+  for (const pp of allPlayers) {
+    if (pp.is_automa) continue;
+    humanCountByPlay.set(pp.play_id, (humanCountByPlay.get(pp.play_id) || 0) + 1);
+  }
+  const isSoloPlay = (playId) => (humanCountByPlay.get(playId) || 0) <= 1;
 
   // 각 판에서 "나"의 win 여부를 먼저 뽑아둔다 - 상대 전적 계산에 필요하다.
   const myWinByPlay = new Map();
-  const myScores = [];
+  const soloScores = [];
+  const multiScores = [];
   let myWins = 0;
   for (const pp of allPlayers) {
     if (applyAlias(playerAlias, pp.name) !== myCanonical) continue;
     myWinByPlay.set(pp.play_id, pp.win ? 1 : 0);
     if (pp.win) myWins++;
-    if (pp.score != null) myScores.push(pp.score);
+    if (pp.score != null) {
+      (isSoloPlay(pp.play_id) ? soloScores : multiScores).push(pp.score);
+    }
   }
 
-  // 점수가 아예 없는 게임(협력 등)은 점수 섹션 자체를 숨긴다.
-  const score = myScores.length === 0 ? null : {
-    best: Math.round(Math.max(...myScores)),
-    worst: Math.round(Math.min(...myScores)),
-    avg: Math.round(myScores.reduce((a, b) => a + b, 0) / myScores.length),
+  const scoreBucket = (scores) => scores.length === 0 ? null : {
+    best: Math.round(Math.max(...scores)),
+    worst: Math.round(Math.min(...scores)),
+    avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+    count: scores.length,
   };
+  const score = { solo: scoreBucket(soloScores), multi: scoreBucket(multiScores) };
 
   const durations = playRows.map((p) => p.duration_min).filter((n) => n != null && n > 0);
   const avgDurationMin = durations.length
@@ -179,9 +193,10 @@ function computeGameStats(gameId, userId, playCount) {
     : null;
   const lastPlayedAt = playRows.reduce((max, p) => (p.played_at > max ? p.played_at : max), playRows[0].played_at);
 
-  // 상대별 전적: 나를 제외한 참가자를 별칭 기준으로 합쳐서 판수/내 승수를 집계한다.
+  // 상대별 전적: 나를 제외한 "사람" 참가자를 별칭 기준으로 합쳐서 판수/내 승수를 집계한다. 오토마는 상대가 아니다.
   const opponentMap = new Map();
   for (const pp of allPlayers) {
+    if (pp.is_automa) continue;
     const canonical = applyAlias(playerAlias, pp.name);
     if (canonical === myCanonical) continue;
     const cur = opponentMap.get(canonical) || { name: canonical, games: new Set(), myWins: 0 };
@@ -354,6 +369,23 @@ function loadPlayers(playId) {
   return db.prepare("SELECT * FROM play_player WHERE play_id = ?").all(playId);
 }
 
+// 기록 입력에서 장소를 자유 입력 대신 목록에서 고르게 하기 위한 엔드포인트.
+// name_alias(location)를 적용해 표기가 갈린 이름(Home/Home2/H. 등)을 합친 뒤 사용 횟수와 함께 반환한다.
+app.get("/api/locations", (req, res) => {
+  const rows = db.prepare(
+    "SELECT location AS name, COUNT(*) AS count FROM play WHERE location IS NOT NULL AND location != '' GROUP BY location"
+  ).all();
+  const aliasMap = loadAliasMap("location");
+  const merged = new Map();
+  for (const r of rows) {
+    const canonical = applyAlias(aliasMap, r.name);
+    const cur = merged.get(canonical) || { name: canonical, count: 0 };
+    cur.count += r.count;
+    merged.set(canonical, cur);
+  }
+  res.json([...merged.values()].sort((a, b) => b.count - a.count));
+});
+
 app.get("/api/plays", (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
@@ -386,6 +418,90 @@ app.get("/api/plays", (req, res) => {
   res.json(result);
 });
 
+// 플레이 상세: 같은 게임 · 같은 플레이어 조합(오토마 포함, 별칭 적용)의 누적 통계를 함께 낸다.
+// "조합"은 이번 판 참가자 이름 집합과 정확히 같은 다른 판들만 - 인원이 다르면 다른 대전으로 본다.
+app.get("/api/plays/:id", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const id = Number(req.params.id);
+
+  const play = db.prepare(`
+    SELECT p.*, COALESCE(g.custom_name, g.name) AS game_name
+    FROM play p JOIN game g ON g.id = p.game_id WHERE p.id = ?
+  `).get(id);
+  if (!play) return res.status(404).json({ error: "찾을 수 없습니다" });
+  if (play.user_id !== userId) return res.status(403).json({ error: "본인 기록만 볼 수 있습니다" });
+
+  const players = loadPlayers(id);
+  const playerAlias = loadAliasMap("player");
+  const comboNames = [...players.map((p) => applyAlias(playerAlias, p.name))].sort();
+
+  // 같은 게임의 이 사용자 판들 중 참가자 조합(정렬된 별칭 이름 집합)이 완전히 같은 판만 추린다.
+  const sameGamePlays = db.prepare("SELECT id, played_at FROM play WHERE user_id = ? AND game_id = ?")
+    .all(userId, play.game_id);
+  const matched = [];
+  for (const sp of sameGamePlays) {
+    const pls = loadPlayers(sp.id);
+    const names = pls.map((p) => applyAlias(playerAlias, p.name)).sort();
+    if (names.length === comboNames.length && names.every((n, i) => n === comboNames[i])) {
+      matched.push({ id: sp.id, played_at: sp.played_at, players: pls });
+    }
+  }
+  matched.sort((a, b) => (a.played_at < b.played_at ? -1 : a.played_at > b.played_at ? 1 : a.id - b.id));
+
+  // 이름별 누적치 + 연승(현재 판까지 거슬러 올라가며 승리가 끊기지 않은 판수)
+  const statsByName = new Map();
+  for (const m of matched) {
+    for (const p of m.players) {
+      const canon = applyAlias(playerAlias, p.name);
+      const cur = statsByName.get(canon) || { name: canon, plays: 0, wins: 0, scores: [] };
+      cur.plays++;
+      if (p.win) cur.wins++;
+      if (p.score != null) cur.scores.push(p.score);
+      statsByName.set(canon, cur);
+    }
+  }
+  const currentIndex = matched.findIndex((m) => m.id === id);
+  function streakFor(canon) {
+    let streak = 0;
+    for (let i = currentIndex; i >= 0; i--) {
+      const pp = matched[i].players.find((p) => applyAlias(playerAlias, p.name) === canon);
+      if (pp && pp.win) streak++;
+      else break;
+    }
+    return streak;
+  }
+
+  const comboPlayers = [...statsByName.values()].map((s) => ({
+    name: s.name,
+    plays: s.plays,
+    wins: s.wins,
+    winRate: s.plays ? Math.round((s.wins / s.plays) * 100) : null,
+    avgScore: s.scores.length ? Math.round(s.scores.reduce((a, b) => a + b, 0) / s.scores.length) : null,
+    bestScore: s.scores.length ? Math.round(Math.max(...s.scores)) : null,
+    currentStreak: streakFor(s.name),
+  }));
+
+  // 이번 판 참가자별로 "이번 점수 = 이 조합에서의 최고점" 여부 배지용 플래그를 붙인다.
+  const bestByName = new Map(comboPlayers.map((c) => [c.name, c.bestScore]));
+  const playersWithFlags = players.map((p) => {
+    const canon = applyAlias(playerAlias, p.name);
+    const best = bestByName.get(canon);
+    return {
+      ...p,
+      isBestScore: p.score != null && best != null && Math.round(p.score) === best,
+    };
+  });
+
+  res.json({
+    ...play,
+    comment: stripBgStatsTag(play.comment),
+    expansions: parseJsonArray(play.expansions),
+    players: playersWithFlags,
+    comboStats: { matchCount: matched.length, players: comboPlayers },
+  });
+});
+
 app.post("/api/plays", (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
@@ -414,13 +530,13 @@ app.post("/api/plays", (req, res) => {
 
     const playId = result.lastInsertRowid;
     const insertPlayer = db.prepare(`
-      INSERT INTO play_player (play_id, name, score, win, role, team, is_new, start_position)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO play_player (play_id, name, score, win, role, team, is_new, start_position, is_automa)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const pl of players || []) {
       insertPlayer.run(playId, pl.name || "?", pl.score ?? null, pl.win ? 1 : 0,
                         pl.role ?? null, pl.team ?? null, pl.is_new ? 1 : 0,
-                        pl.start_position ?? null);
+                        pl.start_position ?? null, pl.is_automa ? 1 : 0);
     }
     db.exec("COMMIT");
 
@@ -466,13 +582,13 @@ app.patch("/api/plays/:id", (req, res) => {
     try {
       db.prepare("DELETE FROM play_player WHERE play_id = ?").run(id);
       const insertPlayer = db.prepare(`
-        INSERT INTO play_player (play_id, name, score, win, role, team, is_new, start_position)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO play_player (play_id, name, score, win, role, team, is_new, start_position, is_automa)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const pl of req.body.players) {
         insertPlayer.run(id, pl.name || "?", pl.score ?? null, pl.win ? 1 : 0,
                           pl.role ?? null, pl.team ?? null, pl.is_new ? 1 : 0,
-                          pl.start_position ?? null);
+                          pl.start_position ?? null, pl.is_automa ? 1 : 0);
       }
       db.exec("COMMIT");
     } catch (err) {
