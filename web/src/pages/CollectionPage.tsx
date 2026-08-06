@@ -77,9 +77,10 @@ export default function CollectionPage() {
   }, [includeExpansions]);
 
   const searched = useMemo(() => {
-    const q = query.trim();
+    // 대소문자 무시 검색: 영문은 소문자로 통일해 비교 (한글은 대소문자가 없어 영향 없음)
+    const q = query.trim().toLowerCase();
     if (!q) return entries;
-    return entries.filter((e) => (e.game_name || "").includes(q));
+    return entries.filter((e) => (e.game_name || "").toLowerCase().includes(q));
   }, [entries, query]);
 
   const filtered = useMemo(() => searched.filter((e) => matchesFilter(e, filter)), [searched, filter]);
@@ -175,27 +176,29 @@ export default function CollectionPage() {
               {s.label}
             </button>
           ))}
-          <div className="sort-more-wrap">
-            <button className="chip" onClick={() => setShowSortMenu((v) => !v)}>
-              {MORE_SORTS.some((s) => s.key === sort.field) ? sortFieldLabel(sort.field) : "···"}
-            </button>
-            {showSortMenu && (
-              <>
-                <div className="dropdown-backdrop" onClick={() => setShowSortMenu(false)} />
-                <div className="sort-more-menu">
-                  {MORE_SORTS.map((s) => (
-                    <button
-                      key={s.key}
-                      className={`filter-dropdown-item${sort.field === s.key ? " filter-dropdown-item-active" : ""}`}
-                      onClick={() => selectSortField(s.key)}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+        </div>
+        {/* chip-row는 overflow-x:auto라 그 안에 두면 드롭다운이 세로로도 함께 잘려 안 보였다.
+            스크롤 컨테이너 밖(sort-row 직속)으로 빼서 메뉴가 실제로 뜨게 한다. */}
+        <div className="sort-more-wrap">
+          <button className="chip" onClick={() => setShowSortMenu((v) => !v)}>
+            {MORE_SORTS.some((s) => s.key === sort.field) ? sortFieldLabel(sort.field) : "···"}
+          </button>
+          {showSortMenu && (
+            <>
+              <div className="dropdown-backdrop" onClick={() => setShowSortMenu(false)} />
+              <div className="sort-more-menu">
+                {MORE_SORTS.map((s) => (
+                  <button
+                    key={s.key}
+                    className={`filter-dropdown-item${sort.field === s.key ? " filter-dropdown-item-active" : ""}`}
+                    onClick={() => selectSortField(s.key)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <button
           className="sort-dir-btn"

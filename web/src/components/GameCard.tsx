@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import type { CollectionListEntry } from "../api/types";
 import { groupOf } from "../utils/collectionSort";
 import { imgUrl } from "../utils/imgUrl";
-import { ratingColor, weightColor } from "../utils/ratingTier";
 
 interface Props {
   entry: CollectionListEntry;
@@ -23,8 +22,8 @@ function StatusIcon({ status, wantToPlay }: { status: string | null; wantToPlay:
   return (
     <span className="status-icon-group" title={status || "미소유"}>
       {icon && <span className={cls}>{icon}</span>}
-      {/* 내 평점(★)과 헷갈리지 않도록 플레이 희망은 하트로 표시한다 */}
-      {wantToPlay === 1 && <span className="status-icon status-icon-want" title="플레이 희망">♥</span>}
+      {/* 위시리스트(하트)와 구분되도록 플레이 희망은 노란 재생 아이콘으로 표시한다 */}
+      {wantToPlay === 1 && <span className="status-icon status-icon-want" title="플레이 희망">▶</span>}
     </span>
   );
 }
@@ -57,19 +56,11 @@ export default function GameCard({ entry, view }: Props) {
             <span className="muted game-card-lastplay">
               {entry.last_played_at ? `최근 플레이: ${formatDate(entry.last_played_at)}` : "플레이 한 적 없음"}
             </span>
-            <span className="muted game-card-playcount">{entry.play_count} 플레이</span>
-            {entry.bgg_rating != null && (
-              <span className="game-card-bggrating" style={{ color: ratingColor(entry.bgg_rating) }}>
-                {entry.bgg_rating.toFixed(1)}
-              </span>
-            )}
-            {entry.weight != null && (
-              <span className="game-card-weight" style={{ color: weightColor(entry.weight) }}>
-                W{entry.weight.toFixed(1)}
-              </span>
-            )}
-            <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
-            <span className="game-card-chevron muted">›</span>
+            {/* 상태 아이콘·플레이 수는 행 오른쪽 끝에 정렬 */}
+            <span className="game-card-row2-end">
+              <span className="muted game-card-playcount">{entry.play_count} 플레이</span>
+              <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
+            </span>
           </div>
         </div>
       ) : (
@@ -79,14 +70,6 @@ export default function GameCard({ entry, view }: Props) {
             <span className="game-card-plays">플레이 {entry.play_count}회</span>
             <div className="game-card-meta-row">
               <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
-              {entry.my_rating != null && (
-                <span className="game-card-rating">★ {Math.round(entry.my_rating * 10) / 10}</span>
-              )}
-              {entry.bgg_rating != null && (
-                <span className="game-card-bggrating" style={{ color: ratingColor(entry.bgg_rating) }}>
-                  {entry.bgg_rating.toFixed(1)}
-                </span>
-              )}
             </div>
           </div>
         </div>

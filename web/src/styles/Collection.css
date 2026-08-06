@@ -20,14 +20,15 @@
   aspect-ratio: 1 / 1;
   border-radius: 10px;
   overflow: hidden;
-  background: var(--panel);
+  /* 박스아트 원본 비율을 살리기 위해 어두운 배경 위에 레터박스로 표시 */
+  background: #0a0a0a;
   border: 1px solid var(--border);
 }
 
 .game-card-grid .game-card-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .game-card-grid .game-card-body {
@@ -66,17 +67,20 @@
 .game-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
 }
 
+/* 행마다 박스를 두르지 않고, 행 사이 연한 구분선만 그린다 (BGStats 스타일) */
 .game-card-list {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px;
+  padding: 8px 2px;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.game-list .game-card-list:last-child {
+  border-bottom: none;
 }
 
 .game-card-list .game-card-thumb {
@@ -85,13 +89,13 @@
   flex: none;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--bg);
+  background: #0a0a0a;
 }
 
 .game-card-list .game-card-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .game-card-list .game-card-name {
@@ -101,6 +105,7 @@
 
 .game-card-list .game-card-meta {
   display: flex;
+  align-items: center;
   gap: 10px;
   font-size: 12px;
   color: var(--muted);
@@ -109,17 +114,6 @@
 
 .game-card-status {
   color: var(--accent);
-}
-
-.game-card-rating {
-  color: #d9a441;
-}
-
-.game-card-bggrating,
-.game-card-weight {
-  font-size: 11.5px;
-  font-weight: 600;
-  flex: none;
 }
 
 /* ---------- 뷰/상태 드롭다운 (헤더) ---------- */
@@ -314,9 +308,18 @@
   color: var(--muted);
 }
 
-/* 내 평점(★, 골드)과 헷갈리지 않도록 플레이 희망 하트는 다른 색을 쓴다 */
+/* 위시리스트 하트와 구분되도록 플레이 희망은 노란 재생 아이콘 */
 .status-icon-want {
-  color: #e0575b;
+  color: #f0b232;
+}
+
+/* 목록 행에서 플레이 수·상태 아이콘을 오른쪽 끝으로 몰아 세로로 줄을 맞춘다 */
+.game-card-row2-end {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 /* ---------- 알파벳/초성 인덱스 바 ---------- */
