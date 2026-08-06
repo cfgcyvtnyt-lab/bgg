@@ -19,9 +19,9 @@ function colorAt(i: number) {
   return PALETTE[i % PALETTE.length];
 }
 
-// 원화 기호 + 천단위 콤마 표기 ("₩6,141,882" 등).
+// 금액 표기는 앱 전체가 "6,141,882원" 형태로 통일한다(판당 비용의 "233원/판"과 같은 방식).
 function fmtKRW(krw: number) {
-  return `₩${Math.round(krw).toLocaleString()}`;
+  return `${Math.round(krw).toLocaleString()}원`;
 }
 
 // 막대 그래프(일별/월별/연도별 플레이, TOP10) 색상: 값이 클수록 노랑·밝게, 작을수록 파랑·더 어둡게
