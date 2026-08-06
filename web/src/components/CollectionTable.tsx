@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { CollectionListEntry } from "../api/types";
 import { ratingColor, weightColor } from "../utils/ratingTier";
@@ -26,8 +26,15 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState("");
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
+  // 미소유 행에서 상태를 처음 지정하면 collection 행이 새로 생긴다. 부모가 재조회하기 전까지
+  // game_id -> 새로 생긴 collection id 매핑을 들고 있어야 그 행이 계속 "소유"로 취급된다.
+  const [createdIds, setCreatedIds] = useState<Record<number, number>>({});
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
-  const rows = entries.map((e) => ({ ...e, ...overrides[rowKeyOf(e)] }));
+  const rows = entries.map((e) => {
+    const id = e.id ?? createdIds[e.game_id] ?? null;
+    return { ...e, id, ...overrides[rowKeyOf({ ...e, id })] };
+  });
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -144,6 +151,27 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
     }
   }
 
+  // 미소유 행에서 상태를 처음 지정하면 collection 행을 새로 만든다. 그 뒤로는 patch()가 담당한다.
+  async function createAndPatch(e: CollectionListEntry, status: string) {
+    const key = rowKeyOf(e); // 아직 미소유라 u{game_id} 형태
+    setSavingKeys((s) => new Set(s).add(key));
+    try {
+      const created = await api.addCollection({ game_id: e.game_id, status });
+      setCreatedIds((m) => ({ ...m, [e.game_id]: created.id }));
+      // status를 override에도 심어둔다 - 안 하면 새 id로 select에 매칭되는 빈 옵션이 없어서
+      // 브라우저가 첫 옵션("보유")을 멋대로 보여주는 것처럼 보인다.
+      setOverrides((o) => ({ ...o, [`c${created.id}`]: { status: created.status } }));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "저장 실패");
+    } finally {
+      setSavingKeys((s) => {
+        const next = new Set(s);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
   function toggleSelect(key: string) {
     setSelected((s) => {
       const next = new Set(s);
@@ -153,20 +181,27 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
     });
   }
 
+  // 소유 여부와 무관하게 전체 선택. 하나라도 선택돼 있으면 전부 해제한다.
   function toggleSelectAll() {
-    const editable = sorted.filter((e) => e.id != null);
-    const allSelected = editable.length > 0 && editable.every((e) => selected.has(rowKeyOf(e)));
-    if (allSelected) {
+    if (selected.size > 0) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(editable.map(rowKeyOf)));
+      setSelected(new Set(sorted.map(rowKeyOf)));
     }
   }
 
+  useEffect(() => {
+    if (!selectAllRef.current) return;
+    const allSelected = sorted.length > 0 && sorted.every((e) => selected.has(rowKeyOf(e)));
+    selectAllRef.current.indeterminate = selected.size > 0 && !allSelected;
+  }, [selected, sorted]);
+
   async function applyBulkStatus() {
     if (!bulkStatus || selected.size === 0) return;
-    const targets = sorted.filter((e) => selected.has(rowKeyOf(e)) && e.id != null);
-    await Promise.all(targets.map((e) => patch(e, { status: bulkStatus })));
+    const targets = sorted.filter((e) => selected.has(rowKeyOf(e)));
+    await Promise.all(
+      targets.map((e) => (e.id != null ? patch(e, { status: bulkStatus }) : createAndPatch(e, bulkStatus)))
+    );
     setBulkStatus("");
     setSelected(new Set());
   }
@@ -197,8 +232,10 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
               <th className="ct-checkbox-col">
                 <input
                   type="checkbox"
-                  checked={sorted.length > 0 && sorted.filter((e) => e.id != null).every((e) => selected.has(rowKeyOf(e))) && sorted.some((e) => e.id != null)}
+                  ref={selectAllRef}
+                  checked={sorted.length > 0 && sorted.every((e) => selected.has(rowKeyOf(e)))}
                   onChange={toggleSelectAll}
+                  title={selected.size > 0 ? "모두 해제" : "전체 선택"}
                 />
               </th>
               <th onClick={() => toggleSort("name")}>이름{caret("name")}</th>
@@ -224,7 +261,6 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
                   <td className="ct-checkbox-col">
                     <input
                       type="checkbox"
-                      disabled={!editable}
                       checked={selected.has(key)}
                       onChange={() => toggleSelect(key)}
                     />
@@ -243,18 +279,20 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
                     }}
                   />
                   <td>
-                    {editable ? (
-                      <select
-                        value={e.status || ""}
-                        onChange={(ev) => patch(e, { status: ev.target.value })}
-                      >
-                        {STATUS_OPTIONS.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="muted">미소유</span>
-                    )}
+                    <select
+                      value={e.status || ""}
+                      onChange={(ev) => {
+                        const status = ev.target.value;
+                        // 미소유 행에서 상태를 처음 고르면 collection 행을 새로 만든다.
+                        if (editable) patch(e, { status });
+                        else createAndPatch(e, status);
+                      }}
+                    >
+                      {!editable && <option value="" disabled>미소유</option>}
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                   </td>
                   <EditableCell
                     editable={editable}
@@ -296,7 +334,7 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
                     }}
                   />
                   <td className="ct-rating-col">
-                    <StarRating size={14} value={e.my_rating ?? null} onChange={(v) => patchRating(e, v)} />
+                    <StarRating editable size={14} value={e.my_rating ?? null} onChange={(v) => patchRating(e, v)} />
                   </td>
                   <td className="ct-want-col">
                     <button

@@ -52,18 +52,18 @@ export function matchesFilter(e: CollectionListEntry, f: FilterState): boolean {
 
 export type SortField =
   | "name" | "last_played" | "play_count"
-  | "year" | "acquired" | "price_paid" | "playing_time" | "max_players"
+  | "year" | "price_paid" | "playing_time" | "max_players"
   | "weight" | "my_rating" | "bgg_rating" | "bgg_rank";
 
 export const PRIMARY_SORTS: { key: SortField; label: string }[] = [
   { key: "name", label: "알파벳순" },
-  { key: "last_played", label: "최근 플레이" },
+  // 내림차순=최근 플레이한 순, 오름차순=가장 오래 안 한 순이 되므로 라벨에 방향 의미를 명시한다.
+  { key: "last_played", label: "최근 플레이한 순" },
   { key: "play_count", label: "가장 많은 플레이" },
 ];
 
 export const MORE_SORTS: { key: SortField; label: string }[] = [
-  { key: "year", label: "출시년도" },
-  { key: "acquired", label: "획득일" },
+  { key: "year", label: "출시연도" },
   { key: "price_paid", label: "구매 가격" },
   { key: "playing_time", label: "플레이 시간" },
   { key: "max_players", label: "공식 인원 수" },
@@ -77,13 +77,44 @@ export function sortFieldLabel(key: SortField): string {
   return [...PRIMARY_SORTS, ...MORE_SORTS].find((s) => s.key === key)?.label ?? key;
 }
 
+// 격자/목록 카드에 현재 정렬 기준 값을 보여주기 위한 표시용 포맷터.
+// 이름순(기본)일 때는 null을 반환해서 카드가 기존처럼 플레이 수만 보여주게 한다.
+export function sortDisplayValue(e: CollectionListEntry, field: SortField): string | null {
+  switch (field) {
+    case "name":
+      return null;
+    case "last_played":
+      if (!e.last_played_at) return null;
+      return new Date(e.last_played_at).toLocaleDateString("ko-KR");
+    case "play_count":
+      return `${e.play_count}회`;
+    case "year":
+      return e.year_published != null ? `${e.year_published}년` : null;
+    case "price_paid":
+      return e.price_paid != null ? `${e.price_paid.toLocaleString()}원` : null;
+    case "playing_time":
+      return e.playing_time != null ? `${e.playing_time}분` : null;
+    case "max_players":
+      return e.max_players != null ? `${e.max_players}인` : null;
+    case "weight":
+      return e.weight != null ? `웨이트 ${e.weight}` : null;
+    case "my_rating":
+      return e.my_rating != null ? `내 평점 ${e.my_rating}` : null;
+    case "bgg_rating":
+      return e.bgg_rating != null ? `긱 평점 ${e.bgg_rating}` : null;
+    case "bgg_rank":
+      return e.bgg_rank != null ? `긱 순위 ${e.bgg_rank}` : null;
+    default:
+      return null;
+  }
+}
+
 function sortValue(e: CollectionListEntry, field: SortField): string | number | null {
   switch (field) {
     case "name": return e.game_name || "";
     case "last_played": return e.last_played_at;
     case "play_count": return e.play_count;
     case "year": return e.year_published ?? null;
-    case "acquired": return e.acquired_at;
     case "price_paid": return e.price_paid ?? null;
     case "playing_time": return e.playing_time ?? null;
     case "max_players": return e.max_players ?? null;

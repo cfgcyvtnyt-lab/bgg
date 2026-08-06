@@ -168,50 +168,53 @@ export default function CollectionPage() {
         onChange={(e) => setQuery(e.target.value)}
       />
 
-      <div className="sort-row">
-        <div className="chip-row sort-chip-row">
-          {PRIMARY_SORTS.map((s) => (
-            <button
-              key={s.key}
-              className={`chip${sort.field === s.key ? " chip-active" : ""}`}
-              onClick={() => selectSortField(s.key)}
-            >
-              {s.label}
+      {/* 표 모드는 헤더 클릭으로 정렬하므로 정렬 칩/메뉴/방향 토글은 격자·목록에서만 보인다 */}
+      {view !== "table" && (
+        <div className="sort-row">
+          <div className="chip-row sort-chip-row">
+            {PRIMARY_SORTS.map((s) => (
+              <button
+                key={s.key}
+                className={`chip${sort.field === s.key ? " chip-active" : ""}`}
+                onClick={() => selectSortField(s.key)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          {/* chip-row는 overflow-x:auto라 그 안에 두면 드롭다운이 세로로도 함께 잘려 안 보였다.
+              스크롤 컨테이너 밖(sort-row 직속)으로 빼서 메뉴가 실제로 뜨게 한다. */}
+          <div className="sort-more-wrap">
+            <button className="chip" onClick={() => setShowSortMenu((v) => !v)}>
+              {MORE_SORTS.some((s) => s.key === sort.field) ? sortFieldLabel(sort.field) : "···"}
             </button>
-          ))}
-        </div>
-        {/* chip-row는 overflow-x:auto라 그 안에 두면 드롭다운이 세로로도 함께 잘려 안 보였다.
-            스크롤 컨테이너 밖(sort-row 직속)으로 빼서 메뉴가 실제로 뜨게 한다. */}
-        <div className="sort-more-wrap">
-          <button className="chip" onClick={() => setShowSortMenu((v) => !v)}>
-            {MORE_SORTS.some((s) => s.key === sort.field) ? sortFieldLabel(sort.field) : "···"}
+            {showSortMenu && (
+              <>
+                <div className="dropdown-backdrop" onClick={() => setShowSortMenu(false)} />
+                <div className="sort-more-menu">
+                  {MORE_SORTS.map((s) => (
+                    <button
+                      key={s.key}
+                      className={`filter-dropdown-item${sort.field === s.key ? " filter-dropdown-item-active" : ""}`}
+                      onClick={() => selectSortField(s.key)}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <button
+            className="sort-dir-btn"
+            onClick={() => setSort((s) => ({ ...s, dir: s.dir === "asc" ? "desc" : "asc" }))}
+            aria-label="정렬 방향 전환"
+            title={sort.dir === "asc" ? "오름차순" : "내림차순"}
+          >
+            {sort.dir === "asc" ? "↑" : "↓"}
           </button>
-          {showSortMenu && (
-            <>
-              <div className="dropdown-backdrop" onClick={() => setShowSortMenu(false)} />
-              <div className="sort-more-menu">
-                {MORE_SORTS.map((s) => (
-                  <button
-                    key={s.key}
-                    className={`filter-dropdown-item${sort.field === s.key ? " filter-dropdown-item-active" : ""}`}
-                    onClick={() => selectSortField(s.key)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
         </div>
-        <button
-          className="sort-dir-btn"
-          onClick={() => setSort((s) => ({ ...s, dir: s.dir === "asc" ? "desc" : "asc" }))}
-          aria-label="정렬 방향 전환"
-          title={sort.dir === "asc" ? "오름차순" : "내림차순"}
-        >
-          {sort.dir === "asc" ? "↑" : "↓"}
-        </button>
-      </div>
+      )}
 
       <div className="view-toggle">
         <button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")}>격자</button>
@@ -234,7 +237,7 @@ export default function CollectionPage() {
         <div className="collection-list-wrap">
           <div ref={listRef} className={view === "grid" ? "game-grid" : "game-list"}>
             {sorted.map((e) => (
-              <GameCard key={e.id ?? `u${e.game_id}`} entry={e} view={view} />
+              <GameCard key={e.id ?? `u${e.game_id}`} entry={e} view={view} sortField={sort.field} />
             ))}
           </div>
           {sorted.length > 20 && <AlphaIndex activeGroups={activeGroups} onJump={jumpToGroup} />}

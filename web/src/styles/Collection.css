@@ -20,9 +20,8 @@
   aspect-ratio: 1 / 1;
   border-radius: 10px;
   overflow: hidden;
-  /* 박스아트 원본 비율을 살리기 위해 어두운 배경 위에 레터박스로 표시 */
+  /* 박스아트 원본 비율을 살리기 위해 어두운 배경 위에 레터박스로 표시. 테두리는 없앤다 */
   background: #0a0a0a;
-  border: 1px solid var(--border);
 }
 
 .game-card-grid .game-card-thumb img {
@@ -308,9 +307,9 @@
   color: var(--muted);
 }
 
-/* 위시리스트 하트와 구분되도록 플레이 희망은 노란 재생 아이콘 */
+/* 위시리스트 하트, 별점(금색 #d9a441)과 구분되도록 플레이 희망은 베이지 계열 재생 아이콘 */
 .status-icon-want {
-  color: #f0b232;
+  color: #e8d9a0;
 }
 
 /* 목록 행에서 플레이 수·상태 아이콘을 오른쪽 끝으로 몰아 세로로 줄을 맞춘다 */

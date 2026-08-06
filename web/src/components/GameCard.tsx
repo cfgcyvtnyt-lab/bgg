@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
 import type { CollectionListEntry } from "../api/types";
-import { groupOf } from "../utils/collectionSort";
+import { groupOf, sortDisplayValue } from "../utils/collectionSort";
+import type { SortField } from "../utils/collectionSort";
 import { imgUrl } from "../utils/imgUrl";
 
 interface Props {
   entry: CollectionListEntry;
   view: "grid" | "list";
+  // 현재 정렬 기준. 이름순이 아니면 카드에 그 기준값을 같이 보여준다.
+  sortField?: SortField;
 }
 
 // 소유/방출 상태를 나타내는 작은 아이콘. BGStats의 초록색은 쓰지 않고 기존 테마(accent/muted) 색만 쓴다.
@@ -35,9 +38,10 @@ function formatDate(iso: string) {
 }
 
 // 컬렉션 화면의 게임 카드 하나. 그리드/목록 뷰를 공유한다.
-export default function GameCard({ entry, view }: Props) {
+export default function GameCard({ entry, view, sortField }: Props) {
   const thumb = entry.thumbnail || entry.image;
   const group = groupOf(entry.game_name);
+  const sortInfo = sortField ? sortDisplayValue(entry, sortField) : null;
 
   return (
     <Link
@@ -56,9 +60,11 @@ export default function GameCard({ entry, view }: Props) {
             <span className="muted game-card-lastplay">
               {entry.last_played_at ? `최근 플레이: ${formatDate(entry.last_played_at)}` : "플레이 한 적 없음"}
             </span>
-            {/* 상태 아이콘·플레이 수는 행 오른쪽 끝에 정렬 */}
+            {/* 상태 아이콘·플레이 수(또는 현재 정렬 기준값)는 행 오른쪽 끝에 정렬 */}
             <span className="game-card-row2-end">
-              <span className="muted game-card-playcount">{entry.play_count} 플레이</span>
+              <span className="muted game-card-playcount">
+                {sortInfo ?? `${entry.play_count} 플레이`}
+              </span>
               <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
             </span>
           </div>
@@ -67,7 +73,7 @@ export default function GameCard({ entry, view }: Props) {
         <div className="game-card-body">
           <div className="game-card-name">{entry.game_name}</div>
           <div className="game-card-meta">
-            <span className="game-card-plays">플레이 {entry.play_count}회</span>
+            <span className="game-card-plays">{sortInfo ?? `플레이 ${entry.play_count}회`}</span>
             <div className="game-card-meta-row">
               <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
             </div>
