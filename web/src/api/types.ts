@@ -110,8 +110,17 @@ export interface PlayPlayer {
   is_new?: boolean | number;
   start_position?: string | null;
   is_automa?: boolean | number;
+  // 항목별 점수 (게임에 점수 시트 템플릿이 있을 때만). {"밭":12,"곡식":8}
+  score_breakdown?: Record<string, number> | null;
   // /api/plays/:id 에서만 내려온다: 이번 점수가 같은 조합에서의 최고점인지
   isBestScore?: boolean;
+}
+
+// 점수 시트 템플릿 - 게임에 속한 공유 값(사용자 무관)
+export interface ScoreTemplate {
+  game_id: number;
+  fields: string[];
+  updated_at: string;
 }
 
 export interface Photo {

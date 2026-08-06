@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { GameDetail, Play } from "../api/types";
+import type { GameDetail, Play, ScoreTemplate } from "../api/types";
 import { imgUrl } from "../utils/imgUrl";
 import "../styles/GameDetail.css";
 
@@ -70,6 +70,50 @@ export default function GameDetailPage() {
   const [form, setForm] = useState({
     status: "보유", price_paid: "", price_sold: "", tags: "", note: "",
   });
+
+  // 점수 시트 템플릿 - 게임에 속한 공유 값이라 컬렉션 정보 근처에서 관리한다.
+  const [scoreTemplate, setScoreTemplate] = useState<ScoreTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState(false);
+  const [templateFieldsText, setTemplateFieldsText] = useState("");
+  const [templateSaving, setTemplateSaving] = useState(false);
+
+  useEffect(() => {
+    api.scoreTemplate(gameId).then(setScoreTemplate).catch(() => setScoreTemplate(null));
+  }, [gameId]);
+
+  function startEditTemplate() {
+    setTemplateFieldsText(scoreTemplate ? scoreTemplate.fields.join(", ") : "");
+    setEditingTemplate(true);
+  }
+
+  async function saveTemplate() {
+    const fields = templateFieldsText.split(",").map((f) => f.trim()).filter(Boolean);
+    if (fields.length === 0) return;
+    setTemplateSaving(true);
+    try {
+      const t = await api.saveScoreTemplate(gameId, fields);
+      setScoreTemplate(t);
+      setEditingTemplate(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "점수 시트 저장 실패");
+    } finally {
+      setTemplateSaving(false);
+    }
+  }
+
+  async function deleteTemplate() {
+    if (!window.confirm("점수 시트를 삭제할까요?")) return;
+    setTemplateSaving(true);
+    try {
+      await api.deleteScoreTemplate(gameId);
+      setScoreTemplate(null);
+      setEditingTemplate(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "점수 시트 삭제 실패");
+    } finally {
+      setTemplateSaving(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -341,6 +385,35 @@ export default function GameDetailPage() {
             <textarea rows={3} value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
           </div>
           <button className="btn-primary" disabled={saving} onClick={saveInfo}>{saving ? "저장 중..." : "저장"}</button>
+
+          <div className="score-template-manage">
+            <div className="info-row">
+              <span className="muted">점수 시트</span>
+              <span>{scoreTemplate ? scoreTemplate.fields.join(", ") : "없음"}</span>
+            </div>
+            {editingTemplate ? (
+              <>
+                <input
+                  value={templateFieldsText}
+                  onChange={(e) => setTemplateFieldsText(e.target.value)}
+                  placeholder="밭, 목초지, 곡식, 채소, 가축"
+                />
+                <div className="field-row" style={{ marginTop: 6 }}>
+                  <button className="btn-small" disabled={templateSaving || !templateFieldsText.trim()} onClick={saveTemplate}>
+                    {templateSaving ? "저장 중..." : "저장"}
+                  </button>
+                  <button className="btn-small" onClick={() => setEditingTemplate(false)}>취소</button>
+                </div>
+              </>
+            ) : (
+              <div className="field-row" style={{ marginTop: 6 }}>
+                <button className="btn-small" onClick={startEditTemplate}>{scoreTemplate ? "수정" : "만들기"}</button>
+                {scoreTemplate && (
+                  <button className="btn-small danger" disabled={templateSaving} onClick={deleteTemplate}>삭제</button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </Section>
 

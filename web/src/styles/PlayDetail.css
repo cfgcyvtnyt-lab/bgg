@@ -78,6 +78,20 @@
   border-bottom: 1px solid var(--border);
 }
 
+.score-breakdown-table {
+  display: grid;
+  gap: 6px 8px;
+  font-size: 12.5px;
+  overflow-x: auto;
+}
+
+.score-breakdown-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
 .play-detail-photos {
   padding: 0;
   overflow: hidden;

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { Game, GameDetail, Photo, PlayPlayer } from "../api/types";
+import type { Game, GameDetail, Photo, PlayPlayer, ScoreTemplate } from "../api/types";
 import { evalScoreExpression } from "../utils/scoreParser";
 import PlayTimer from "../components/PlayTimer";
 import "../styles/PlayForm.css";
@@ -17,6 +17,8 @@ interface PlayerRow {
   scoreText: string;
   win: boolean;
   isAutoma: boolean;
+  // 점수 시트 템플릿이 있을 때만 쓴다: 항목 이름 -> 입력 텍스트(계산기 파서 재사용)
+  breakdownText: Record<string, string>;
 }
 
 function todayStr() {
@@ -24,7 +26,7 @@ function todayStr() {
 }
 
 function emptyPlayer(): PlayerRow {
-  return { name: "", scoreText: "", win: false, isAutoma: false };
+  return { name: "", scoreText: "", win: false, isAutoma: false, breakdownText: {} };
 }
 
 function fmtNum(n: number | null | undefined) {
@@ -57,6 +59,12 @@ export default function PlayFormPage() {
   const [startPlayerIndex, setStartPlayerIndex] = useState<number | null>(null);
   const [durationMin, setDurationMin] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // 점수 시트 템플릿: 있으면 항목별 입력 그리드, 없으면 기존 총점 입력.
+  const [scoreTemplate, setScoreTemplate] = useState<ScoreTemplate | null>(null);
+  const [creatingTemplate, setCreatingTemplate] = useState(false);
+  const [templateFieldsText, setTemplateFieldsText] = useState("");
+  const [templateSaving, setTemplateSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEdit);
@@ -97,6 +105,9 @@ export default function PlayFormPage() {
                 scoreText: p.score != null ? String(p.score) : "",
                 win: !!p.win,
                 isAutoma: !!p.is_automa,
+                breakdownText: p.score_breakdown
+                  ? Object.fromEntries(Object.entries(p.score_breakdown).map(([k, v]) => [k, String(v)]))
+                  : {},
               }))
             : [emptyPlayer(), emptyPlayer()],
         );
@@ -125,6 +136,13 @@ export default function PlayFormPage() {
     api.game(selectedGame.id).then(setGameDetail).catch(() => setGameDetail(null));
   }, [selectedGame]);
 
+  // 게임별 점수 시트 템플릿. 템플릿이 있으면 총점 입력 대신 항목별 그리드를 보여준다.
+  useEffect(() => {
+    if (!selectedGame) { setScoreTemplate(null); return; }
+    setCreatingTemplate(false);
+    api.scoreTemplate(selectedGame.id).then(setScoreTemplate).catch(() => setScoreTemplate(null));
+  }, [selectedGame]);
+
   useEffect(() => {
     if (isEdit || !gameQuery.trim()) { setGameResults([]); return; }
     const t = setTimeout(() => {
@@ -146,6 +164,41 @@ export default function PlayFormPage() {
     () => players.map((p) => (p.scoreText.trim() === "" ? null : evalScoreExpression(p.scoreText))),
     [players],
   );
+
+  // 템플릿이 있을 때 항목별 입력의 플레이어별 합계. 빈 칸/파싱 실패는 0으로 친다.
+  const breakdownSums = useMemo(() => {
+    if (!scoreTemplate) return [];
+    return players.map((p) =>
+      scoreTemplate.fields.reduce((sum, f) => {
+        const text = p.breakdownText[f]?.trim() || "";
+        if (text === "") return sum;
+        const v = evalScoreExpression(text);
+        return sum + (v ?? 0);
+      }, 0),
+    );
+  }, [players, scoreTemplate]);
+
+  function updateBreakdown(i: number, field: string, value: string) {
+    setPlayers((prev) => prev.map((p, idx) =>
+      idx === i ? { ...p, breakdownText: { ...p.breakdownText, [field]: value } } : p));
+  }
+
+  async function saveTemplate() {
+    if (!selectedGame) return;
+    const fields = templateFieldsText.split(",").map((f) => f.trim()).filter(Boolean);
+    if (fields.length === 0) return;
+    setTemplateSaving(true);
+    try {
+      const t = await api.saveScoreTemplate(selectedGame.id, fields);
+      setScoreTemplate(t);
+      setCreatingTemplate(false);
+      setTemplateFieldsText("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "점수 시트 저장 실패");
+    } finally {
+      setTemplateSaving(false);
+    }
+  }
 
   // "사람 플레이어가 1명 이하"면 솔로 - 오토마만 상대인 판도 솔로다.
   const humanCount = players.filter((p) => p.name.trim() && !p.isAutoma).length;
@@ -213,14 +266,28 @@ export default function PlayFormPage() {
     try {
       const finalPlayers: PlayPlayer[] = players
         .filter((p) => p.name.trim())
-        .map((p, i) => ({
-          name: p.name.trim(),
-          score: parsedScores[i],
-          win: isCoop ? coopSuccess : p.win,
-          team: isCoop ? "coop" : undefined,
-          is_automa: p.isAutoma,
-          start_position: startPlayerIndex === i ? "1" : null,
-        }));
+        .map((p, i) => {
+          // 템플릿이 있으면 항목별 합계가 총점이 된다 - 통계·이벤트 로직은 score만 보므로 그대로 호환된다.
+          let breakdown: Record<string, number> | undefined;
+          if (scoreTemplate) {
+            breakdown = {};
+            for (const f of scoreTemplate.fields) {
+              const text = p.breakdownText[f]?.trim() || "";
+              if (text === "") continue;
+              const v = evalScoreExpression(text);
+              if (v != null) breakdown[f] = v;
+            }
+          }
+          return {
+            name: p.name.trim(),
+            score: scoreTemplate ? breakdownSums[i] : parsedScores[i],
+            score_breakdown: breakdown,
+            win: isCoop ? coopSuccess : p.win,
+            team: isCoop ? "coop" : undefined,
+            is_automa: p.isAutoma,
+            start_position: startPlayerIndex === i ? "1" : null,
+          };
+        });
 
       const body = {
         game_id: selectedGame.id,
@@ -403,7 +470,31 @@ export default function PlayFormPage() {
 
       <div className="section-title">
         플레이어 <span className="muted" style={{ textTransform: "none" }}>({humanCount <= 1 ? "1인 · 솔로" : `${humanCount}인+`})</span>
+        {selectedGame && !scoreTemplate && !creatingTemplate && (
+          <button className="btn-link score-template-link" onClick={() => setCreatingTemplate(true)}>
+            + 점수 시트 만들기
+          </button>
+        )}
       </div>
+
+      {creatingTemplate && (
+        <div className="card score-template-create">
+          <label>항목 이름 (쉼표로 구분)</label>
+          <input
+            placeholder="밭, 목초지, 곡식, 채소, 가축"
+            value={templateFieldsText}
+            onChange={(e) => setTemplateFieldsText(e.target.value)}
+            autoFocus
+          />
+          <div className="field-row" style={{ marginTop: 8 }}>
+            <button className="btn-small" disabled={templateSaving || !templateFieldsText.trim()} onClick={saveTemplate}>
+              {templateSaving ? "저장 중..." : "저장"}
+            </button>
+            <button className="btn-small" onClick={() => setCreatingTemplate(false)}>취소</button>
+          </div>
+        </div>
+      )}
+
       {players.map((p, i) => (
         <div key={i} className="player-row-edit">
           <input
@@ -412,12 +503,16 @@ export default function PlayFormPage() {
             value={p.name}
             onChange={(e) => updatePlayer(i, { name: e.target.value })}
           />
-          <input
-            className="player-score-input"
-            placeholder="점수 (12+8+5 가능)"
-            value={p.scoreText}
-            onChange={(e) => updatePlayer(i, { scoreText: e.target.value })}
-          />
+          {scoreTemplate ? (
+            <span className="player-score-input player-score-readonly">{Math.round(breakdownSums[i] || 0)}</span>
+          ) : (
+            <input
+              className="player-score-input"
+              placeholder="점수 (12+8+5 가능)"
+              value={p.scoreText}
+              onChange={(e) => updatePlayer(i, { scoreText: e.target.value })}
+            />
+          )}
           {!isCoop && (
             <label className="win-checkbox">
               <input type="checkbox" checked={p.win} onChange={(e) => updatePlayer(i, { win: e.target.checked })} />
@@ -430,16 +525,46 @@ export default function PlayFormPage() {
             오토마/봇
           </label>
           {startPlayerIndex === i && <span className="start-player-tag">시작 플레이어</span>}
-          {p.scoreText.trim() && parsedScores[i] == null && (
+          {!scoreTemplate && p.scoreText.trim() && parsedScores[i] == null && (
             <div className="score-error">식을 계산할 수 없습니다</div>
           )}
-          {p.scoreText.trim() && parsedScores[i] != null && p.scoreText.trim() !== String(parsedScores[i]) && (
+          {!scoreTemplate && p.scoreText.trim() && parsedScores[i] != null && p.scoreText.trim() !== String(parsedScores[i]) && (
             <div className="score-preview muted">= {Math.round(parsedScores[i]!)}</div>
           )}
         </div>
       ))}
       <button className="btn-secondary add-player-btn" onClick={addPlayer}>+ 플레이어 추가</button>
       <button className="btn-secondary add-player-btn" onClick={pickStartPlayer}>🎲 시작 플레이어 뽑기</button>
+
+      {scoreTemplate && (
+        <div className="card score-grid-box">
+          <div className="section-title" style={{ margin: "0 0 8px" }}>점수 시트</div>
+          <div className="score-grid" style={{ gridTemplateColumns: `auto repeat(${players.length}, 1fr)` }}>
+            <div className="score-grid-cell score-grid-header" />
+            {players.map((p, i) => (
+              <div key={i} className="score-grid-cell score-grid-header">{p.name.trim() || `플레이어 ${i + 1}`}</div>
+            ))}
+            {scoreTemplate.fields.map((field) => (
+              <Fragment key={field}>
+                <div className="score-grid-cell score-grid-label muted">{field}</div>
+                {players.map((p, i) => (
+                  <input
+                    key={`${field}-${i}`}
+                    className="score-grid-cell score-grid-input"
+                    placeholder="0"
+                    value={p.breakdownText[field] ?? ""}
+                    onChange={(e) => updateBreakdown(i, field, e.target.value)}
+                  />
+                ))}
+              </Fragment>
+            ))}
+            <div className="score-grid-cell score-grid-label score-grid-total-label">합계</div>
+            {players.map((_p, i) => (
+              <div key={`total-${i}`} className="score-grid-cell score-grid-total">{Math.round(breakdownSums[i] || 0)}</div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="field">
         <label>코멘트</label>

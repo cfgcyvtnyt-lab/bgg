@@ -70,6 +70,13 @@ CREATE TABLE IF NOT EXISTS play_player (
   score    REAL,
   win      INTEGER NOT NULL DEFAULT 0
 );
+
+-- 점수 시트 템플릿. 게임에 속한 공유 값(둘이 같은 템플릿을 쓴다) - user_id 없음.
+CREATE TABLE IF NOT EXISTS score_template (
+  game_id    INTEGER PRIMARY KEY REFERENCES game(id),
+  fields     TEXT NOT NULL,   -- JSON 배열: ["밭","곡식","가축","점수카드"]
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE INDEX IF NOT EXISTS idx_play_player ON play_player(play_id);
 
 -- 피드에 올릴 사진. published가 1인 것만 공개 사이트로 나간다.
@@ -115,6 +122,8 @@ const ALTER_COLUMNS = [
   "ALTER TABLE game ADD COLUMN artists TEXT",
   "ALTER TABLE game ADD COLUMN categories TEXT",
   "ALTER TABLE game ADD COLUMN mechanics TEXT",
+  // 항목별 점수 입력. 총점은 기존 score에 그대로 저장하므로 통계·이벤트 로직은 안 바뀐다.
+  "ALTER TABLE play_player ADD COLUMN score_breakdown TEXT",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { PlayDetail } from "../api/types";
@@ -86,6 +86,24 @@ export default function PlayDetailPage() {
           );
         })}
       </div>
+
+      {play.players.some((p) => p.score_breakdown) && (
+        <>
+          <div className="section-title">점수 시트</div>
+          <div className="card score-breakdown-table" style={{ gridTemplateColumns: `1fr repeat(${play.players.length}, 0.8fr)` }}>
+            <span className="score-breakdown-header muted">항목</span>
+            {play.players.map((p, i) => <span key={i} className="score-breakdown-header muted">{p.name}</span>)}
+            {[...new Set(play.players.flatMap((p) => Object.keys(p.score_breakdown || {})))].map((field) => (
+              <Fragment key={field}>
+                <span className="muted">{field}</span>
+                {play.players.map((p, i) => (
+                  <span key={i}>{p.score_breakdown?.[field] != null ? fmtNum(p.score_breakdown[field]) : "-"}</span>
+                ))}
+              </Fragment>
+            ))}
+          </div>
+        </>
+      )}
 
       {play.comboStats.matchCount > 1 && (
         <>

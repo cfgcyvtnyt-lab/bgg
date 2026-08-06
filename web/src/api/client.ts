@@ -1,6 +1,6 @@
 import type {
   User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
-  NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse,
+  NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse, ScoreTemplate,
 } from "./types";
 
 const BASE = "/api";
@@ -76,6 +76,13 @@ export const api = {
     request<GameDetail>(`/games/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   translateGame: (id: number) =>
     request<{ description_ko: string }>(`/games/${id}/translate`, { method: "POST" }),
+
+  scoreTemplate: (gameId: number) =>
+    request<ScoreTemplate | null>(`/games/${gameId}/score-template`),
+  saveScoreTemplate: (gameId: number, fields: string[]) =>
+    request<ScoreTemplate>(`/games/${gameId}/score-template`, { method: "PUT", body: JSON.stringify({ fields }) }),
+  deleteScoreTemplate: (gameId: number) =>
+    request<{ ok: boolean }>(`/games/${gameId}/score-template`, { method: "DELETE" }),
 
   collection: (status?: string, tag?: string, includeExpansions?: boolean) => {
     const params = new URLSearchParams();

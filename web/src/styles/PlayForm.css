@@ -263,3 +263,79 @@
   color: var(--muted);
   font-size: 13px;
 }
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12.5px;
+  padding: 0;
+  margin-left: 8px;
+  text-transform: none;
+  font-weight: 400;
+}
+
+.score-template-create {
+  margin-bottom: 10px;
+}
+
+.score-template-create input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+}
+
+.player-score-readonly {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+}
+
+.score-grid-box {
+  margin-top: 4px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+
+.score-grid {
+  display: grid;
+  gap: 4px;
+  min-width: fit-content;
+}
+
+.score-grid-cell {
+  min-width: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+}
+
+.score-grid-header {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.score-grid-label {
+  justify-content: flex-start;
+}
+
+.score-grid-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  text-align: center;
+  padding: 4px;
+}
+
+.score-grid-total-label {
+  font-weight: 600;
+}
+
+.score-grid-total {
+  font-weight: 600;
+}

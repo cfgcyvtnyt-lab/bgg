@@ -213,6 +213,17 @@
   flex: 1;
 }
 
+.score-template-manage {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.score-template-manage input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .history-row {
   display: flex;
   justify-content: space-between;

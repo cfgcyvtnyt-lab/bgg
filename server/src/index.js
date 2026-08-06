@@ -302,6 +302,40 @@ app.patch("/api/games/:id", (req, res) => {
   res.json({ ...row, aliases: parseJsonArray(row.aliases) });
 });
 
+// ---------- 점수 시트 템플릿 (게임에 속한 공유 값) ----------
+
+app.get("/api/games/:id/score-template", (req, res) => {
+  const gameId = Number(req.params.id);
+  const row = db.prepare("SELECT * FROM score_template WHERE game_id = ?").get(gameId);
+  if (!row) return res.json(null);
+  res.json({ ...row, fields: parseJsonArray(row.fields) });
+});
+
+app.put("/api/games/:id/score-template", (req, res) => {
+  const gameId = Number(req.params.id);
+  const game = db.prepare("SELECT id FROM game WHERE id = ?").get(gameId);
+  if (!game) return res.status(400).json({ error: "존재하지 않는 game_id입니다" });
+
+  const fields = req.body?.fields;
+  if (!Array.isArray(fields) || fields.length === 0 || fields.some((f) => typeof f !== "string" || !f.trim())) {
+    return res.status(400).json({ error: "fields는 비어있지 않은 문자열 배열이어야 합니다" });
+  }
+
+  db.prepare(`
+    INSERT INTO score_template (game_id, fields, updated_at) VALUES (?, ?, datetime('now'))
+    ON CONFLICT(game_id) DO UPDATE SET fields = excluded.fields, updated_at = excluded.updated_at
+  `).run(gameId, JSON.stringify(fields.map((f) => f.trim())));
+
+  const row = db.prepare("SELECT * FROM score_template WHERE game_id = ?").get(gameId);
+  res.json({ ...row, fields: parseJsonArray(row.fields) });
+});
+
+app.delete("/api/games/:id/score-template", (req, res) => {
+  const gameId = Number(req.params.id);
+  db.prepare("DELETE FROM score_template WHERE game_id = ?").run(gameId);
+  res.json({ ok: true });
+});
+
 // ---------- collection (공유) ----------
 
 // 화면에 보일 때 "가장 현재에 가까운" 상태 하나만 고르는 우선순위. 취득 이력 전체는 게임 상세에서만 본다.
@@ -433,8 +467,19 @@ app.delete("/api/collection/:id", (req, res) => {
 
 // ---------- plays (계정별) ----------
 
+function parseJsonObject(text) {
+  if (!text) return null;
+  try {
+    const v = JSON.parse(text);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 function loadPlayers(playId) {
-  return db.prepare("SELECT * FROM play_player WHERE play_id = ?").all(playId);
+  return db.prepare("SELECT * FROM play_player WHERE play_id = ?").all(playId)
+    .map((p) => ({ ...p, score_breakdown: parseJsonObject(p.score_breakdown) }));
 }
 
 function loadPhotos(playId) {
@@ -617,13 +662,14 @@ app.post("/api/plays", (req, res) => {
 
     const playId = result.lastInsertRowid;
     const insertPlayer = db.prepare(`
-      INSERT INTO play_player (play_id, name, score, win, role, team, is_new, start_position, is_automa)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO play_player (play_id, name, score, win, role, team, is_new, start_position, is_automa, score_breakdown)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const pl of players || []) {
       insertPlayer.run(playId, pl.name || "?", pl.score ?? null, pl.win ? 1 : 0,
                         pl.role ?? null, pl.team ?? null, pl.is_new ? 1 : 0,
-                        pl.start_position ?? null, pl.is_automa ? 1 : 0);
+                        pl.start_position ?? null, pl.is_automa ? 1 : 0,
+                        pl.score_breakdown ? JSON.stringify(pl.score_breakdown) : null);
     }
     db.exec("COMMIT");
     invalidateFeedCache();
@@ -670,13 +716,14 @@ app.patch("/api/plays/:id", (req, res) => {
     try {
       db.prepare("DELETE FROM play_player WHERE play_id = ?").run(id);
       const insertPlayer = db.prepare(`
-        INSERT INTO play_player (play_id, name, score, win, role, team, is_new, start_position, is_automa)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO play_player (play_id, name, score, win, role, team, is_new, start_position, is_automa, score_breakdown)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const pl of req.body.players) {
         insertPlayer.run(id, pl.name || "?", pl.score ?? null, pl.win ? 1 : 0,
                           pl.role ?? null, pl.team ?? null, pl.is_new ? 1 : 0,
-                          pl.start_position ?? null, pl.is_automa ? 1 : 0);
+                          pl.start_position ?? null, pl.is_automa ? 1 : 0,
+                          pl.score_breakdown ? JSON.stringify(pl.score_breakdown) : null);
       }
       db.exec("COMMIT");
     } catch (err) {
