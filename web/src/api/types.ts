@@ -288,6 +288,17 @@ export interface Sleeve {
   updated_at: string | null;
 }
 
+// 게임별 슬리브 필요치 - 재고(Sleeve)와 대조한 결과(stock/enough)까지 서버가 계산해서 내려준다.
+export interface GameSleeve {
+  id: number;
+  game_id: number;
+  size: string;
+  count: number;
+  note: string | null;
+  stock: number;
+  enough: boolean;
+}
+
 export interface ComboPlayerStat {
   name: string;
   plays: number;

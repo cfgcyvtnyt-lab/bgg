@@ -1651,6 +1651,76 @@ app.delete("/api/sleeves/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- 게임별 슬리브 필요치 ----------
+// 공유 값(user_id 없음). 규격 문자열은 사람마다 "63.5x88"/"63.5 X 88" 처럼 표기가 갈릴 수 있어
+// 재고(sleeve)와 대조할 때만 공백 제거 + x/X 통일로 정규화한다. 저장값 자체는 원문 그대로 둔다.
+function normalizeSleeveSize(s) {
+  return String(s || "").replace(/\s+/g, "").toLowerCase();
+}
+
+app.get("/api/games/:id/sleeves", (req, res) => {
+  const gameId = Number(req.params.id);
+  const needs = db.prepare("SELECT * FROM game_sleeve WHERE game_id = ? ORDER BY id").all(gameId);
+  const stockRows = db.prepare("SELECT size, quantity FROM sleeve").all();
+
+  const result = needs.map((n) => {
+    const key = normalizeSleeveSize(n.size);
+    const stock = stockRows
+      .filter((r) => normalizeSleeveSize(r.size) === key)
+      .reduce((sum, r) => sum + r.quantity, 0);
+    return { ...n, stock, enough: stock >= n.count };
+  });
+  res.json(result);
+});
+
+app.post("/api/games/:id/sleeves", (req, res) => {
+  const gameId = Number(req.params.id);
+  const game = db.prepare("SELECT id FROM game WHERE id = ?").get(gameId);
+  if (!game) return res.status(400).json({ error: "존재하지 않는 game_id입니다" });
+
+  const { size, count, note } = req.body || {};
+  if (!size || !String(size).trim()) return res.status(400).json({ error: "size가 필요합니다" });
+  if (!Number.isFinite(Number(count)) || Number(count) <= 0) {
+    return res.status(400).json({ error: "count는 1 이상의 숫자여야 합니다" });
+  }
+
+  const result = db
+    .prepare("INSERT INTO game_sleeve (game_id, size, count, note) VALUES (?, ?, ?, ?)")
+    .run(gameId, String(size).trim(), Number(count), note ?? null);
+
+  const row = db.prepare("SELECT * FROM game_sleeve WHERE id = ?").get(result.lastInsertRowid);
+  res.status(201).json(row);
+});
+
+app.patch("/api/game-sleeves/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare("SELECT * FROM game_sleeve WHERE id = ?").get(id);
+  if (!existing) return res.status(404).json({ error: "찾을 수 없습니다" });
+
+  const { size, count, note } = req.body || {};
+  const next = {
+    size: size !== undefined ? String(size).trim() : existing.size,
+    count: count !== undefined ? Number(count) : existing.count,
+    note: note !== undefined ? note : existing.note,
+  };
+  if (!next.size) return res.status(400).json({ error: "size가 필요합니다" });
+  if (!Number.isFinite(next.count) || next.count <= 0) {
+    return res.status(400).json({ error: "count는 1 이상의 숫자여야 합니다" });
+  }
+
+  db.prepare("UPDATE game_sleeve SET size = ?, count = ?, note = ? WHERE id = ?")
+    .run(next.size, next.count, next.note, id);
+
+  res.json(db.prepare("SELECT * FROM game_sleeve WHERE id = ?").get(id));
+});
+
+app.delete("/api/game-sleeves/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const result = db.prepare("DELETE FROM game_sleeve WHERE id = ?").run(id);
+  if (result.changes === 0) return res.status(404).json({ error: "찾을 수 없습니다" });
+  res.json({ ok: true });
+});
+
 // ---------- 이미지 디스크 캐시 프록시 ----------
 
 // 허용 호스트를 BGG 이미지 CDN 하나로 제한한다. 임의 URL을 받아 서버가 아무 데나

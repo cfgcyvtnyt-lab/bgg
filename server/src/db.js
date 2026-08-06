@@ -188,6 +188,16 @@ CREATE TABLE IF NOT EXISTS sleeve (
   note        TEXT,
   updated_at  TEXT
 );
+
+-- 게임별 슬리브 필요치. 공유 값(둘이 같이 관리) - 한 게임에 여러 규격 가능(큰 카드+작은 카드 등).
+CREATE TABLE IF NOT EXISTS game_sleeve (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  game_id  INTEGER NOT NULL REFERENCES game(id),
+  size     TEXT NOT NULL,        -- "63.5x88" 등
+  count    INTEGER NOT NULL,     -- 필요 장수
+  note     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_game_sleeve_game ON game_sleeve(game_id);
 `;
 
 export function openDb(path = "data/app.db") {

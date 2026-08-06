@@ -1,6 +1,6 @@
 import type {
   User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
-  NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse, ScoreTemplate, Sleeve,
+  NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse, ScoreTemplate, Sleeve, GameSleeve,
   Challenge, ChallengeTarget, TagCount,
 } from "./types";
 
@@ -182,6 +182,15 @@ export const api = {
     request<Sleeve>(`/sleeves/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteSleeve: (id: number) =>
     request<{ ok: boolean }>(`/sleeves/${id}`, { method: "DELETE" }),
+
+  // ---------- 게임별 슬리브 필요치 ----------
+  gameSleeves: (gameId: number) => request<GameSleeve[]>(`/games/${gameId}/sleeves`),
+  addGameSleeve: (gameId: number, body: { size: string; count: number; note?: string | null }) =>
+    request<GameSleeve>(`/games/${gameId}/sleeves`, { method: "POST", body: JSON.stringify(body) }),
+  updateGameSleeve: (id: number, body: { size?: string; count?: number; note?: string | null }) =>
+    request<GameSleeve>(`/game-sleeves/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteGameSleeve: (id: number) =>
+    request<{ ok: boolean }>(`/game-sleeves/${id}`, { method: "DELETE" }),
 
   // ---------- 피드 ----------
   feed: (params: {

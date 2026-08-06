@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { GameDetail, Play, ScoreTemplate, TagCount } from "../api/types";
+import type { GameDetail, Play, ScoreTemplate, TagCount, GameSleeve } from "../api/types";
 import { imgUrl } from "../utils/imgUrl";
 import { ratingColor, weightColor } from "../utils/ratingTier";
 import "../styles/GameDetail.css";
@@ -171,6 +171,73 @@ export default function GameDetailPage() {
       setError(err instanceof Error ? err.message : "점수 시트 삭제 실패");
     } finally {
       setTemplateSaving(false);
+    }
+  }
+
+  // 슬리브 필요치 - 게임에 속한 공유 값. 재고 규격 목록은 사이즈 입력 드롭다운 제안용으로만 쓴다.
+  const [gameSleeves, setGameSleeves] = useState<GameSleeve[]>([]);
+  const [sleeveSizeOptions, setSleeveSizeOptions] = useState<string[]>([]);
+  const [addingSleeve, setAddingSleeve] = useState(false);
+  const [sleeveForm, setSleeveForm] = useState({ size: "", count: "", note: "" });
+  const [editingSleeveId, setEditingSleeveId] = useState<number | null>(null);
+  const [editSleeveForm, setEditSleeveForm] = useState({ size: "", count: "", note: "" });
+  const [sleeveSaving, setSleeveSaving] = useState(false);
+
+  function loadGameSleeves() {
+    api.gameSleeves(gameId).then(setGameSleeves).catch(() => setGameSleeves([]));
+  }
+  useEffect(() => {
+    loadGameSleeves();
+    api.sleeves().then((rows) => setSleeveSizeOptions(rows.map((r) => r.size))).catch(() => setSleeveSizeOptions([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId]);
+
+  async function submitAddSleeve() {
+    const count = Number(sleeveForm.count);
+    if (!sleeveForm.size.trim() || !Number.isFinite(count) || count <= 0) return;
+    setSleeveSaving(true);
+    try {
+      await api.addGameSleeve(gameId, { size: sleeveForm.size.trim(), count, note: sleeveForm.note.trim() || null });
+      setSleeveForm({ size: "", count: "", note: "" });
+      setAddingSleeve(false);
+      loadGameSleeves();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "슬리브 필요치 저장 실패");
+    } finally {
+      setSleeveSaving(false);
+    }
+  }
+
+  function startEditSleeve(s: GameSleeve) {
+    setEditingSleeveId(s.id);
+    setEditSleeveForm({ size: s.size, count: String(s.count), note: s.note ?? "" });
+  }
+
+  async function saveEditSleeve(id: number) {
+    const count = Number(editSleeveForm.count);
+    if (!editSleeveForm.size.trim() || !Number.isFinite(count) || count <= 0) return;
+    setSleeveSaving(true);
+    try {
+      await api.updateGameSleeve(id, { size: editSleeveForm.size.trim(), count, note: editSleeveForm.note.trim() || null });
+      setEditingSleeveId(null);
+      loadGameSleeves();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "슬리브 필요치 저장 실패");
+    } finally {
+      setSleeveSaving(false);
+    }
+  }
+
+  async function removeGameSleeve(id: number) {
+    if (!window.confirm("이 슬리브 필요치를 삭제할까요?")) return;
+    setSleeveSaving(true);
+    try {
+      await api.deleteGameSleeve(id);
+      loadGameSleeves();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "삭제 실패");
+    } finally {
+      setSleeveSaving(false);
     }
   }
 
@@ -556,6 +623,101 @@ export default function GameDetailPage() {
                 )}
               </div>
             )}
+          </div>
+
+          <div className="score-template-manage">
+            <div className="info-row">
+              <span className="muted">슬리브</span>
+              <div className="field-row" style={{ gap: 8 }}>
+                <a
+                  className="btn-small"
+                  href={`https://boardgamegeek.com/boardgame/${game.id}/sleeves`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  BGG 슬리브 페이지 ↗
+                </a>
+                <button className="btn-small" onClick={() => setAddingSleeve((v) => !v)}>
+                  {addingSleeve ? "취소" : "+ 규격 추가"}
+                </button>
+              </div>
+            </div>
+
+            {gameSleeves.length === 0 && !addingSleeve && (
+              <p className="muted">등록된 슬리브 규격이 없습니다.</p>
+            )}
+
+            {gameSleeves.map((s) => (
+              editingSleeveId === s.id ? (
+                <div key={s.id} className="sleeve-edit-form" style={{ marginTop: 6 }}>
+                  <input
+                    list="sleeve-size-options"
+                    value={editSleeveForm.size}
+                    onChange={(e) => setEditSleeveForm((f) => ({ ...f, size: e.target.value }))}
+                    placeholder="규격 (예: 63.5x88)"
+                  />
+                  <input
+                    type="number"
+                    value={editSleeveForm.count}
+                    onChange={(e) => setEditSleeveForm((f) => ({ ...f, count: e.target.value }))}
+                    placeholder="필요 장수"
+                  />
+                  <input
+                    value={editSleeveForm.note}
+                    onChange={(e) => setEditSleeveForm((f) => ({ ...f, note: e.target.value }))}
+                    placeholder="메모"
+                  />
+                  <div className="sleeve-edit-actions">
+                    <button className="btn-small" disabled={sleeveSaving} onClick={() => saveEditSleeve(s.id)}>저장</button>
+                    <button className="btn-small" onClick={() => setEditingSleeveId(null)}>취소</button>
+                  </div>
+                </div>
+              ) : (
+                <div key={s.id} className="info-row">
+                  <span>
+                    {s.size} · {s.count}장{s.note ? ` (${s.note})` : ""}
+                  </span>
+                  <span className="field-row" style={{ gap: 8, alignItems: "center" }}>
+                    <span style={{ color: s.enough ? "var(--success, #2e8b57)" : "var(--warning, #d9822b)" }}>
+                      {s.enough
+                        ? `재고 ${s.stock}장 ✓`
+                        : `재고 ${s.stock}장, ${s.count - s.stock}장 부족`}
+                    </span>
+                    <button className="btn-small" onClick={() => startEditSleeve(s)}>수정</button>
+                    <button className="btn-small danger" disabled={sleeveSaving} onClick={() => removeGameSleeve(s.id)}>삭제</button>
+                  </span>
+                </div>
+              )
+            ))}
+
+            {addingSleeve && (
+              <div className="sleeve-edit-form" style={{ marginTop: 6 }}>
+                <input
+                  list="sleeve-size-options"
+                  value={sleeveForm.size}
+                  onChange={(e) => setSleeveForm((f) => ({ ...f, size: e.target.value }))}
+                  placeholder="규격 (예: 63.5x88)"
+                  autoFocus
+                />
+                <input
+                  type="number"
+                  value={sleeveForm.count}
+                  onChange={(e) => setSleeveForm((f) => ({ ...f, count: e.target.value }))}
+                  placeholder="필요 장수"
+                />
+                <input
+                  value={sleeveForm.note}
+                  onChange={(e) => setSleeveForm((f) => ({ ...f, note: e.target.value }))}
+                  placeholder="메모"
+                />
+                <div className="sleeve-edit-actions">
+                  <button className="btn-small" disabled={sleeveSaving} onClick={submitAddSleeve}>추가</button>
+                </div>
+              </div>
+            )}
+            <datalist id="sleeve-size-options">
+              {sleeveSizeOptions.map((size) => <option key={size} value={size} />)}
+            </datalist>
           </div>
         </div>
       </Section>
