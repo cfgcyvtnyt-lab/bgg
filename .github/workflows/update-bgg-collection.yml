@@ -16,42 +16,57 @@ jobs:
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
 
-      - name: BGG 컬렉션 CSV 받기
+      - name: BGG 컬렉션 XML 받기 (공식 XML API2)
         env:
           BGG_USERNAME: ${{ vars.BGG_USERNAME }}
+          BGG_API_KEY: ${{ secrets.BGG_API_KEY }}
         run: |
-          curl -sL --retry 5 --retry-delay 10 \
-            "https://boardgamegeek.com/geekcollection.php?action=exportcsv&subtype=boardgame&username=${BGG_USERNAME}&all=1" \
-            -o collection.csv
-          # BGG가 큰 컬렉션은 비동기로 처리 요청("please try again later")을 응답할 때가 있어서 재시도
-          if grep -qi "please try again" collection.csv; then
-            echo "BGG가 처리 중이라 30초 후 재시도"
-            sleep 30
-            curl -sL --retry 5 --retry-delay 10 \
-              "https://boardgamegeek.com/geekcollection.php?action=exportcsv&subtype=boardgame&username=${BGG_USERNAME}&all=1" \
-              -o collection.csv
+          set -e
+          URL="https://boardgamegeek.com/xmlapi2/collection?username=${BGG_USERNAME}&subtype=boardgame&stats=1"
+
+          AUTH_HEADER=()
+          if [ -n "$BGG_API_KEY" ]; then
+            AUTH_HEADER=(-H "Authorization: Bearer ${BGG_API_KEY}")
+          fi
+
+          # BGG는 첫 요청에 202(아직 준비 중)를 주고, 잠시 후 재요청하면 200으로 데이터를 준다.
+          STATUS=0
+          for i in $(seq 1 10); do
+            STATUS=$(curl -sL "${AUTH_HEADER[@]}" -o collection.xml -w "%{http_code}" "$URL")
+            echo "시도 $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              break
+            fi
+            echo "BGG가 아직 처리 중이거나 일시적 오류. 10초 후 재시도"
+            sleep 10
+          done
+
+          if [ "$STATUS" != "200" ]; then
+            echo "최종 실패: HTTP $STATUS"
+            cat collection.xml || true
+            exit 1
           fi
 
       - name: 받아온 파일 확인용 디버그 출력
         run: |
           echo "--- 파일 크기 ---"
-          wc -c collection.csv
-          echo "--- 앞 20줄 ---"
-          head -n 20 collection.csv
+          wc -c collection.xml
+          echo "--- 앞 30줄 ---"
+          head -n 30 collection.xml
 
-      - name: collection.csv를 아티팩트로 업로드 (직접 열어보기용)
+      - name: collection.xml을 아티팩트로 업로드 (직접 열어보기용)
         uses: actions/upload-artifact@v4
         with:
-          name: raw-collection-csv
-          path: collection.csv
+          name: raw-collection-xml
+          path: collection.xml
 
       - name: Python 설정
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: CSV -> JSON 변환
-        run: python scripts/csv_to_json.py collection.csv docs/collection.json
+      - name: XML -> JSON 변환
+        run: python scripts/xml_to_json.py collection.xml docs/collection.json
 
       - name: 변경사항 커밋
         run: |
