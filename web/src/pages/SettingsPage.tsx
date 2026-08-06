@@ -52,20 +52,99 @@ function SyncButton() {
   );
 }
 
-// 계정 섹션: 사용자 전환, 프로필 사진, BGA 아이디, BGG 동기화, 대표 장소를 한 곳에 모은다.
+// BGG/BGA 로그인 카드. 실제 연동은 아직 구현하지 않으므로 "연동" 버튼은 안내만 띄운다.
+// 비밀번호는 화면 상태로만 잠깐 들고 있다가 그대로 버려지고, 서버로 전송되지도 저장되지도 않는다.
+function LoginCard({
+  title, usernamePlaceholder, username, onUsernameChange, onUsernameSaved, extra,
+}: {
+  title: string;
+  usernamePlaceholder: string;
+  username: string;
+  onUsernameChange: (v: string) => void;
+  onUsernameSaved?: () => void;
+  extra?: React.ReactNode;
+}) {
+  // 비밀번호는 로컬 상태에만 존재 - 저장도 전송도 하지 않고 "연동" 클릭 시 그대로 비운다.
+  const [password, setPassword] = useState("");
+  const [notice, setNotice] = useState(false);
+
+  function connect() {
+    setPassword(""); // 서버로 보내지 않는다 - 그냥 비운다
+    setNotice(true);
+    if (onUsernameSaved) onUsernameSaved();
+  }
+
+  return (
+    <>
+      <div className="section-title">{title}</div>
+      <div className="card login-card">
+        <div className="field">
+          <label>아이디</label>
+          <input
+            value={username}
+            onChange={(e) => onUsernameChange(e.target.value)}
+            placeholder={usernamePlaceholder}
+          />
+        </div>
+        <div className="field">
+          <label>비밀번호</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="비밀번호"
+            autoComplete="new-password"
+          />
+        </div>
+        <button className="btn-primary" onClick={connect}>연동</button>
+        {notice && <p className="muted bga-note">아직 준비 중입니다. 아이디만 저장되며 비밀번호는 저장되지 않습니다.</p>}
+        {extra}
+      </div>
+    </>
+  );
+}
+
+// 계정 섹션: 사용자 전환(접힘), 프로필 사진, BGG/BGA 로그인 카드, 대표 장소를 모은다.
 function AccountSection({ locations }: { locations: LocationCount[] }) {
   const { users, currentUser, setCurrentUser } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [bgaUsername, setBgaUsername] = useState(() => localStorage.getItem(BGA_KEY) || "");
-  const [saved, setSaved] = useState(false);
+  const [bggUsername, setBggUsername] = useState(() => currentUser?.bgg_username || "");
   const [locBusy, setLocBusy] = useState(false);
+  // 사용자 전환은 한 번 정하면 거의 안 바꾸는 값이라 기본은 접어둔다.
+  const [switchOpen, setSwitchOpen] = useState(false);
 
-  function saveBga() {
-    localStorage.setItem(BGA_KEY, bgaUsername.trim());
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+  // 프로필은 원형 34~36px로 쓰이는데, 원본이 정사각이 아니면 잘려서 어색하고
+  // 폰 사진처럼 수 MB짜리를 그대로 두면 낭비다. 업로드 전에 가운데를 정사각으로 잘라
+  // 256px(고배율 화면에서도 선명한 크기)로 맞춰 보낸다.
+  async function squareResize(file: File): Promise<File> {
+    const SIZE = 256;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const side = Math.min(bitmap.width, bitmap.height);
+      const sx = (bitmap.width - side) / 2;
+      const sy = (bitmap.height - side) / 2;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return file;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, SIZE, SIZE);
+      bitmap.close();
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.92)
+      );
+      if (!blob) return file;
+      return new File([blob], "avatar.jpg", { type: "image/jpeg" });
+    } catch {
+      // 캔버스 처리에 실패하면 원본을 그대로 올린다
+      return file;
+    }
   }
 
   async function onAvatarPicked(files: FileList | null) {
@@ -75,7 +154,7 @@ function AccountSection({ locations }: { locations: LocationCount[] }) {
     setUploadError(null);
     setUploading(true);
     try {
-      const updated = await api.uploadAvatar(currentUser.id, file);
+      const updated = await api.uploadAvatar(currentUser.id, await squareResize(file));
       setCurrentUser({ ...currentUser, ...updated } as User);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "업로드 실패");
@@ -100,57 +179,51 @@ function AccountSection({ locations }: { locations: LocationCount[] }) {
       <div className="section-title">계정</div>
       <div className="card">
         <div className="account-subsection">
-          <div className="account-subsection-label">사용자</div>
-          <div className="user-switch">
-            {users.map((u) => (
-              <button
-                key={u.id}
-                className={`user-switch-btn${currentUser?.id === u.id ? " active" : ""}`}
-                onClick={() => setCurrentUser(u)}
-              >
-                {u.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="account-subsection">
-          <div className="account-subsection-label">프로필 사진</div>
-          <div className="avatar-row">
-            <div className="avatar-preview">
+          <div className="account-user-row">
+            <div className="avatar-preview avatar-preview-sm">
               {currentUser?.avatar
                 ? <img src={api.avatarUrl(currentUser.avatar)} alt={currentUser.name} />
                 : <span className="avatar-placeholder muted">{currentUser?.name?.[0] ?? "?"}</span>}
             </div>
-            <button
-              className="btn-secondary"
-              disabled={!currentUser || uploading}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {uploading ? "업로드 중..." : "사진 선택"}
+            <span className="account-user-name">{currentUser?.name ?? "-"}</span>
+            <button className="btn-small" onClick={() => setSwitchOpen((v) => !v)}>
+              {switchOpen ? "닫기" : "전환"}
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="avatar-file-input"
-              onChange={(e) => onAvatarPicked(e.target.files)}
-            />
           </div>
-          {uploadError && <p className="error-text">{uploadError}</p>}
-        </div>
 
-        <div className="account-subsection">
-          <div className="account-subsection-label">BGA 아이디</div>
-          <div className="field">
-            <input
-              value={bgaUsername}
-              onChange={(e) => setBgaUsername(e.target.value)}
-              placeholder="Board Game Arena 아이디"
-            />
-          </div>
-          <button className="btn-secondary" onClick={saveBga}>저장{saved ? "됨" : ""}</button>
-          <p className="muted bga-note">동기화 기능은 아직 준비 중입니다. 아이디만 저장됩니다.</p>
+          {switchOpen && (
+            <div className="user-switch-panel">
+              <div className="user-switch">
+                {users.map((u) => (
+                  <button
+                    key={u.id}
+                    className={`user-switch-btn${currentUser?.id === u.id ? " active" : ""}`}
+                    onClick={() => setCurrentUser(u)}
+                  >
+                    {u.name}
+                  </button>
+                ))}
+              </div>
+
+              <div className="avatar-row">
+                <button
+                  className="btn-secondary"
+                  disabled={!currentUser || uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploading ? "업로드 중..." : "프로필 사진 선택"}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="avatar-file-input"
+                  onChange={(e) => onAvatarPicked(e.target.files)}
+                />
+              </div>
+              {uploadError && <p className="error-text">{uploadError}</p>}
+            </div>
+          )}
         </div>
 
         <div className="account-subsection">
@@ -166,9 +239,23 @@ function AccountSection({ locations }: { locations: LocationCount[] }) {
             ))}
           </select>
         </div>
-
-        <SyncButton />
       </div>
+
+      <LoginCard
+        title="BGG 계정 연동"
+        usernamePlaceholder="BGG 아이디"
+        username={bggUsername}
+        onUsernameChange={setBggUsername}
+        extra={<SyncButton />}
+      />
+
+      <LoginCard
+        title="BGA 계정 연동"
+        usernamePlaceholder="Board Game Arena 아이디"
+        username={bgaUsername}
+        onUsernameChange={setBgaUsername}
+        onUsernameSaved={() => localStorage.setItem(BGA_KEY, bgaUsername.trim())}
+      />
     </>
   );
 }
@@ -177,22 +264,28 @@ function AccountSection({ locations }: { locations: LocationCount[] }) {
 // UPDATE로 실제 고친다 - 예전 "이름 정리"보다 더 강한 조작이라 확인 다이얼로그를 반드시 거친다.
 function LocationManageSection({ locations, onChanged }: { locations: LocationCount[]; onChanged: () => void }) {
   const [extra, setExtra] = useState<string[]>(() => loadExtraLocations());
-  const [renaming, setRenaming] = useState<string | null>(null);
-  const [newName, setNewName] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [values, setValues] = useState<Record<string, string>>({});
   const [adding, setAdding] = useState(false);
   const [addValue, setAddValue] = useState("");
   const [busy, setBusy] = useState(false);
 
   const names = [...locations.map((l) => l.name), ...extra.filter((e) => !locations.some((l) => l.name === e))];
 
-  function startRename(name: string) {
-    setRenaming(name);
-    setNewName(name);
+  function toggleEdit() {
+    if (editMode) {
+      setEditMode(false);
+      setAdding(false);
+      setAddValue("");
+    } else {
+      setValues(Object.fromEntries(names.map((n) => [n, n])));
+      setEditMode(true);
+    }
   }
 
   async function confirmRename(from: string) {
-    const to = newName.trim();
-    if (!to || to === from) { setRenaming(null); return; }
+    const to = (values[from] ?? from).trim();
+    if (!to || to === from) return;
     if (!window.confirm(`"${from}" → "${to}"로 이름을 바꿀까요?`)) return;
     setBusy(true);
     try {
@@ -207,7 +300,7 @@ function LocationManageSection({ locations, onChanged }: { locations: LocationCo
         setExtra(next);
         localStorage.setItem(EXTRA_LOCATIONS_KEY, JSON.stringify(next));
       }
-      setRenaming(null);
+      setValues((v) => ({ ...v, [to]: to }));
     } finally {
       setBusy(false);
     }
@@ -219,52 +312,59 @@ function LocationManageSection({ locations, onChanged }: { locations: LocationCo
     const next = [...extra, name];
     setExtra(next);
     localStorage.setItem(EXTRA_LOCATIONS_KEY, JSON.stringify(next));
+    setValues((v) => ({ ...v, [name]: name }));
     setAdding(false);
     setAddValue("");
   }
 
   return (
     <>
-      <div className="section-title">장소 관리</div>
+      <div className="section-title-row">
+        <div className="section-title">장소 관리</div>
+        <button className="btn-small" onClick={toggleEdit}>{editMode ? "완료" : "편집"}</button>
+      </div>
       <div className="card">
         {names.length === 0 && <p className="muted center-pad">기록된 장소가 없습니다.</p>}
 
         {names.map((name) => (
           <div key={name} className="alias-row">
-            <div className="alias-row-main">
-              <span>{name}</span>
-            </div>
-            {renaming === name ? (
+            {editMode ? (
               <div className="alias-row-action">
                 <input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  autoFocus
+                  value={values[name] ?? name}
+                  onChange={(e) => setValues((v) => ({ ...v, [name]: e.target.value }))}
                 />
-                <button className="btn-small" disabled={busy} onClick={() => confirmRename(name)}>확인</button>
-                <button className="btn-small" disabled={busy} onClick={() => setRenaming(null)}>취소</button>
+                <button
+                  className="btn-small"
+                  disabled={busy || (values[name] ?? name).trim() === name}
+                  onClick={() => confirmRename(name)}
+                >
+                  저장
+                </button>
               </div>
             ) : (
-              <div className="alias-row-action">
-                <button className="btn-small" onClick={() => startRename(name)}>편집</button>
+              <div className="alias-row-main">
+                <span>{name}</span>
               </div>
             )}
           </div>
         ))}
 
-        {adding ? (
-          <div className="alias-row-action add-location-row">
-            <input
-              value={addValue}
-              onChange={(e) => setAddValue(e.target.value)}
-              placeholder="새 장소 이름"
-              autoFocus
-            />
-            <button className="btn-small" onClick={submitAdd}>추가</button>
-            <button className="btn-small" onClick={() => { setAdding(false); setAddValue(""); }}>취소</button>
-          </div>
-        ) : (
-          <button className="btn-secondary add-location-btn" onClick={() => setAdding(true)}>장소 추가</button>
+        {editMode && (
+          adding ? (
+            <div className="alias-row-action add-location-row">
+              <input
+                value={addValue}
+                onChange={(e) => setAddValue(e.target.value)}
+                placeholder="새 장소 이름"
+                autoFocus
+              />
+              <button className="btn-small" onClick={submitAdd}>추가</button>
+              <button className="btn-small" onClick={() => { setAdding(false); setAddValue(""); }}>취소</button>
+            </div>
+          ) : (
+            <button className="btn-secondary add-location-btn" onClick={() => setAdding(true)}>장소 추가</button>
+          )
         )}
       </div>
     </>

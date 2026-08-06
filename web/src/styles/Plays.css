@@ -159,7 +159,7 @@
 
 /* 판 전체 결과 아이콘(트로피/해골) - 프로필 묶음 "앞"(왼쪽)에 하나만 붙는다 */
 .result-icon {
-  font-size: 16px;
+  font-size: 14px;
   flex: none;
   line-height: 1;
   display: inline-flex;

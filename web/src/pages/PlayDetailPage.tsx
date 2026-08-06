@@ -72,7 +72,7 @@ export default function PlayDetailPage() {
 
       {!!play.has_rule_error && (
         <div className="card rule-error-box">
-          <span className="rule-error-tag">⚠️ 룰 실수</span>
+          <span className="rule-error-tag">⚠️ 에러플</span>
           {play.rule_error_note && <span className="rule-error-note">{play.rule_error_note}</span>}
         </div>
       )}

@@ -1594,7 +1594,18 @@ app.get("/api/insights", (req, res) => {
     ORDER BY COALESCE(g.custom_name, g.name)
   `).all(userId);
 
-  // 판당 비용: collection.price_paid를 이 사용자의 해당 게임 플레이 수로 나눈다
+  // 판당 비용: collection.price_paid를 이 사용자의 해당 게임 플레이 수로 나눈다.
+  // 단, BGA/TTS/App에서 한 판은 내 실물 제품으로 플레이한 게 아니므로 여기서는 제외한다
+  // (name_alias 병합까지 적용한 뒤 최종 이름 기준으로 걸러낸다).
+  const ONLINE_LOCATIONS = new Set(["BGA", "BoardGameArena", "TTS", "App"]);
+  const offlineGameCounts = new Map();
+  for (const p of plays) {
+    const canonicalLoc = applyAlias(locationAlias, p.location || "");
+    if (ONLINE_LOCATIONS.has(canonicalLoc)) continue;
+    const cur = offlineGameCounts.get(p.game_id) || { game_id: p.game_id, game_name: p.game_name, count: 0 };
+    cur.count++;
+    offlineGameCounts.set(p.game_id, cur);
+  }
   const priceRows = db.prepare(`
     SELECT c.game_id, COALESCE(g.custom_name, g.name) AS game_name, SUM(c.price_paid) AS total_paid
     FROM collection c
@@ -1604,7 +1615,7 @@ app.get("/api/insights", (req, res) => {
     HAVING SUM(c.price_paid) > 0
   `).all();
   const costPerPlay = priceRows.map((r) => {
-    const plays = gameCounts.get(r.game_id)?.count || 0;
+    const plays = offlineGameCounts.get(r.game_id)?.count || 0;
     return {
       game_id: r.game_id,
       game_name: r.game_name,

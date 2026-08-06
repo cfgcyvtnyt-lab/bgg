@@ -24,6 +24,55 @@
   font-size: 12px;
 }
 
+/* 사용자 전환은 거의 안 바꾸는 값이라 한 줄로 접어두고, 눌러야 펼쳐진다. */
+.account-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-user-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.avatar-preview-sm {
+  width: 32px;
+  height: 32px;
+}
+
+.avatar-preview-sm .avatar-placeholder {
+  font-size: 14px;
+}
+
+.user-switch-panel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.user-switch-panel .avatar-row {
+  margin-top: 12px;
+}
+
+/* BGG/BGA 로그인 카드 - 실제 연동은 미구현, 폼만 제공한다. */
+.login-card .btn-primary {
+  width: 100%;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 20px 0 8px;
+}
+
+.section-title-row .section-title {
+  margin: 0;
+}
+
 .account-subsection {
   padding: 12px 0;
   border-bottom: 1px solid var(--border);

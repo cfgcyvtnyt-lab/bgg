@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useUser } from "../context/UserContext";
@@ -6,6 +6,14 @@ import type { FeedItem, FeedItemEvent, FeedItemMonth, FeedItemPlay } from "../ap
 import PhotoSlider from "../components/PhotoSlider";
 import { imgUrl } from "../utils/imgUrl";
 import "../styles/Feed.css";
+
+// 사용자별 이니셜 원 색 고정 - PlaysPage와 동일한 방식(이름 해시)으로 항상 같은 색이 나오게 한다.
+const INITIAL_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)", "var(--c8)", "var(--c9)", "var(--c10)"];
+function colorForName(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return INITIAL_COLORS[hash % INITIAL_COLORS.length];
+}
 
 const EVENT_EMOJI: Record<FeedItemEvent["kind"], string> = {
   first: "\u{1F389}", // 🎉
@@ -57,7 +65,8 @@ function EventLine({ item }: { item: FeedItemEvent }) {
 }
 
 function MonthCard({ item }: { item: FeedItemMonth }) {
-  const [open, setOpen] = useState(false);
+  // 결산은 기본으로 펼쳐둔다 - 접어둘 이유가 없다
+  const [open, setOpen] = useState(true);
   const top = item.topGames[0];
   const hours = Math.floor(item.totalMinutes / 60);
   const mins = item.totalMinutes % 60;
@@ -81,7 +90,7 @@ function MonthCard({ item }: { item: FeedItemMonth }) {
                 ) : (
                   <div className="month-grid-noimg">{g.name}</div>
                 )}
-                <span className="month-grid-badge">{g.count}판</span>
+                <span className="month-grid-badge">{g.count}</span>
               </Link>
             ))}
           </div>
@@ -101,21 +110,29 @@ function MonthCard({ item }: { item: FeedItemMonth }) {
 }
 
 function PlayCard({
-  item, onTagClick,
+  item, onTagClick, avatarByName,
 }: {
   item: FeedItemPlay;
   onTagClick: (kind: "game" | "category", value: string, gameId?: number) => void;
+  avatarByName: Map<string, string>;
 }) {
   const p = item.play;
   const navigate = useNavigate();
 
   const winner = p.players.find((pl) => pl.win && !pl.is_automa);
   const myResult = winner ? `${winner.win ? "승" : "패"}` : null;
+  const authorAvatar = avatarByName.get(p.author);
 
   return (
     <div className="card feed-play-card">
       <div className="feed-play-header" onClick={() => navigate(`/plays/${p.id}`)}>
-        <div className="feed-avatar">{p.author}</div>
+        {authorAvatar ? (
+          <img className="feed-avatar feed-avatar-img" src={api.avatarUrl(authorAvatar)} alt={p.author} />
+        ) : (
+          <div className="feed-avatar feed-avatar-initial" style={{ background: colorForName(p.author) }}>
+            {p.author.slice(0, 1)}
+          </div>
+        )}
         <div className="feed-play-headinfo">
           <div className="feed-play-author">{p.author}</div>
           <div className="muted feed-play-date">{fmtFullDate(p.played_at)}</div>
@@ -151,6 +168,12 @@ function PlayCard({
 
 export default function FeedPage() {
   const { users } = useUser();
+  // 이름 -> 아바타 파일명 맵 (PlaysPage와 동일한 방식)
+  const avatarByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const u of users) if (u.avatar) map.set(u.name, u.avatar);
+    return map;
+  }, [users]);
   const [items, setItems] = useState<FeedItem[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -272,6 +295,7 @@ export default function FeedPage() {
                 key={`play-${item.play.id}`}
                 item={item}
                 onTagClick={handleTagClick}
+                avatarByName={avatarByName}
               />
             );
           }

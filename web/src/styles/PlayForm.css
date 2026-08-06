@@ -53,7 +53,7 @@
 .game-search-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .game-search-thumb-empty {
@@ -497,12 +497,23 @@
   margin-top: 4px;
 }
 
-/* 협력 모드 토글과 같은 스타일: 체크박스+라벨이 한 줄에 깔끔히 정렬되게 */
+/* 협력 모드 토글과 같은 스타일: 체크박스+라벨이 한 줄에 깔끔히 정렬되게.
+   .field가 flex-column이라 자식(label)이 기본으로 폭 전체에 늘어나고, inline-flex를 줘도
+   flex 아이템은 "블록화(blockification)"돼 그냥 flex로 계산돼버려 늘어남이 안 없어진다 -
+   align-self로 늘어남 자체를 꺼야 "코멘트" 필드처럼 왼쪽에 붙어 한 줄로 보인다. */
 .rule-error-field .switch-label {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+}
+
+/* shared.css의 `.field input { width:100% }`가 체크박스까지 늘려버려 체크박스가
+   거대해지고(라벨 폭 절반을 잡아먹음) 글자가 오른쪽 끝으로 밀려나던 원인 - 여기서만 되돌린다. */
+.rule-error-field .switch-label input[type="checkbox"] {
+  width: auto;
+  flex: none;
 }
 
 .rule-error-field textarea {

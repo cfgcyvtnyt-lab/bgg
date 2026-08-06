@@ -65,14 +65,15 @@
   margin-top: 2px;
 }
 
+/* BGG 대표색(빨강)으로 조용히 - 눈에 덜 띄게 이탤릭 + 작게, 테두리 없이 */
 .bgg-link-btn {
   display: inline-block;
   margin-top: 8px;
-  font-size: 12.5px;
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  padding: 4px 10px;
+  font-size: 11.5px;
+  font-style: italic;
+  color: #c0392b;
+  border: none;
+  padding: 0;
 }
 
 /* ---------- 내 평점 편집 (별점) ---------- */
@@ -107,12 +108,14 @@
   font-weight: 600;
 }
 
+/* 박스아트는 세로로 길거나 정사각이 아닌 경우가 많다. 잘라내지 않고 비율을 지킨 채
+   어두운 배경 위에 레터박스로 얹는다. */
 .detail-hero img {
   width: 110px;
   height: 110px;
-  object-fit: cover;
+  object-fit: contain;
+  background: #0a0a0a;
   border-radius: 10px;
-  border: 1px solid var(--border);
   flex: none;
 }
 
@@ -203,7 +206,7 @@
 .version-item img {
   width: 48px;
   height: 48px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 6px;
   flex: none;
 }
@@ -397,18 +400,20 @@
   gap: 6px;
 }
 
+/* 해시태그 스타일: 알약 테두리 대신 #텍스트 + 이탤릭, 옅고 작게 */
 .chip-static {
   display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: 3px 4px;
+  border-radius: 0;
   font-size: 12px;
-  background: var(--accent-dim);
-  color: var(--text);
-  border: 1px solid var(--border);
+  font-style: italic;
+  background: none;
+  color: var(--muted);
+  border: none;
 }
 
 .chip-mechanic {
-  background: var(--panel);
+  background: none;
 }
 
 .info-box {

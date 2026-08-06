@@ -12,9 +12,19 @@
 
 .sleeve-table {
   width: 100%;
+  min-width: 620px;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 14px;
 }
+
+/* 열 폭을 고정해서 사이즈·제조사·두께·수량·메모·동작이 행마다 세로로 줄맞음 되게 한다. */
+.sleeve-table .col-size { width: 15%; }
+.sleeve-table .col-maker { width: 22%; }
+.sleeve-table .col-thickness { width: 12%; }
+.sleeve-table .col-qty { width: 14%; }
+.sleeve-table .col-note { width: 22%; }
+.sleeve-table .col-actions { width: 15%; }
 
 .sleeve-table th {
   text-align: left;
@@ -31,21 +41,17 @@
 }
 
 .sleeve-qty-cell {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   white-space: nowrap;
 }
 
-.qty-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: var(--panel);
+.qty-input {
+  width: 64px;
+  padding: 6px 8px;
   border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
   color: var(--text);
-  font-size: 15px;
-  line-height: 1;
+  font-size: 14px;
 }
 
 .sleeve-maker-cell {

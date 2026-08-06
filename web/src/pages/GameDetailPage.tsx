@@ -507,18 +507,19 @@ export default function GameDetailPage() {
 
             {(game.categories && game.categories.length > 0) && (
               <div className="chip-wrap">
-                {game.categories.map((c) => <span key={c} className="chip chip-static">{c}</span>)}
+                {game.categories.map((c) => <span key={c} className="chip chip-static">#{c}</span>)}
               </div>
             )}
             {(game.mechanics && game.mechanics.length > 0) && (
               <div className="chip-wrap">
-                {game.mechanics.map((m) => <span key={m} className="chip chip-static chip-mechanic">{m}</span>)}
+                {game.mechanics.map((m) => <span key={m} className="chip chip-static chip-mechanic">#{m}</span>)}
               </div>
             )}
           </div>
         ) : null}
 
-        {game.description_ko && (
+        {/* 접혀 있을 때는 숨기고, 펼쳤을 때만 펼쳐진 본문(디자이너·아티스트·카테고리) 맨 끝에 붙인다 */}
+        {introExpanded && game.description_ko && (
           <a className="intro-original-link" onClick={() => setShowOriginal((v) => !v)}>
             {showOriginal ? "번역본 보기" : "원문 보기"}
           </a>

@@ -29,17 +29,24 @@ export default function SleevesPage() {
 
   useEffect(() => { load(); }, []);
 
+  // PC에서는 컬렉션 표 모드와 같은 방식으로 폭을 넓힌다. 모바일은 뷰포트가 좁아 실질적으로
+  // 영향이 없으므로(최대폭 제한만 풀림) 화면 크기와 무관하게 켜둬도 안전하다.
+  useEffect(() => {
+    document.body.classList.add("wide-mode");
+    return () => document.body.classList.remove("wide-mode");
+  }, []);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return sleeves;
     return sleeves.filter((s) => s.size.toLowerCase().includes(q));
   }, [sleeves, query]);
 
-  // +/- 는 목록을 다시 불러오지 않고 서버 응답으로 로컬 상태만 갱신한다 (빠른 조작감 우선).
-  async function bumpQuantity(s: Sleeve, delta: number) {
-    const next = Math.max(0, s.quantity + delta);
-    if (next === s.quantity) return;
-    const updated = await api.updateSleeve(s.id, { quantity: next });
+  // 수량 직접 입력. 목록을 다시 불러오지 않고 서버 응답으로 로컬 상태만 갱신한다 (빠른 반영 우선).
+  async function setQuantity(s: Sleeve, next: number) {
+    const clamped = Math.max(0, Math.floor(next) || 0);
+    if (clamped === s.quantity) return;
+    const updated = await api.updateSleeve(s.id, { quantity: clamped });
     setSleeves((prev) => prev.map((x) => (x.id === s.id ? updated : x)));
   }
 
@@ -156,6 +163,14 @@ export default function SleevesPage() {
       {!loading && filtered.length > 0 && (
         <div className="sleeve-table-wrap">
           <table className="sleeve-table">
+            <colgroup>
+              <col className="col-size" />
+              <col className="col-maker" />
+              <col className="col-thickness" />
+              <col className="col-qty" />
+              <col className="col-note" />
+              <col className="col-actions" />
+            </colgroup>
             <thead>
               <tr>
                 <th>사이즈</th>
@@ -194,9 +209,14 @@ export default function SleevesPage() {
                     </td>
                     <td className="muted">{s.thickness || "-"}</td>
                     <td className="sleeve-qty-cell">
-                      <button className="qty-btn" onClick={() => bumpQuantity(s, -1)}>-</button>
-                      <span>{s.quantity}</span>
-                      <button className="qty-btn" onClick={() => bumpQuantity(s, 1)}>+</button>
+                      <input
+                        type="number"
+                        className="qty-input"
+                        min={0}
+                        defaultValue={s.quantity}
+                        key={s.quantity}
+                        onBlur={(e) => setQuantity(s, Number(e.target.value))}
+                      />
                     </td>
                     <td className="sleeve-note-cell">{s.note || "-"}</td>
                     <td className="sleeve-actions-cell">
