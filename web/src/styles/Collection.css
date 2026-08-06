@@ -20,8 +20,8 @@
   aspect-ratio: 1 / 1;
   border-radius: 10px;
   overflow: hidden;
-  /* 박스아트 원본 비율을 살리기 위해 어두운 배경 위에 레터박스로 표시. 테두리는 없앤다 */
-  background: #0a0a0a;
+  /* 박스아트 원본 비율을 살린다. 남는 여백엔 색을 두지 않아 뒤 배경이 그대로 비친다 */
+  background: transparent;
 }
 
 .game-card-grid .game-card-thumb img {
@@ -88,7 +88,7 @@
   flex: none;
   border-radius: 8px;
   overflow: hidden;
-  background: #0a0a0a;
+  background: transparent;
 }
 
 .game-card-list .game-card-thumb img {

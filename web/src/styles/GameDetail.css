@@ -114,7 +114,7 @@
   width: 110px;
   height: 110px;
   object-fit: contain;
-  background: #0a0a0a;
+  background: transparent;
   border-radius: 10px;
   flex: none;
 }
