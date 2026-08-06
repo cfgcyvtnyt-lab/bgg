@@ -77,10 +77,13 @@ export default function CollectionPage() {
   }, [includeExpansions]);
 
   const searched = useMemo(() => {
-    // 대소문자 무시 검색: 영문은 소문자로 통일해 비교 (한글은 대소문자가 없어 영향 없음)
+    // 대소문자 무시. 표시명이 한글이어도 영문명으로 찾을 수 있어야 한다
+    // ("agricola"로 아그리콜라가 나와야 함).
     const q = query.trim().toLowerCase();
     if (!q) return entries;
-    return entries.filter((e) => (e.game_name || "").toLowerCase().includes(q));
+    return entries.filter((e) =>
+      `${e.game_name || ""} ${e.game_name_en || ""}`.toLowerCase().includes(q)
+    );
   }, [entries, query]);
 
   const filtered = useMemo(() => searched.filter((e) => matchesFilter(e, filter)), [searched, filter]);

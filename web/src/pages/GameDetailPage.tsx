@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import type { GameDetail, Play, ScoreTemplate, TagCount, GameSleeve } from "../api/types";
 import { imgUrl } from "../utils/imgUrl";
 import { ratingColor, weightColor } from "../utils/ratingTier";
+import { bggGameUrl, bggSleevesUrl } from "../utils/bggUrl";
 import "../styles/GameDetail.css";
 
 const STATUS_LIST = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
@@ -441,8 +442,15 @@ export default function GameDetailPage() {
             <p className="detail-hero-publishers">퍼블리셔: {game.publishers.join(", ")}</p>
           )}
           {tagline && <p className="detail-tagline">{tagline}</p>}
-          <a className="bgg-link-btn" href={`https://boardgamegeek.com/boardgame/${game.id}`} target="_blank" rel="noreferrer">
-            BGG에서 보기 ↗
+          <a
+            className="bgg-link-btn"
+            href={bggGameUrl(game.id, game.name_en)}
+            target="_blank"
+            rel="noreferrer"
+            title="BGG에서 보기"
+            aria-label="BGG에서 보기"
+          >
+            BGG ↗
           </a>
         </div>
       </div>
@@ -631,7 +639,7 @@ export default function GameDetailPage() {
               <div className="field-row" style={{ gap: 8 }}>
                 <a
                   className="btn-small"
-                  href={`https://boardgamegeek.com/boardgame/${game.id}/sleeves`}
+                  href={bggSleevesUrl(game.id, game.name_en)}
                   target="_blank"
                   rel="noreferrer"
                 >
