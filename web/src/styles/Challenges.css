@@ -1,3 +1,10 @@
+.challenges-back-btn {
+  display: inline-block;
+  text-decoration: none;
+  white-space: nowrap;
+  flex: none;
+}
+
 .challenge-card {
   margin-bottom: 10px;
 }

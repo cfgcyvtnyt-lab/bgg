@@ -159,7 +159,8 @@ export default function SleevesPage() {
             <thead>
               <tr>
                 <th>사이즈</th>
-                <th>제조사</th>
+                <th>제조사/종류</th>
+                <th>두께</th>
                 <th>수량</th>
                 <th>메모</th>
                 <th></th>
@@ -169,7 +170,7 @@ export default function SleevesPage() {
               {filtered.map((s) => (
                 editingId === s.id ? (
                   <tr key={s.id} className="sleeve-row-editing">
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       <div className="sleeve-edit-form">
                         <input value={editForm.size} onChange={(e) => setEditForm({ ...editForm, size: e.target.value })} placeholder="사이즈" />
                         <input value={editForm.maker} onChange={(e) => setEditForm({ ...editForm, maker: e.target.value })} placeholder="제조사" />
@@ -187,7 +188,11 @@ export default function SleevesPage() {
                 ) : (
                   <tr key={s.id}>
                     <td>{s.size}</td>
-                    <td>{s.maker || "-"}</td>
+                    <td className="sleeve-maker-cell">
+                      <span>{s.maker || "-"}</span>
+                      {s.kind && <span className="muted sleeve-kind-tag">{s.kind}</span>}
+                    </td>
+                    <td className="muted">{s.thickness || "-"}</td>
                     <td className="sleeve-qty-cell">
                       <button className="qty-btn" onClick={() => bumpQuantity(s, -1)}>-</button>
                       <span>{s.quantity}</span>

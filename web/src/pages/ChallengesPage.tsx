@@ -326,6 +326,7 @@ export default function ChallengesPage() {
   return (
     <div className="page challenges-page">
       <div className="page-header">
+        <Link to="/insights" className="btn-secondary challenges-back-btn">&lt; 뒤로</Link>
         <h1>도전 과제</h1>
         {view === "list" && (
           <button className="icon-btn" onClick={() => setView("templates")}>+</button>

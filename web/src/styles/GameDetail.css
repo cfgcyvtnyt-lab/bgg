@@ -16,26 +16,32 @@
 
 .detail-hero-top {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-.rating-badge {
+/* 긱 평점 뱃지 - 글자 대비 여백을 최소화해 작게(요청 반영) */
+.rating-col {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 10px;
-  color: #fff;
+  align-items: flex-start;
+  gap: 3px;
   flex: none;
 }
 
-.rating-badge-value {
-  font-size: 16px;
+.rating-badge-mini {
+  display: inline-block;
+  font-size: 12.5px;
   font-weight: 700;
   line-height: 1;
+  padding: 2px 5px;
+  border: 1.5px solid;
+  border-radius: 5px;
+}
+
+/* 긱 평점 바로 아래 내 평점 별점 - 탭하면 그 자리에서 편집(StarRating 자체 토글) */
+.my-rating-inline .star-rating-stars {
+  gap: 1px;
 }
 
 .rating-badge-users {
@@ -51,13 +57,6 @@
 
 .detail-hero-weight {
   font-weight: 700;
-}
-
-.detail-tagline {
-  font-size: 12.5px;
-  color: var(--muted);
-  margin-top: 4px;
-  line-height: 1.4;
 }
 
 .detail-hero-publishers {
@@ -78,30 +77,10 @@
 
 /* ---------- 내 평점 편집 (별점) ---------- */
 
-.star-rating-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
 .star-rating-stars {
   display: flex;
   cursor: pointer;
   position: relative;
-}
-
-.star-rating-value {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.star-clear-btn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  font-size: 12px;
-  padding: 2px 6px;
 }
 
 /* ---------- 태그 제안 칩 ---------- */
@@ -211,13 +190,6 @@
   letter-spacing: 0.3px;
 }
 
-.opponent-box {
-  margin-bottom: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
 .detail-hero-stats {
   display: flex;
   flex-direction: column;
@@ -265,26 +237,47 @@
   margin-top: 6px;
 }
 
-/* ---------- 게임 소개 ---------- */
+/* ---------- 소개 (헤더 바로 아래, 접이식 섹션 없이 한 덩어리) ---------- */
 
-.intro-box {
-  gap: 10px;
+.intro-block {
+  margin-bottom: 16px;
 }
 
 .intro-desc {
   font-size: 13.5px;
   line-height: 1.55;
   white-space: pre-wrap;
+  margin-bottom: 4px;
 }
 
 .intro-toggle {
-  align-self: flex-start;
+  padding: 2px 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.intro-expanded {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .intro-people {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.intro-original-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .chip-wrap {
@@ -353,35 +346,57 @@
   border-bottom: none;
 }
 
+/* ---------- 내 기록 안 플레이 기록 목록 (BGStats식 한 줄) ---------- */
+
+.play-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 14px 0 4px;
+}
+
+.play-list-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.play-list-link {
+  font-size: 12.5px;
+  color: var(--accent);
+}
+
 .play-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
-.play-row {
-  display: block;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
+.play-row-compact {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--border);
   color: var(--text);
-}
-
-.play-row-date {
-  font-weight: 600;
-  font-size: 13.5px;
-}
-
-.play-row-detail {
-  font-size: 12px;
-  margin-top: 2px;
-}
-
-.play-row-players {
   font-size: 12.5px;
-  margin-top: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.play-row-compact:last-child {
+  border-bottom: none;
+}
+
+.play-compact-date {
+  font-weight: 600;
+  flex: none;
+}
+
+.play-compact-players {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .record-btn {

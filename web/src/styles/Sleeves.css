@@ -48,6 +48,16 @@
   line-height: 1;
 }
 
+.sleeve-maker-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sleeve-kind-tag {
+  font-size: 11px;
+}
+
 .sleeve-note-cell {
   color: var(--muted);
   font-size: 13px;

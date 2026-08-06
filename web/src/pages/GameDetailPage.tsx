@@ -12,10 +12,11 @@ const RECENT_PLAYS_COUNT = 5;
 const INTRO_TRUNCATE_CHARS = 160; // 대략 4줄 분량 - CSS 라인 수 대신 글자 수로 근사한다.
 
 // 0.5 단위 별점 입력. 별 하나가 2점(=★ 한 칸당 rating 2)이라 클릭 위치의 좌/우 절반으로 0.5 단위를 구현한다.
-function StarRating({ value, onChange, disabled }: {
+function StarRating({ value, onChange, disabled, size = 22 }: {
   value: number | null;
   onChange: (v: number | null) => void;
   disabled?: boolean;
+  size?: number;
 }) {
   const stars = [1, 2, 3, 4, 5];
   function handleClick(e: React.MouseEvent<HTMLSpanElement>, star: number) {
@@ -37,7 +38,7 @@ function StarRating({ value, onChange, disabled }: {
             style={{
               position: "relative",
               display: "inline-block",
-              fontSize: 22,
+              fontSize: size,
               cursor: disabled ? "default" : "pointer",
               color: "var(--border)",
             }}
@@ -63,7 +64,7 @@ function fmtNum(n: number | null | undefined) {
   return Math.round(n).toLocaleString();
 }
 
-type SectionKey = "intro" | "myrecord" | "myinfo" | "history" | "plays";
+type SectionKey = "myrecord" | "myinfo" | "history";
 
 // 접고 펼 수 있는 섹션 하나. 기본은 소개·내 기록만 펼쳐둔다(스펙).
 function Section({
@@ -98,7 +99,7 @@ export default function GameDetailPage() {
   const [saving, setSaving] = useState(false);
 
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
-    intro: true, myrecord: true, myinfo: false, history: false, plays: false,
+    myrecord: true, myinfo: false, history: false,
   });
   function toggle(key: SectionKey) {
     setOpen((o) => ({ ...o, [key]: !o[key] }));
@@ -122,9 +123,6 @@ export default function GameDetailPage() {
   useEffect(() => {
     api.tags().then(setAllTags).catch(() => setAllTags([]));
   }, []);
-
-  // 플레이 기록 전체 보기
-  const [showAllPlays, setShowAllPlays] = useState(false);
 
   // 편집 중인 "내 정보" 폼 상태 (최신 취득 이력 기준)
   const [form, setForm] = useState({
@@ -331,11 +329,10 @@ export default function GameDetailPage() {
     }
   }
 
-  // 별점 편집: 0~10 스케일로 저장하고, 화면에는 0~5(★)로 나눠 보여준다.
-  async function saveRating(starValue: number | null) {
+  // 별점 편집: StarRating은 0~10 원점수 스케일(별 하나=2점)로 값을 주고받는다 - my_rating과 동일 스케일이라 변환이 필요없다.
+  async function saveRating(rating10: number | null) {
     if (!game) return;
     setRatingSaving(true);
-    const rating10 = starValue == null ? null : starValue * 2;
     try {
       const { my_rating } = await api.setRating(game.id, rating10);
       setGame((g) => (g ? { ...g, my_rating } : g));
@@ -378,11 +375,11 @@ export default function GameDetailPage() {
   }
 
   const description = game.description_ko && !showOriginal ? game.description_ko : game.description;
-  const tagline = description ? description.split(/(?<=[.!?다\.])\s+/)[0] : null;
   const introTruncated = !introExpanded && description && description.length > INTRO_TRUNCATE_CHARS;
   const introShown = introTruncated ? `${description!.slice(0, INTRO_TRUNCATE_CHARS)}...` : description;
+  const hasPeopleOrTags = (game.designers?.length || game.artists?.length || game.categories?.length || game.mechanics?.length);
 
-  const visiblePlays = showAllPlays ? plays : plays.slice(0, RECENT_PLAYS_COUNT);
+  const visiblePlays = plays.slice(0, RECENT_PLAYS_COUNT);
   const usedTags = allTags.map((t) => t.tag);
   const formTagList = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
 
@@ -419,11 +416,17 @@ export default function GameDetailPage() {
           {game.name_en && <p className="muted">{game.name_en}{game.year_published ? ` (${game.year_published})` : ""}</p>}
 
           <div className="detail-hero-top">
-            {game.bgg_rating != null && (
-              <div className="rating-badge" style={{ background: ratingColor(game.bgg_rating) }}>
-                <span className="rating-badge-value">{game.bgg_rating.toFixed(1)}</span>
+            <div className="rating-col">
+              {game.bgg_rating != null && (
+                <div className="rating-badge-mini" style={{ borderColor: ratingColor(game.bgg_rating), color: ratingColor(game.bgg_rating) }}>
+                  {game.bgg_rating.toFixed(1)}
+                </div>
+              )}
+              {/* 긱 평점 바로 아래 내 평점 - 별 탭이 그대로 편집. 같은 값 다시 클릭하면 지워진다 */}
+              <div className="my-rating-inline">
+                <StarRating size={16} value={game.my_rating ?? null} onChange={saveRating} disabled={ratingSaving} />
               </div>
-            )}
+            </div>
             <div>
               {game.users_rated != null && (
                 <div className="rating-badge-users muted">평가 {fmtNum(game.users_rated)}+</div>
@@ -441,7 +444,6 @@ export default function GameDetailPage() {
           {game.publishers && game.publishers.length > 0 && (
             <p className="detail-hero-publishers">퍼블리셔: {game.publishers.join(", ")}</p>
           )}
-          {tagline && <p className="detail-tagline">{tagline}</p>}
           <a
             className="bgg-link-btn"
             href={bggGameUrl(game.id, game.name_en)}
@@ -455,65 +457,56 @@ export default function GameDetailPage() {
         </div>
       </div>
 
-      <Section title="게임 소개" sectionKey="intro" open={open.intro} onToggle={toggle}>
-        <div className="card intro-box">
-          {description ? (
-            <>
-              <p className="intro-desc">{introShown}</p>
-              <div className="field-row" style={{ gap: 8 }}>
-                {description!.length > INTRO_TRUNCATE_CHARS && (
-                  <button className="btn-small intro-toggle" onClick={() => setIntroExpanded((v) => !v)}>
-                    {introExpanded ? "접기" : "...더보기"}
-                  </button>
+      {/* 소개를 헤더 아래 한 덩어리로 - 접이식 섹션 없이 바로 이어붙이고, 길면 더보기로 디자이너/카테고리까지 펼친다 */}
+      <div className="intro-block">
+        {description ? (
+          <>
+            <p className="intro-desc">{introShown}</p>
+            {description!.length > INTRO_TRUNCATE_CHARS && (
+              <button className="btn-small intro-toggle" onClick={() => setIntroExpanded((v) => !v)}>
+                {introExpanded ? "접기" : "...더보기"}
+              </button>
+            )}
+            {translating && <span className="muted" style={{ fontSize: 12 }}>번역 중...</span>}
+          </>
+        ) : (
+          <p className="muted">설명이 없습니다.</p>
+        )}
+
+        {introExpanded && hasPeopleOrTags ? (
+          <div className="intro-expanded">
+            {(game.designers?.length || game.artists?.length) ? (
+              <div className="intro-people">
+                {game.designers && game.designers.length > 0 && (
+                  <div className="info-row"><span className="muted">디자이너</span><span>{game.designers.join(", ")}</span></div>
                 )}
-                {game.description_ko && (
-                  <button className="btn-small intro-toggle" onClick={() => setShowOriginal((v) => !v)}>
-                    {showOriginal ? "번역본 보기" : "원문 보기"}
-                  </button>
+                {game.artists && game.artists.length > 0 && (
+                  <div className="info-row"><span className="muted">아티스트</span><span>{game.artists.join(", ")}</span></div>
                 )}
-                {translating && <span className="muted" style={{ fontSize: 12 }}>번역 중...</span>}
               </div>
-            </>
-          ) : (
-            <p className="muted">설명이 없습니다.</p>
-          )}
+            ) : null}
 
-          {(game.designers?.length || game.artists?.length) ? (
-            <div className="intro-people">
-              {game.designers && game.designers.length > 0 && (
-                <div className="info-row"><span className="muted">디자이너</span><span>{game.designers.join(", ")}</span></div>
-              )}
-              {game.artists && game.artists.length > 0 && (
-                <div className="info-row"><span className="muted">아티스트</span><span>{game.artists.join(", ")}</span></div>
-              )}
-            </div>
-          ) : null}
+            {(game.categories && game.categories.length > 0) && (
+              <div className="chip-wrap">
+                {game.categories.map((c) => <span key={c} className="chip chip-static">{c}</span>)}
+              </div>
+            )}
+            {(game.mechanics && game.mechanics.length > 0) && (
+              <div className="chip-wrap">
+                {game.mechanics.map((m) => <span key={m} className="chip chip-static chip-mechanic">{m}</span>)}
+              </div>
+            )}
+          </div>
+        ) : null}
 
-          {(game.categories && game.categories.length > 0) && (
-            <div className="chip-wrap">
-              {game.categories.map((c) => <span key={c} className="chip chip-static">{c}</span>)}
-            </div>
-          )}
-          {(game.mechanics && game.mechanics.length > 0) && (
-            <div className="chip-wrap">
-              {game.mechanics.map((m) => <span key={m} className="chip chip-static chip-mechanic">{m}</span>)}
-            </div>
-          )}
-
-          <div className="info-row"><span className="muted">BGG 평점</span><span>{game.bgg_rating ? game.bgg_rating.toFixed(1) : "-"}</span></div>
-          <div className="info-row"><span className="muted">BGG 순위</span><span>{game.bgg_rank ? `#${fmtNum(game.bgg_rank)}` : "-"}</span></div>
-          <div className="info-row"><span className="muted">내 평점</span><span>{game.my_rating != null ? game.my_rating.toFixed(1) : "-"}</span></div>
-        </div>
-      </Section>
+        {game.description_ko && (
+          <a className="intro-original-link" onClick={() => setShowOriginal((v) => !v)}>
+            {showOriginal ? "번역본 보기" : "원문 보기"}
+          </a>
+        )}
+      </div>
 
       <Section title="내 기록" sectionKey="myrecord" open={open.myrecord} onToggle={toggle}>
-        <div className="card star-rating-row">
-          <StarRating value={game.my_rating != null ? game.my_rating / 2 : null} onChange={saveRating} disabled={ratingSaving} />
-          <span className="star-rating-value">{game.my_rating != null ? game.my_rating.toFixed(1) : "평점 없음"}</span>
-          {game.my_rating != null && (
-            <button className="star-clear-btn" disabled={ratingSaving} onClick={() => saveRating(null)}>지우기</button>
-          )}
-        </div>
         {game.stats && game.stats.playCount > 0 ? (
           <>
             <div className="card info-box">
@@ -543,20 +536,40 @@ export default function GameDetailPage() {
                 )}
               </div>
             )}
-
-            {game.stats.opponents.length > 0 && (
-              <div className="card opponent-box">
-                {game.stats.opponents.map((o) => (
-                  <div key={o.name} className="info-row">
-                    <span className="muted">{o.name}</span>
-                    <span>{o.games}판 중 {o.myWins}승</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </>
         ) : (
           <p className="muted center-pad">아직 플레이 기록이 없습니다.</p>
+        )}
+
+        {/* 플레이 기록 목록 - BGStats처럼 한 줄에 날짜·장소·플레이어·점수. 최근 5개만, 전체는 PlaysPage로 링크 */}
+        <div className="play-list-header">
+          <span className="play-list-title">플레이 기록</span>
+          {plays.length > 0 && (
+            <Link
+              to={`/plays?game_id=${gameId}&game_name=${encodeURIComponent(game.name)}`}
+              className="play-list-link"
+            >
+              {plays.length}회 플레이 &gt;
+            </Link>
+          )}
+        </div>
+        {plays.length === 0 ? (
+          <p className="muted center-pad">아직 플레이 기록이 없습니다.</p>
+        ) : (
+          <div className="play-list">
+            {visiblePlays.map((p) => {
+              const playersSummary = p.players
+                .map((pl) => `${pl.name}${pl.win ? "🏆" : ""}${pl.score != null ? ` ${fmtNum(pl.score)}` : ""}`)
+                .join(", ");
+              return (
+                <Link key={p.id} to={`/plays/${p.id}`} className="play-row-compact">
+                  <span className="play-compact-date">{p.played_at}</span>
+                  {p.location && <span className="muted">· {p.location}</span>}
+                  <span className="play-compact-players">· {playersSummary}</span>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </Section>
 
@@ -746,27 +759,6 @@ export default function GameDetailPage() {
           </div>
         </Section>
       )}
-
-      <Section title={`플레이 기록 (${plays.length})`} sectionKey="plays" open={open.plays} onToggle={toggle}>
-        {plays.length === 0 && <p className="muted center-pad">아직 플레이 기록이 없습니다.</p>}
-        <div className="play-list">
-          {visiblePlays.map((p) => (
-            <Link key={p.id} to={`/plays/${p.id}`} className="play-row">
-              <div className="play-row-date">{p.played_at}</div>
-              <div className="play-row-detail muted">
-                {p.location || "장소 미기록"}
-                {p.duration_min ? ` · ${p.duration_min}분` : ""}
-              </div>
-              <div className="play-row-players">
-                {p.players.map((pl) => `${pl.name}${pl.win ? "🏆" : ""}${pl.score != null ? ` ${fmtNum(pl.score)}` : ""}`).join(", ")}
-              </div>
-            </Link>
-          ))}
-        </div>
-        {!showAllPlays && plays.length > RECENT_PLAYS_COUNT && (
-          <button className="btn-small" onClick={() => setShowAllPlays(true)}>전체 보기 ({plays.length})</button>
-        )}
-      </Section>
 
       <button className="btn-primary record-btn" onClick={() => navigate(`/plays/new?game_id=${gameId}`)}>
         플레이 기록하기
