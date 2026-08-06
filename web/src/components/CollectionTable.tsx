@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import type { CollectionListEntry } from "../api/types";
+import { ratingColor, weightColor } from "../utils/ratingTier";
 import "../styles/CollectionTable.css";
 
 const STATUS_OPTIONS = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
@@ -220,8 +221,8 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
                   />
                   <td className="ct-readonly">{e.my_rating ?? ""}</td>
                   <td className="ct-readonly">{e.play_count}</td>
-                  <td className="ct-readonly">{e.weight ?? ""}</td>
-                  <td className="ct-readonly">{e.bgg_rating ?? ""}</td>
+                  <td className="ct-readonly" style={{ color: weightColor(e.weight) }}>{e.weight ?? ""}</td>
+                  <td className="ct-readonly" style={{ color: ratingColor(e.bgg_rating) }}>{e.bgg_rating ?? ""}</td>
                   <EditableCell
                     editable={editable}
                     active={editing?.rowKey === key && editing.field === "note"}

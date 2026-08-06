@@ -124,6 +124,16 @@ const ALTER_COLUMNS = [
   "ALTER TABLE game ADD COLUMN mechanics TEXT",
   // 항목별 점수 입력. 총점은 기존 score에 그대로 저장하므로 통계·이벤트 로직은 안 바뀐다.
   "ALTER TABLE play_player ADD COLUMN score_breakdown TEXT",
+  // 게임 상세 헤더 개편용 BGG 추가 필드. thing?stats=1 응답에서 파싱한다(bgg.js 참고).
+  "ALTER TABLE game ADD COLUMN min_playtime INTEGER",
+  "ALTER TABLE game ADD COLUMN max_playtime INTEGER",
+  "ALTER TABLE game ADD COLUMN min_age INTEGER",
+  "ALTER TABLE game ADD COLUMN publishers TEXT",       // JSON 배열, 첫 3개만
+  "ALTER TABLE game ADD COLUMN users_rated INTEGER",
+  "ALTER TABLE game ADD COLUMN sub_ranks TEXT",         // JSON 배열 [{name,value}], boardgame(전체) 랭크는 bgg_rank에 이미 있어 제외
+  "ALTER TABLE game ADD COLUMN best_players TEXT",      // "1-2" 같은 문자열
+  // 앱에서 준 평점을 BGG 동기화가 덮어쓰지 않기 위한 출처 표시. 'bgg'|'app'. sync.js 참고.
+  "ALTER TABLE game_rating ADD COLUMN rating_source TEXT",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.

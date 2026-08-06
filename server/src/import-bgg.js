@@ -21,8 +21,9 @@ export function upsertGames(db, games) {
     INSERT INTO game (id, name, name_en, aliases, thumbnail, image, year_published,
                       min_players, max_players, playing_time, weight, bgg_rating,
                       bgg_rank, item_type, description, designers, artists, categories,
-                      mechanics, synced_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                      mechanics, min_playtime, max_playtime, min_age, publishers,
+                      users_rated, sub_ranks, best_players, synced_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name, name_en = excluded.name_en, aliases = excluded.aliases,
       thumbnail = excluded.thumbnail, image = excluded.image,
@@ -32,7 +33,11 @@ export function upsertGames(db, games) {
       bgg_rank = excluded.bgg_rank, item_type = excluded.item_type,
       description = excluded.description, designers = excluded.designers,
       artists = excluded.artists, categories = excluded.categories,
-      mechanics = excluded.mechanics, synced_at = datetime('now')
+      mechanics = excluded.mechanics, min_playtime = excluded.min_playtime,
+      max_playtime = excluded.max_playtime, min_age = excluded.min_age,
+      publishers = excluded.publishers, users_rated = excluded.users_rated,
+      sub_ranks = excluded.sub_ranks, best_players = excluded.best_players,
+      synced_at = datetime('now')
   `);
   // description_ko(번역 캐시)는 여기서 절대 건드리지 않는다 - 동기화 때마다 다시 번역하지 않기 위해서다.
 
@@ -47,7 +52,10 @@ export function upsertGames(db, games) {
              g.weight ?? null, g.bggRating ?? null, g.bggRank ?? null,
              g.itemType ?? null, g.description ?? null,
              JSON.stringify(g.designers || []), JSON.stringify(g.artists || []),
-             JSON.stringify(g.categories || []), JSON.stringify(g.mechanics || []));
+             JSON.stringify(g.categories || []), JSON.stringify(g.mechanics || []),
+             g.minPlaytime ?? null, g.maxPlaytime ?? null, g.minAge ?? null,
+             JSON.stringify(g.publishers || []), g.usersRated ?? null,
+             JSON.stringify(g.subRanks || []), g.bestPlayers ?? null);
   }
   return games.length;
 }

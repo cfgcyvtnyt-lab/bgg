@@ -142,11 +142,43 @@ app.get("/api/games/:id", (req, res) => {
     artists: parseJsonArray(game.artists),
     categories: parseJsonArray(game.categories),
     mechanics: parseJsonArray(game.mechanics),
+    publishers: parseJsonArray(game.publishers),
+    sub_ranks: parseJsonArray(game.sub_ranks),
     collectionHistory,
     playCount,
     my_rating: myRating,
     stats,
   });
+});
+
+// 앱에서 별점을 직접 매긴다(0.5 단위). rating_source='app'으로 표시해서 BGG 동기화가
+// 이 값을 덮어쓰지 않게 한다(sync.js의 syncUserGameFlags 참고). rating=null이면 삭제.
+app.patch("/api/games/:id/rating", (req, res) => {
+  const gameId = Number(req.params.id);
+  const userId = requireUser(req, res);
+  if (!userId) return;
+
+  const game = db.prepare("SELECT id FROM game WHERE id = ?").get(gameId);
+  if (!game) return res.status(404).json({ error: "게임을 찾을 수 없습니다" });
+
+  const { rating } = req.body || {};
+  if (rating !== null && (typeof rating !== "number" || rating < 0 || rating > 10)) {
+    return res.status(400).json({ error: "rating은 0~10 사이 숫자이거나 null이어야 합니다" });
+  }
+
+  if (rating === null) {
+    db.prepare(
+      "UPDATE game_rating SET rating = NULL, rating_source = NULL WHERE user_id = ? AND game_id = ?"
+    ).run(userId, gameId);
+  } else {
+    db.prepare(`
+      INSERT INTO game_rating (user_id, game_id, rating, rating_source) VALUES (?, ?, ?, 'app')
+      ON CONFLICT(user_id, game_id) DO UPDATE SET rating = excluded.rating, rating_source = 'app'
+    `).run(userId, gameId, rating);
+  }
+
+  const row = db.prepare("SELECT rating FROM game_rating WHERE user_id = ? AND game_id = ?").get(userId, gameId);
+  res.json({ my_rating: row ? row.rating : null });
 });
 
 // 무료 구글 gtx 엔드포인트로 번역. 공식 API 키가 필요 없는 대신 한 번에 보낼 수 있는 길이가
@@ -463,6 +495,21 @@ app.delete("/api/collection/:id", (req, res) => {
   const result = db.prepare("DELETE FROM collection WHERE id = ?").run(id);
   if (result.changes === 0) return res.status(404).json({ error: "찾을 수 없습니다" });
   res.json({ ok: true });
+});
+
+// 컬렉션 전체에서 이미 쓰인 용도 태그와 사용 횟수. 태그 입력란 아래 칩 제안에 쓴다.
+app.get("/api/tags", (req, res) => {
+  const rows = db.prepare("SELECT tags FROM collection WHERE tags IS NOT NULL").all();
+  const counts = new Map();
+  for (const r of rows) {
+    for (const t of parseJsonArray(r.tags)) {
+      counts.set(t, (counts.get(t) || 0) + 1);
+    }
+  }
+  const tags = [...counts.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count);
+  res.json(tags);
 });
 
 // ---------- plays (계정별) ----------
@@ -1211,6 +1258,19 @@ app.get("/api/insights", (req, res) => {
   const byLocation = [...locationCounts.entries()].sort(([, a], [, b]) => b - a)
     .map(([location, count]) => ({ location, count }));
 
+  // 요일별 분포. played_at은 YYYY-MM-DD 문자열이라 Date로 파싱해 요일을 구한다.
+  // 월요일 시작(0=월 ~ 6=일)으로 맞춘다 - JS의 getDay()는 0=일이라 하나씩 당긴다.
+  const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+  const weekdayCounts = new Array(7).fill(0);
+  for (const p of plays) {
+    const d = new Date(`${p.played_at}T00:00:00`);
+    if (Number.isNaN(d.getTime())) continue;
+    const jsDay = d.getDay(); // 0=일 ... 6=토
+    const idx = (jsDay + 6) % 7; // 0=월 ... 6=일
+    weekdayCounts[idx]++;
+  }
+  const byWeekday = WEEKDAY_LABELS.map((label, i) => ({ weekday: label, count: weekdayCounts[i] }));
+
   // H-index: x판 이상 플레이한 게임이 x개 이상인 최대 x
   const counts = topGames.map((g) => g.count).sort((a, b) => b - a);
   let hIndex = 0;
@@ -1306,6 +1366,7 @@ app.get("/api/insights", (req, res) => {
     winRates,
     monthlyPlays,
     byLocation,
+    byWeekday,
     hIndex,
     levels,
     bestStreak,

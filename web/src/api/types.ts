@@ -29,6 +29,13 @@ export interface Game {
   artists?: string[];
   categories?: string[];
   mechanics?: string[];
+  min_playtime?: number | null;
+  max_playtime?: number | null;
+  min_age?: number | null;
+  publishers?: string[];
+  users_rated?: number | null;
+  sub_ranks?: { name: string; value: number }[];
+  best_players?: string | null;
 }
 
 export interface GameOpponentRecord {
@@ -177,6 +184,7 @@ export interface Insights {
   winRates: WinRate[];
   monthlyPlays: { month: string; count: number }[];
   byLocation: { location: string; count: number }[];
+  byWeekday: { weekday: string; count: number }[];
   hIndex: number;
   levels: { fives: number; dimes: number; quarters: number; centuries: number; thousands: number };
   bestStreak: number;
@@ -261,6 +269,11 @@ export interface BggSearchResult {
 
 export interface LocationCount {
   name: string;
+  count: number;
+}
+
+export interface TagCount {
+  tag: string;
   count: number;
 }
 

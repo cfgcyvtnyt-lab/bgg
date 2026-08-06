@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { CollectionListEntry } from "../api/types";
 import { groupOf } from "../utils/collectionSort";
 import { imgUrl } from "../utils/imgUrl";
+import { ratingColor, weightColor } from "../utils/ratingTier";
 
 interface Props {
   entry: CollectionListEntry;
@@ -57,6 +58,16 @@ export default function GameCard({ entry, view }: Props) {
               {entry.last_played_at ? `최근 플레이: ${formatDate(entry.last_played_at)}` : "플레이 한 적 없음"}
             </span>
             <span className="muted game-card-playcount">{entry.play_count} 플레이</span>
+            {entry.bgg_rating != null && (
+              <span className="game-card-bggrating" style={{ color: ratingColor(entry.bgg_rating) }}>
+                {entry.bgg_rating.toFixed(1)}
+              </span>
+            )}
+            {entry.weight != null && (
+              <span className="game-card-weight" style={{ color: weightColor(entry.weight) }}>
+                W{entry.weight.toFixed(1)}
+              </span>
+            )}
             <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
             <span className="game-card-chevron muted">›</span>
           </div>
@@ -70,6 +81,11 @@ export default function GameCard({ entry, view }: Props) {
               <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
               {entry.my_rating != null && (
                 <span className="game-card-rating">★ {Math.round(entry.my_rating * 10) / 10}</span>
+              )}
+              {entry.bgg_rating != null && (
+                <span className="game-card-bggrating" style={{ color: ratingColor(entry.bgg_rating) }}>
+                  {entry.bgg_rating.toFixed(1)}
+                </span>
               )}
             </div>
           </div>

@@ -115,6 +115,13 @@
   color: #d9a441;
 }
 
+.game-card-bggrating,
+.game-card-weight {
+  font-size: 11.5px;
+  font-weight: 600;
+  flex: none;
+}
+
 /* ---------- 뷰/상태 드롭다운 (헤더) ---------- */
 
 .filter-dropdown-wrap {

@@ -1,7 +1,7 @@
 import type {
   User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
   NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse, ScoreTemplate, Sleeve,
-  Challenge, ChallengeTarget,
+  Challenge, ChallengeTarget, TagCount,
 } from "./types";
 
 const BASE = "/api";
@@ -77,6 +77,10 @@ export const api = {
     request<GameDetail>(`/games/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   translateGame: (id: number) =>
     request<{ description_ko: string }>(`/games/${id}/translate`, { method: "POST" }),
+  setRating: (id: number, rating: number | null) =>
+    request<{ my_rating: number | null }>(`/games/${id}/rating`, { method: "PATCH", body: JSON.stringify({ rating }) }),
+
+  tags: () => request<TagCount[]>("/tags"),
 
   scoreTemplate: (gameId: number) =>
     request<ScoreTemplate | null>(`/games/${gameId}/score-template`),
@@ -120,7 +124,13 @@ export const api = {
   renameLocation: (from: string, to: string) =>
     request<{ ok: boolean; changed: number }>("/locations", { method: "PATCH", body: JSON.stringify({ from, to }) }),
 
-  insights: () => request<Insights>("/insights"),
+  insights: (params: { from?: string; to?: string } = {}) => {
+    const sp = new URLSearchParams();
+    if (params.from) sp.set("from", params.from);
+    if (params.to) sp.set("to", params.to);
+    const qs = sp.toString();
+    return request<Insights>(`/insights${qs ? `?${qs}` : ""}`);
+  },
 
   // 설정 화면 "지금 동기화" 버튼용. force=1은 확인 다이얼로그를 거친 뒤에만 붙인다.
   sync: (force?: boolean) => request<{ ok: boolean; result: unknown }>(`/sync${force ? "?force=1" : ""}`, { method: "POST" }),

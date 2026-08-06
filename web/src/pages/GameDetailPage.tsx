@@ -1,12 +1,61 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { GameDetail, Play, ScoreTemplate } from "../api/types";
+import type { GameDetail, Play, ScoreTemplate, TagCount } from "../api/types";
 import { imgUrl } from "../utils/imgUrl";
+import { ratingColor, weightColor } from "../utils/ratingTier";
 import "../styles/GameDetail.css";
 
 const STATUS_LIST = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
 const RECENT_PLAYS_COUNT = 5;
+const INTRO_TRUNCATE_CHARS = 160; // 대략 4줄 분량 - CSS 라인 수 대신 글자 수로 근사한다.
+
+// 0.5 단위 별점 입력. 별 하나가 2점(=★ 한 칸당 rating 2)이라 클릭 위치의 좌/우 절반으로 0.5 단위를 구현한다.
+function StarRating({ value, onChange, disabled }: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+  disabled?: boolean;
+}) {
+  const stars = [1, 2, 3, 4, 5];
+  function handleClick(e: React.MouseEvent<HTMLSpanElement>, star: number) {
+    if (disabled) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const half = e.clientX - rect.left < rect.width / 2;
+    const newValue = star * 2 - (half ? 1 : 0);
+    // 이미 같은 값을 다시 클릭하면 평점을 지운다(토글).
+    onChange(value === newValue ? null : newValue);
+  }
+  return (
+    <span className="star-rating-stars">
+      {stars.map((star) => {
+        const filled = value != null ? Math.max(0, Math.min(1, value - (star - 1) * 2)) : 0;
+        return (
+          <span
+            key={star}
+            onClick={(e) => handleClick(e, star)}
+            style={{
+              position: "relative",
+              display: "inline-block",
+              fontSize: 22,
+              cursor: disabled ? "default" : "pointer",
+              color: "var(--border)",
+            }}
+          >
+            ★
+            <span
+              style={{
+                position: "absolute", inset: 0, overflow: "hidden",
+                width: `${filled * 100}%`, color: "#d9a441",
+              }}
+            >
+              ★
+            </span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 function fmtNum(n: number | null | undefined) {
   if (n == null) return "-";
@@ -59,9 +108,19 @@ export default function GameDetailPage() {
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
 
-  // 소개 섹션: 원문/번역 토글, 번역 진행 상태
+  // 소개 섹션: 원문/번역 토글, 번역 진행 상태, 4줄 초과 시 더보기
   const [showOriginal, setShowOriginal] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [introExpanded, setIntroExpanded] = useState(false);
+
+  // 내 평점 (별점) 편집
+  const [ratingSaving, setRatingSaving] = useState(false);
+
+  // 용도 태그 제안 칩 - 컬렉션 전체에서 이미 쓰인 태그
+  const [allTags, setAllTags] = useState<TagCount[]>([]);
+  useEffect(() => {
+    api.tags().then(setAllTags).catch(() => setAllTags([]));
+  }, []);
 
   // 플레이 기록 전체 보기
   const [showAllPlays, setShowAllPlays] = useState(false);
@@ -144,6 +203,18 @@ export default function GameDetailPage() {
 
   useEffect(() => { load(); }, [gameId]);
 
+  // 상세를 열었을 때 번역 캐시(description_ko)가 없으면 버튼 없이 자동으로 한 번 번역해둔다.
+  // 실패하면 조용히 영문을 그대로 보여준다(에러를 화면에 띄우지 않는다).
+  useEffect(() => {
+    if (!game || !game.description || game.description_ko || translating) return;
+    setTranslating(true);
+    api.translateGame(game.id)
+      .then(({ description_ko }) => setGame((g) => (g ? { ...g, description_ko } : g)))
+      .catch(() => { /* 조용히 실패 - 영문 그대로 표시 */ })
+      .finally(() => setTranslating(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.id, game?.description, game?.description_ko]);
+
   function startEditName() {
     if (!game) return;
     setNameInput(game.custom_name || "");
@@ -184,6 +255,7 @@ export default function GameDetailPage() {
         await api.addCollection({ game_id: gameId, ...body });
       }
       await load();
+      api.tags().then(setAllTags).catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "저장 실패");
     } finally {
@@ -191,17 +263,25 @@ export default function GameDetailPage() {
     }
   }
 
-  async function translate() {
+  // 별점 편집: 0~10 스케일로 저장하고, 화면에는 0~5(★)로 나눠 보여준다.
+  async function saveRating(starValue: number | null) {
     if (!game) return;
-    setTranslating(true);
+    setRatingSaving(true);
+    const rating10 = starValue == null ? null : starValue * 2;
     try {
-      const { description_ko } = await api.translateGame(game.id);
-      setGame((g) => (g ? { ...g, description_ko } : g));
+      const { my_rating } = await api.setRating(game.id, rating10);
+      setGame((g) => (g ? { ...g, my_rating } : g));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "번역 실패");
+      setError(err instanceof Error ? err.message : "평점 저장 실패");
     } finally {
-      setTranslating(false);
+      setRatingSaving(false);
     }
+  }
+
+  function toggleFormTag(tag: string) {
+    const cur = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const next = cur.includes(tag) ? cur.filter((t) => t !== tag) : [...cur, tag];
+    setForm((f) => ({ ...f, tags: next.join(", ") }));
   }
 
   if (loading) return <div className="page center-pad muted">불러오는 중...</div>;
@@ -212,19 +292,31 @@ export default function GameDetailPage() {
     ? game.collectionHistory[game.collectionHistory.length - 1].status
     : "미보유";
 
-  // 상단 스탯 한 줄: "2-4인 · 60분 · 웨이트 3.2 · 긱 7.9 (26위)"
-  const statParts: string[] = [];
-  statParts.push(game.min_players && game.max_players
-    ? (game.min_players === game.max_players ? `${game.min_players}인` : `${game.min_players}-${game.max_players}인`)
-    : "인원 미상");
-  statParts.push(game.playing_time ? `${game.playing_time}분` : "시간 미상");
-  statParts.push(`웨이트 ${game.weight ? game.weight.toFixed(1) : "-"}`);
-  statParts.push(game.bgg_rating != null
-    ? `긱 ${game.bgg_rating.toFixed(1)}${game.bgg_rank ? ` (${fmtNum(game.bgg_rank)}위)` : ""}`
-    : "긱 평점 없음");
+  // 인원/시간/연령 줄: "1–4인 (베스트 1–2)" / "45–90분" / "14+"
+  const playersLine = game.min_players && game.max_players
+    ? (game.min_players === game.max_players ? `${game.min_players}인` : `${game.min_players}–${game.max_players}인`)
+      + (game.best_players ? ` (베스트 ${game.best_players.replace("-", "–")})` : "")
+    : "인원 미상";
+  const playtimeLine = game.min_playtime && game.max_playtime
+    ? (game.min_playtime === game.max_playtime ? `${game.min_playtime}분` : `${game.min_playtime}–${game.max_playtime}분`)
+    : game.playing_time ? `${game.playing_time}분` : "시간 미상";
+  const ageLine = game.min_age ? `${game.min_age}+` : null;
+
+  // 순위 줄: "전체 48위 · Customizable 3위" - boardgame(전체)은 bgg_rank, sub_ranks에서 상위 1~2개만.
+  const rankParts: string[] = [];
+  if (game.bgg_rank) rankParts.push(`전체 ${fmtNum(game.bgg_rank)}위`);
+  for (const r of (game.sub_ranks || []).slice(0, 2)) {
+    rankParts.push(`${r.name.replace(/ Rank$/, "")} ${fmtNum(r.value)}위`);
+  }
 
   const description = game.description_ko && !showOriginal ? game.description_ko : game.description;
+  const tagline = description ? description.split(/(?<=[.!?다\.])\s+/)[0] : null;
+  const introTruncated = !introExpanded && description && description.length > INTRO_TRUNCATE_CHARS;
+  const introShown = introTruncated ? `${description!.slice(0, INTRO_TRUNCATE_CHARS)}...` : description;
+
   const visiblePlays = showAllPlays ? plays : plays.slice(0, RECENT_PLAYS_COUNT);
+  const usedTags = allTags.map((t) => t.tag);
+  const formTagList = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
 
   return (
     <div className="page game-detail-page">
@@ -257,7 +349,34 @@ export default function GameDetailPage() {
             <p className="muted name-original">원래 이름: {game.original_name}</p>
           )}
           {game.name_en && <p className="muted">{game.name_en}{game.year_published ? ` (${game.year_published})` : ""}</p>}
-          <p className="muted detail-hero-statline">{statParts.join(" · ")}</p>
+
+          <div className="detail-hero-top">
+            {game.bgg_rating != null && (
+              <div className="rating-badge" style={{ background: ratingColor(game.bgg_rating) }}>
+                <span className="rating-badge-value">{game.bgg_rating.toFixed(1)}</span>
+              </div>
+            )}
+            <div>
+              {game.users_rated != null && (
+                <div className="rating-badge-users muted">평가 {fmtNum(game.users_rated)}+</div>
+              )}
+              {rankParts.length > 0 && <div className="detail-hero-rankline">{rankParts.join(" · ")}</div>}
+            </div>
+          </div>
+
+          <p className="muted detail-hero-statline">
+            {playersLine} · {playtimeLine}{ageLine ? ` · ${ageLine}` : ""} ·{" "}
+            <span className="detail-hero-weight" style={{ color: weightColor(game.weight) }}>
+              웨이트 {game.weight ? game.weight.toFixed(1) : "-"}
+            </span>
+          </p>
+          {game.publishers && game.publishers.length > 0 && (
+            <p className="detail-hero-publishers">퍼블리셔: {game.publishers.join(", ")}</p>
+          )}
+          {tagline && <p className="detail-tagline">{tagline}</p>}
+          <a className="bgg-link-btn" href={`https://boardgamegeek.com/boardgame/${game.id}`} target="_blank" rel="noreferrer">
+            BGG에서 보기 ↗
+          </a>
         </div>
       </div>
 
@@ -265,17 +384,20 @@ export default function GameDetailPage() {
         <div className="card intro-box">
           {description ? (
             <>
-              <p className="intro-desc">{description}</p>
-              {game.description_ko && (
-                <button className="btn-small intro-toggle" onClick={() => setShowOriginal((v) => !v)}>
-                  {showOriginal ? "번역본 보기" : "원문 보기"}
-                </button>
-              )}
-              {!game.description_ko && game.description && (
-                <button className="btn-small intro-toggle" disabled={translating} onClick={translate}>
-                  {translating ? "번역 중..." : "한글로 번역"}
-                </button>
-              )}
+              <p className="intro-desc">{introShown}</p>
+              <div className="field-row" style={{ gap: 8 }}>
+                {description!.length > INTRO_TRUNCATE_CHARS && (
+                  <button className="btn-small intro-toggle" onClick={() => setIntroExpanded((v) => !v)}>
+                    {introExpanded ? "접기" : "...더보기"}
+                  </button>
+                )}
+                {game.description_ko && (
+                  <button className="btn-small intro-toggle" onClick={() => setShowOriginal((v) => !v)}>
+                    {showOriginal ? "번역본 보기" : "원문 보기"}
+                  </button>
+                )}
+                {translating && <span className="muted" style={{ fontSize: 12 }}>번역 중...</span>}
+              </div>
             </>
           ) : (
             <p className="muted">설명이 없습니다.</p>
@@ -310,6 +432,13 @@ export default function GameDetailPage() {
       </Section>
 
       <Section title="내 기록" sectionKey="myrecord" open={open.myrecord} onToggle={toggle}>
+        <div className="card star-rating-row">
+          <StarRating value={game.my_rating != null ? game.my_rating / 2 : null} onChange={saveRating} disabled={ratingSaving} />
+          <span className="star-rating-value">{game.my_rating != null ? game.my_rating.toFixed(1) : "평점 없음"}</span>
+          {game.my_rating != null && (
+            <button className="star-clear-btn" disabled={ratingSaving} onClick={() => saveRating(null)}>지우기</button>
+          )}
+        </div>
         {game.stats && game.stats.playCount > 0 ? (
           <>
             <div className="card info-box">
@@ -379,6 +508,20 @@ export default function GameDetailPage() {
           <div className="field">
             <label>용도 태그 (쉼표로 구분)</label>
             <input value={form.tags} onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))} placeholder="전략, 필러" />
+            {usedTags.length > 0 && (
+              <div className="tag-suggest-row">
+                {usedTags.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`tag-suggest-chip${formTagList.includes(t) ? " active" : ""}`}
+                    onClick={() => toggleFormTag(t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="field">
             <label>메모</label>

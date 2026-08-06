@@ -25,19 +25,52 @@ function fmtManwon(krw: number) {
   return `${man.toLocaleString()}만`;
 }
 
+type PeriodKey = "month" | "year" | "all" | "custom";
+const PERIOD_TABS: { key: PeriodKey; label: string }[] = [
+  { key: "month", label: "이번 달" },
+  { key: "year", label: "올해" },
+  { key: "all", label: "전체" },
+  { key: "custom", label: "직접" },
+];
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+// "이번 달"/"올해" 탭에 쓸 from/to (YYYY-MM-DD) 계산. 전체/직접은 각각 undefined/사용자 입력을 쓴다.
+function periodRange(key: PeriodKey, customFrom: string, customTo: string): { from?: string; to?: string } {
+  const now = new Date();
+  if (key === "month") {
+    const from = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-01`;
+    return { from };
+  }
+  if (key === "year") {
+    return { from: `${now.getFullYear()}-01-01` };
+  }
+  if (key === "custom") {
+    return { from: customFrom || undefined, to: customTo || undefined };
+  }
+  return {};
+}
+
 export default function InsightsPage() {
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAllWinRates, setShowAllWinRates] = useState(false);
+  const [period, setPeriod] = useState<PeriodKey>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    api.insights()
+    const { from, to } = periodRange(period, customFrom, customTo);
+    api.insights({ from, to })
       .then(setData)
       .catch((err) => setError(err instanceof Error ? err.message : "불러오기 실패"))
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, customFrom, customTo]);
 
   if (loading) return <div className="page center-pad muted">불러오는 중...</div>;
   if (error) return <div className="page center-pad error-text">{error}</div>;
@@ -47,6 +80,7 @@ export default function InsightsPage() {
   const maxTop = topGames[0]?.count || 1;
   const maxMonthly = Math.max(1, ...data.monthlyPlays.map((m) => m.count));
   const maxLoc = Math.max(1, ...data.byLocation.map((l) => l.count));
+  const maxWeekday = Math.max(1, ...data.byWeekday.map((w) => w.count));
 
   const levelBadges = [
     { key: "fives", label: "5판+", value: data.levels.fives },
@@ -61,6 +95,25 @@ export default function InsightsPage() {
       <div className="page-header"><h1>인사이트</h1></div>
 
       <Link to="/challenges" className="challenges-entry-link">도전 과제 &gt;</Link>
+
+      <div className="period-tabs">
+        {PERIOD_TABS.map((t) => (
+          <button
+            key={t.key}
+            className={`period-tab${period === t.key ? " active" : ""}`}
+            onClick={() => setPeriod(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {period === "custom" && (
+        <div className="period-custom-row">
+          <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+          <span className="muted">~</span>
+          <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+        </div>
+      )}
 
       <div className="summary-grid">
         <div className="summary-card">
@@ -151,6 +204,23 @@ export default function InsightsPage() {
                 style={{ height: `${(m.count / maxMonthly) * 100}%` }}
               />
               <div className="monthly-bar-label">{m.month.slice(2).replace("-", "/")}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="section-title">요일별 분포</div>
+      <div className="card">
+        {data.byWeekday.every((w) => w.count === 0) && <p className="muted">기록이 없습니다.</p>}
+        <div className="weekday-bars">
+          {data.byWeekday.map((w, i) => (
+            <div key={w.weekday} className="weekday-bar-col">
+              <span className="weekday-bar-count">{w.count > 0 ? w.count : ""}</span>
+              <div
+                className="weekday-bar"
+                style={{ height: `${(w.count / maxWeekday) * 100}%`, background: colorAt(i) }}
+              />
+              <span className="weekday-bar-label">{w.weekday}</span>
             </div>
           ))}
         </div>

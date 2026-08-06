@@ -44,14 +44,21 @@ function syncCollectionStatuses(db, games) {
 // 사용자별 game_rating에 upsert한다. 예전에는 want_to_play를 collection에 썼는데, 공유 테이블이다 보니
 // 나중에 동기화되는 사용자가 먼저 동기화된 사용자의 값을 밀어써버리는 버그가 있었다.
 // - rating: myRating이 없는(평가 안 한) 게임은 건드리지 않는다(기존 값 유지).
+//   단, rating_source='app'인 행(앱에서 사용자가 직접 매긴 별점)은 절대 덮어쓰지 않는다 -
+//   BGG로 아직 안 올라간 대기 상태라 동기화가 이걸 지우면 앱 편집이 무의미해진다.
 // - want_to_play: BGG가 매 동기화마다 명확한 true/false를 주므로 항상 그대로 반영한다(꺼진 것도 0으로 갱신).
 // 평점만 있고 want_to_play가 없던 행, 혹은 그 반대인 행도 같은 (user_id, game_id) 행에 합쳐 저장한다.
 function syncUserGameFlags(db, userId, games) {
   const upsert = db.prepare(`
-    INSERT INTO game_rating (user_id, game_id, rating, want_to_play) VALUES (?, ?, ?, ?)
+    INSERT INTO game_rating (user_id, game_id, rating, want_to_play, rating_source) VALUES (?, ?, ?, ?, 'bgg')
     ON CONFLICT(user_id, game_id) DO UPDATE SET
       want_to_play = excluded.want_to_play,
-      rating = CASE WHEN excluded.rating IS NOT NULL THEN excluded.rating ELSE rating END
+      rating = CASE
+        WHEN rating_source = 'app' THEN rating
+        WHEN excluded.rating IS NOT NULL THEN excluded.rating
+        ELSE rating
+      END,
+      rating_source = CASE WHEN rating_source = 'app' THEN rating_source ELSE 'bgg' END
   `);
   let wantToPlayUpdated = 0;
   let ratingsUpdated = 0;

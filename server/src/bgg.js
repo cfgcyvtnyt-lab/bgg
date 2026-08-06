@@ -170,13 +170,49 @@ export async function fetchThings(ids, apiKey) {
       const ratingsBody = tagText(body, "ratings") ?? body;
       const average = toNum(firstTagAttrs(ratingsBody, "average")?.value, parseFloat);
       const weight = toNum(firstTagAttrs(ratingsBody, "averageweight")?.value, parseFloat);
+      const usersRated = toNum(firstTagAttrs(ratingsBody, "usersrated")?.value, parseInt);
 
+      // <rank type="subtype" name="..." friendlyname="..." value="..."/> 전부 모은다.
+      // name="boardgame"(전체 순위)은 bggRank에 이미 있으니 sub_ranks에서는 제외한다.
       let bggRank = null;
+      const subRanks = [];
       const rankRe = /<rank\b([^>]*)\/>/g;
       let rm;
       while ((rm = rankRe.exec(ratingsBody))) {
         const r = parseAttrs(rm[1]);
-        if (r.name === "boardgame") bggRank = toNum(r.value, parseInt);
+        if (r.name === "boardgame") { bggRank = toNum(r.value, parseInt); continue; }
+        const v = toNum(r.value, parseInt);
+        if (v != null) subRanks.push({ name: r.friendlyname || r.name, value: v });
+      }
+
+      // 커뮤니티 추천 인원수 투표: numplayers마다 Best/Recommended/Not Recommended 세 표 중
+      // Best가 최다인(=BGG가 "bestwith"로 치는) 인원수들을 모아 "1-2" 형태로 만든다.
+      // (전체 numplayers 중 Best 득표수 최댓값만 보면 안 된다 - 예: 마블 챔피언스는 2인의 Best 표가
+      // 1인보다 많지만 1인도 Best가 플루럴리티라 둘 다 "베스트"에 포함되어야 "1-2"가 나온다.)
+      let bestPlayers = null;
+      const pollMatch = body.match(/<poll\b[^>]*name="suggested_numplayers"[^>]*>([\s\S]*?)<\/poll>/);
+      if (pollMatch) {
+        const resultsRe = /<results\b([^>]*)>([\s\S]*?)<\/results>/g;
+        const bestNums = [];
+        let pm;
+        while ((pm = resultsRe.exec(pollMatch[1]))) {
+          const numplayers = parseAttrs(pm[1]).numplayers;
+          const votes = {};
+          const resultRe = /<result\b([^>]*)\/>/g;
+          let rr;
+          while ((rr = resultRe.exec(pm[2]))) {
+            const ra = parseAttrs(rr[1]);
+            votes[ra.value] = toNum(ra.numvotes, parseInt) || 0;
+          }
+          const best = votes.Best || 0;
+          const rec = votes.Recommended || 0;
+          const notRec = votes["Not Recommended"] || 0;
+          if (best > 0 && best >= rec && best >= notRec) bestNums.push(numplayers);
+        }
+        if (bestNums.length) {
+          const nums = bestNums.map((n) => n.replace(/\+$/, "")).sort((a, b) => Number(a) - Number(b));
+          bestPlayers = nums.length === 1 ? nums[0] : `${nums[0]}-${nums[nums.length - 1]}`;
+        }
       }
 
       details.set(id, {
@@ -188,9 +224,16 @@ export async function fetchThings(ids, apiKey) {
         minPlayers: toNum(firstTagAttrs(body, "minplayers")?.value, parseInt),
         maxPlayers: toNum(firstTagAttrs(body, "maxplayers")?.value, parseInt),
         playingTime: toNum(firstTagAttrs(body, "playingtime")?.value, parseInt),
+        minPlaytime: toNum(firstTagAttrs(body, "minplaytime")?.value, parseInt),
+        maxPlaytime: toNum(firstTagAttrs(body, "maxplaytime")?.value, parseInt),
+        minAge: toNum(firstTagAttrs(body, "minage")?.value, parseInt),
         weight: weight ? Math.round(weight * 100) / 100 : null,
         bggRating: average ? Math.round(average * 100) / 100 : null,
         bggRank,
+        usersRated,
+        subRanks,
+        bestPlayers,
+        publishers: collectLinkValues(body, "boardgamepublisher").slice(0, 3),
         // <item type="boardgame|boardgameexpansion" ...> - 컬렉션에서 확장 숨기기에 쓴다.
         itemType: attrs.type || null,
         description: tagText(body, "description"),
