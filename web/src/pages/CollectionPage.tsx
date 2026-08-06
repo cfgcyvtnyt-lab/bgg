@@ -66,6 +66,11 @@ export default function CollectionPage() {
   useEffect(() => {
     if (view === "table" && !isWide) setView("grid");
   }, [isWide, view]);
+  // 표 모드일 때만 620px 폭 제한을 풀어준다. 페이지를 떠나거나 다른 뷰로 바꾸면 원복.
+  useEffect(() => {
+    document.body.classList.toggle("wide-mode", view === "table");
+    return () => document.body.classList.remove("wide-mode");
+  }, [view]);
   useEffect(() => { localStorage.setItem(SORT_KEY, JSON.stringify(sort)); }, [sort]);
   useEffect(() => {
     localStorage.setItem("bgg_include_expansions", includeExpansions ? "1" : "0");

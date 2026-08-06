@@ -51,6 +51,12 @@ body {
   padding-bottom: 64px; /* 하단 탭바 높이만큼 여백 */
 }
 
+/* 컬렉션 표 모드일 때만 엑셀처럼 넓게 - CollectionPage가 body에 토글한다.
+   다른 화면/탭으로 이동하면 클래스가 빠지면서 620px로 복귀한다. */
+body.wide-mode #root {
+  max-width: 1400px;
+}
+
 h1, h2, h3, h4 {
   margin: 0;
   font-weight: 600;

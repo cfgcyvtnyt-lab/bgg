@@ -22,7 +22,8 @@ function StatusIcon({ status, wantToPlay }: { status: string | null; wantToPlay:
   return (
     <span className="status-icon-group" title={status || "미소유"}>
       {icon && <span className={cls}>{icon}</span>}
-      {wantToPlay === 1 && <span className="status-icon status-icon-want" title="플레이 희망">★</span>}
+      {/* 내 평점(★)과 헷갈리지 않도록 플레이 희망은 하트로 표시한다 */}
+      {wantToPlay === 1 && <span className="status-icon status-icon-want" title="플레이 희망">♥</span>}
     </span>
   );
 }

@@ -1,10 +1,11 @@
 .plays-total {
   font-size: 13px;
-  margin: -6px 0 12px;
+  margin: -2px 0 10px;
 }
 
+/* BGStats처럼 같은 날짜 안 항목들은 촘촘하게, 날짜 구분만 또렷하게 */
 .play-day-group {
-  margin-bottom: 14px;
+  margin-bottom: 6px;
 }
 
 .play-day-divider {
@@ -12,7 +13,7 @@
   align-items: baseline;
   gap: 8px;
   font-size: 13px;
-  margin: 14px 0 8px;
+  margin: 12px 0 4px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
 }
@@ -26,9 +27,9 @@
   display: block;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 6px;
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin-bottom: 3px;
   color: var(--text);
 }
 
@@ -79,4 +80,73 @@
 .player-chip.win {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ---------- 기록 필터 줄 ---------- */
+
+.plays-filter-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.plays-period-chips {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.plays-date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plays-date-inputs input[type="date"] {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.plays-game-filter {
+  position: relative;
+}
+
+.plays-game-search {
+  position: relative;
+}
+
+.plays-game-search .search-input {
+  margin-bottom: 0;
+}
+
+.plays-game-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 96;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.plays-game-selected {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plays-game-clear {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
 }
