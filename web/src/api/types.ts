@@ -325,16 +325,17 @@ export interface FeedItemPlay {
 
 export interface FeedItemEvent {
   type: "event";
-  kind: "first" | "milestone" | "best" | "worst";
+  kind: "first" | "milestone" | "best" | "worst" | "challenge";
   date: string;
   seq: number;
   userId: number;
   author: string;
-  game_id: number;
-  game_name: string;
+  game_id?: number;
+  game_name?: string;
   count?: number;
   score?: number;
   solo?: boolean;
+  challenge_name?: string;
 }
 
 export interface FeedItemMonth {
@@ -347,7 +348,7 @@ export interface FeedItemMonth {
   totalPlays: number;
   newGames: string[];
   newGameCount: number;
-  topGames: { name: string; count: number }[];
+  topGames: { name: string; count: number; gameId: number; thumbnail: string | null }[];
   bestUpdateCount: number;
   totalMinutes: number;
 }

@@ -875,7 +875,8 @@ function invalidateFeedCache() {
   feedCache = null;
 }
 
-const MILESTONES = [3, 10, 20, 50, 100];
+// 첫 플레이는 별도 이벤트로 처리하므로 마일스톤은 10회/100회만 남긴다 (3·20·50회는 잡음이 많아 제거)
+const MILESTONES = [10, 100];
 
 function currentMonthKey() {
   const d = new Date();
@@ -895,7 +896,7 @@ function buildFeedItems() {
   const playerAlias = loadAliasMap("player");
 
   const plays = db.prepare(`
-    SELECT p.*, COALESCE(g.custom_name, g.name) AS game_name, g.categories AS game_categories
+    SELECT p.*, COALESCE(g.custom_name, g.name) AS game_name, g.categories AS game_categories, g.thumbnail AS game_thumbnail
     FROM play p JOIN game g ON g.id = p.game_id
     ORDER BY p.played_at ASC, p.id ASC
   `).all();
@@ -917,6 +918,8 @@ function buildFeedItems() {
   // 월별 결산 집계
   const monthAgg = new Map(); // key YYYY-MM
   const globalFirstPlayMonth = new Map(); // game_id -> YYYY-MM (그 게임이 처음 기록된 달)
+  // 도전과제 달성일을 정확히 계산하기 어려워 사용자의 가장 최근 플레이 날짜로 근사한다
+  const maxDateByUser = new Map();
 
   function getMonthAgg(monthKey) {
     let a = monthAgg.get(monthKey);
@@ -935,6 +938,7 @@ function buildFeedItems() {
     const isSolo = humanCount <= 1;
     const monthKey = play.played_at.slice(0, 7);
     const author = userName.get(play.user_id) || "?";
+    maxDateByUser.set(play.user_id, play.played_at);
 
     // 카드: 사진이나 코멘트가 있는 플레이만
     if (photos.length > 0 || (comment && comment.trim())) {
@@ -965,7 +969,9 @@ function buildFeedItems() {
     const magg = getMonthAgg(monthKey);
     magg.totalPlays++;
     if (play.duration_min) magg.totalMinutes += play.duration_min;
-    const gc = magg.gameCounts.get(play.game_id) || { name: play.game_name, count: 0 };
+    const gc = magg.gameCounts.get(play.game_id) || {
+      name: play.game_name, count: 0, gameId: play.game_id, thumbnail: play.game_thumbnail,
+    };
     gc.count++;
     magg.gameCounts.set(play.game_id, gc);
     if (!globalFirstPlayMonth.has(play.game_id)) {
@@ -999,7 +1005,9 @@ function buildFeedItems() {
     if (myScore != null) {
       const bestKey = isSolo ? "bestSolo" : "bestMulti";
       const worstKey = isSolo ? "worstSolo" : "worstMulti";
-      if (prog[bestKey] != null && myScore > prog[bestKey]) {
+      // 1~2판째의 "갱신"은 표본이 너무 적어 무의미하므로 3판 이상 쌓인 뒤부터만 이벤트를 낸다
+      const enoughPlays = prog.count >= 3;
+      if (enoughPlays && prog[bestKey] != null && myScore > prog[bestKey]) {
         items.push({
           type: "event", kind: "best", date: play.played_at, seq: play.id + 0.3,
           userId: play.user_id, author, game_id: play.game_id, game_name: play.game_name,
@@ -1007,7 +1015,7 @@ function buildFeedItems() {
         });
         magg.bestUpdateCount++;
       }
-      if (prog[worstKey] != null && myScore < prog[worstKey]) {
+      if (enoughPlays && prog[worstKey] != null && myScore < prog[worstKey]) {
         items.push({
           type: "event", kind: "worst", date: play.played_at, seq: play.id + 0.4,
           userId: play.user_id, author, game_id: play.game_id, game_name: play.game_name,
@@ -1025,7 +1033,8 @@ function buildFeedItems() {
   const curMonth = currentMonthKey();
   for (const [monthKey, agg] of monthAgg) {
     if (monthKey >= curMonth) continue;
-    const topGames = [...agg.gameCounts.values()].sort((a, b) => b.count - a.count).slice(0, 3);
+    // BGStats 3x3 결산 이미지처럼 최다 플레이 9개까지 보여준다
+    const topGames = [...agg.gameCounts.values()].sort((a, b) => b.count - a.count).slice(0, 9);
     const [y, m] = monthKey.split("-").map(Number);
     items.push({
       type: "month",
@@ -1040,6 +1049,22 @@ function buildFeedItems() {
       topGames,
       bestUpdateCount: agg.bestUpdateCount,
       totalMinutes: agg.totalMinutes,
+    });
+  }
+
+  // 도전과제 달성 이벤트 - 진행률이 저장되지 않고 매번 계산되는 값이라 달성 시각을 정확히 알 수 없다.
+  // 대신 완료 여부만 보고, 날짜는 그 사용자의 가장 최근 플레이 날짜로 근사해서 표시한다.
+  const challengeRows = db.prepare("SELECT * FROM challenge").all();
+  for (const row of challengeRows) {
+    let target = null;
+    try { target = JSON.parse(row.target_json || "null"); } catch { target = null; }
+    const progress = computeChallengeProgress(target, row.user_id);
+    if (!progress || progress.percent !== 100) continue;
+    const author = userName.get(row.user_id) || "?";
+    const date = maxDateByUser.get(row.user_id) || currentMonthKey() + "-01";
+    items.push({
+      type: "event", kind: "challenge", date, seq: -0.5 - row.id * 0.001,
+      userId: row.user_id, author, challenge_name: row.name,
     });
   }
 

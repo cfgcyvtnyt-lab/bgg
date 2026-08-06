@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useUser } from "../context/UserContext";
 import type { FeedItem, FeedItemEvent, FeedItemMonth, FeedItemPlay } from "../api/types";
 import PhotoSlider from "../components/PhotoSlider";
+import { imgUrl } from "../utils/imgUrl";
 import "../styles/Feed.css";
 
 const EVENT_EMOJI: Record<FeedItemEvent["kind"], string> = {
@@ -12,6 +12,7 @@ const EVENT_EMOJI: Record<FeedItemEvent["kind"], string> = {
   milestone: "\u{1F525}", // 🔥
   best: "\u{1F3C6}", // 🏆
   worst: "\u{1F4C9}", // 📉
+  challenge: "\u{1F3AF}", // 🎯
 };
 
 function fmtShortDate(dateStr: string) {
@@ -35,15 +36,17 @@ function eventLabel(item: FeedItemEvent) {
     case "milestone": return `${item.count}회 달성`;
     case "best": return `최고점 갱신 ${fmtScore(item.score)}점`;
     case "worst": return `최저점 갱신 ${fmtScore(item.score)}점`;
+    case "challenge": return "달성";
     default: return "";
   }
 }
 
 function EventLine({ item }: { item: FeedItemEvent }) {
+  const isChallenge = item.kind === "challenge";
   return (
-    <Link to={`/game/${item.game_id}`} className="feed-event-line">
+    <Link to={isChallenge ? "/challenges" : `/game/${item.game_id}`} className="feed-event-line">
       <span className="feed-event-text">
-        {EVENT_EMOJI[item.kind]} {item.author} · {item.game_name} {eventLabel(item)}
+        {EVENT_EMOJI[item.kind]} {item.author} · {isChallenge ? `'${item.challenge_name}'` : item.game_name} {eventLabel(item)}
       </span>
       <span className="muted feed-event-date">{fmtShortDate(item.date)}</span>
     </Link>
@@ -66,16 +69,24 @@ function MonthCard({ item }: { item: FeedItemMonth }) {
       </div>
       {open && (
         <div className="month-card-detail" onClick={(e) => e.stopPropagation()}>
+          {/* BGStats 3x3 결산 이미지처럼 그 달 최다 플레이 게임을 썸네일 그리드로 보여준다 */}
+          <div className="month-grid">
+            {item.topGames.map((g) => (
+              <Link key={g.gameId} to={`/game/${g.gameId}`} className="month-grid-cell" onClick={(e) => e.stopPropagation()}>
+                {g.thumbnail ? (
+                  <img src={imgUrl(g.thumbnail)} alt={g.name} loading="lazy" />
+                ) : (
+                  <div className="month-grid-noimg">{g.name}</div>
+                )}
+                <span className="month-grid-badge">{g.count}판</span>
+              </Link>
+            ))}
+          </div>
           <div className="info-row"><span className="muted">총 판수</span><span>{item.totalPlays}판</span></div>
           <div className="info-row">
             <span className="muted">새 게임</span>
-            <span>{item.newGames.length ? item.newGames.join(", ") : "없음"}</span>
+            <span>{item.newGameCount}개</span>
           </div>
-          <div className="info-row">
-            <span className="muted">최다 플레이 TOP3</span>
-            <span>{item.topGames.map((g) => `${g.name} ${g.count}판`).join(" · ") || "-"}</span>
-          </div>
-          <div className="info-row"><span className="muted">최고점 갱신</span><span>{item.bestUpdateCount}회</span></div>
           <div className="info-row">
             <span className="muted">총 플레이 시간</span>
             <span>{hours > 0 ? `${hours}시간 ` : ""}{mins}분</span>
@@ -87,31 +98,13 @@ function MonthCard({ item }: { item: FeedItemMonth }) {
 }
 
 function PlayCard({
-  item, onTagClick, onPublishToggled,
+  item, onTagClick,
 }: {
   item: FeedItemPlay;
   onTagClick: (kind: "game" | "category", value: string, gameId?: number) => void;
-  onPublishToggled: () => void;
 }) {
   const p = item.play;
   const navigate = useNavigate();
-  const [publishing, setPublishing] = useState(false);
-  const published = p.photos.length > 0 && p.photos.every((ph) => ph.published);
-
-  async function togglePublish(e: MouseEvent) {
-    e.stopPropagation();
-    if (p.photos.length === 0) return;
-    setPublishing(true);
-    try {
-      const target = !published;
-      await Promise.all(p.photos.map((ph) => api.updatePhoto(ph.id, { published: target })));
-      onPublishToggled();
-    } catch {
-      // 실패해도 조용히 무시 - 다음 새로고침에서 다시 시도 가능
-    } finally {
-      setPublishing(false);
-    }
-  }
 
   const winner = p.players.find((pl) => pl.win && !pl.is_automa);
   const myResult = winner ? `${winner.win ? "승" : "패"}` : null;
@@ -124,11 +117,6 @@ function PlayCard({
           <div className="feed-play-author">{p.author}</div>
           <div className="muted feed-play-date">{fmtFullDate(p.played_at)}</div>
         </div>
-        {item.own && p.photos.length > 0 && (
-          <button className={`chip feed-publish-toggle${published ? " chip-active" : ""}`} onClick={togglePublish} disabled={publishing}>
-            {published ? "공개" : "비공개"}
-          </button>
-        )}
       </div>
 
       {p.photos.length > 0 && <PhotoSlider photos={p.photos} />}
@@ -216,12 +204,6 @@ export default function FeedPage() {
     return () => observer.disconnect();
   }, [hasMore, loadMore]);
 
-  function refreshCurrentPage() {
-    // 발행 토글 등 사소한 변경은 전체 목록을 다시 그리지 않고 캐시만 새로고침
-    offsetRef.current = 0;
-    loadMore(true);
-  }
-
   function handleTagClick(kind: "game" | "category", value: string, gameId?: number) {
     setTagFilter((cur) => (cur && cur.kind === kind && cur.value === value ? null : { kind, value, gameId }));
   }
@@ -267,7 +249,6 @@ export default function FeedPage() {
                 key={`play-${item.play.id}`}
                 item={item}
                 onTagClick={handleTagClick}
-                onPublishToggled={refreshCurrentPage}
               />
             );
           }
