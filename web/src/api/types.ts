@@ -3,6 +3,10 @@
 export interface User {
   id: number;
   name: string;
+  bgg_username?: string | null;
+  bga_username?: string | null;
+  avatar?: string | null;
+  default_location?: string | null;
 }
 
 export interface Game {
@@ -36,6 +40,9 @@ export interface Game {
   users_rated?: number | null;
   sub_ranks?: { name: string; value: number }[];
   best_players?: string | null;
+  // 게임별 플레이 설정: 협력 게임 기본 체크, 승패 자동 판정 기준
+  coop_default?: number | boolean | null;
+  win_condition?: "high" | "low" | "none" | null;
 }
 
 export interface GameOpponentRecord {
@@ -144,6 +151,9 @@ export interface Play {
   user_id: number;
   game_id: number;
   game_name?: string;
+  // /api/plays/:id 에서만 내려온다: 플레이 상세 헤더의 박스아트용
+  game_thumbnail?: string | null;
+  game_image?: string | null;
   played_at: string;
   duration_min: number | null;
   location: string | null;

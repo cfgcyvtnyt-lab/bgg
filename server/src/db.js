@@ -134,6 +134,13 @@ const ALTER_COLUMNS = [
   "ALTER TABLE game ADD COLUMN best_players TEXT",      // "1-2" 같은 문자열
   // 앱에서 준 평점을 BGG 동기화가 덮어쓰지 않기 위한 출처 표시. 'bgg'|'app'. sync.js 참고.
   "ALTER TABLE game_rating ADD COLUMN rating_source TEXT",
+  // 승자 표시용 프로필 사진. 파일명만 저장(실제 파일은 PHOTO_DIR/avatars/ 하위).
+  "ALTER TABLE user ADD COLUMN avatar TEXT",
+  // 새 기록 화면에서 미리 선택해줄 사용자의 대표 장소.
+  "ALTER TABLE user ADD COLUMN default_location TEXT",
+  // 게임별 플레이 설정: 협력 게임 기본 체크 여부, 승패 자동 판정 기준(high/low/none).
+  "ALTER TABLE game ADD COLUMN coop_default INTEGER DEFAULT 0",
+  "ALTER TABLE game ADD COLUMN win_condition TEXT DEFAULT 'high'",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.

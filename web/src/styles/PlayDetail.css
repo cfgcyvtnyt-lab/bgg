@@ -1,9 +1,76 @@
-.play-detail-page .page-header h1 {
+/* ---------- 상단: 박스아트 + 게임명/날짜 ---------- */
+
+.play-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.play-detail-boxart {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.play-detail-boxart img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.play-detail-boxart-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.play-detail-header-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.play-detail-header-name {
+  display: block;
   font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---------- 위치 / 승자 / 의견 정보 행 ---------- */
+
+.info-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.info-row > span:last-child {
+  text-align: right;
+}
+
+/* ---------- 플레이어 목록 ---------- */
 
 .play-detail-players {
   display: flex;
@@ -13,9 +80,10 @@
 
 .play-detail-player-row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-bottom: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -24,19 +92,57 @@
   padding-bottom: 0;
 }
 
-.play-detail-player-main {
+.play-detail-player-left {
   display: flex;
-  justify-content: space-between;
-  font-size: 14.5px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.player-wreath {
+  flex: none;
+  font-size: 15px;
+}
+
+.player-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.player-initial {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
 }
 
 .play-detail-player-name {
   font-weight: 600;
+  font-size: 14.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.play-detail-badges {
+.play-detail-player-right {
   display: flex;
+  align-items: center;
   gap: 6px;
+  flex: none;
+}
+
+.play-detail-player-score {
+  font-size: 14.5px;
+  font-weight: 600;
 }
 
 .badge {
@@ -45,12 +151,35 @@
   padding: 2px 8px;
   border: 1px solid var(--accent);
   color: var(--accent);
+  white-space: nowrap;
 }
 
 .badge-best {
-  background: var(--accent);
+  background: var(--win);
   color: #fff;
-  border-color: var(--accent);
+  border-color: var(--win);
+}
+
+.badge-streak {
+  border-color: var(--record);
+  color: var(--record);
+}
+
+/* ---------- 이 조합의 통계 ---------- */
+
+.combo-stats-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.combo-stats-link {
+  color: var(--accent);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: nowrap;
 }
 
 .combo-stats-table {

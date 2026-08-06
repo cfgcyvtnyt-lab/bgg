@@ -16,10 +16,13 @@ const IMAGE_CACHE_DIR = process.env.IMAGE_CACHE_DIR || "data/cache/images";
 const PHOTO_DIR = process.env.PHOTO_DIR || "data/photos";
 // 원본은 그대로 보관 (리사이즈는 외부 발행 때 처리 - 이번 범위 아님)
 const PHOTO_ORIGINAL_DIR = join(PHOTO_DIR, "original");
+// 승자 프로필 사진. 플레이 사진과 같은 raw-body 업로드 방식을 쓰되 폴더만 분리한다.
+const AVATAR_DIR = join(PHOTO_DIR, "avatars");
 const ALLOWED_PHOTO_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic"]);
 const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
 mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
 mkdirSync(PHOTO_ORIGINAL_DIR, { recursive: true });
+mkdirSync(AVATAR_DIR, { recursive: true });
 
 const db = openDb(DB_PATH);
 const app = express();
@@ -78,8 +81,72 @@ app.get("/api/health", (req, res) => {
 });
 
 app.get("/api/users", (req, res) => {
-  const rows = db.prepare("SELECT id, name, bgg_username, bga_username FROM user").all();
+  const rows = db.prepare("SELECT id, name, bgg_username, bga_username, avatar, default_location FROM user").all();
   res.json(rows);
+});
+
+// 대표 장소만 수정한다 - 새 기록 화면에서 "대표로 지정"을 누르면 호출된다.
+app.patch("/api/users/:id", (req, res) => {
+  const id = Number(req.params.id);
+  if (!("default_location" in (req.body || {}))) {
+    return res.status(400).json({ error: "default_location이 필요합니다" });
+  }
+  let loc = req.body.default_location;
+  if (typeof loc === "string") loc = loc.trim();
+  if (!loc) loc = null;
+
+  const existing = db.prepare("SELECT id FROM user WHERE id = ?").get(id);
+  if (!existing) return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
+
+  db.prepare("UPDATE user SET default_location = ? WHERE id = ?").run(loc, id);
+  const row = db.prepare("SELECT id, name, bgg_username, bga_username, avatar, default_location FROM user WHERE id = ?").get(id);
+  res.json(row);
+});
+
+// 승자 프로필 사진 업로드. /api/plays/:id/photos와 동일하게 raw body + X-Filename 헤더 방식.
+app.post("/api/users/:id/avatar", express.raw({ type: () => true, limit: "20mb" }), (req, res) => {
+  const id = Number(req.params.id);
+  const user = db.prepare("SELECT * FROM user WHERE id = ?").get(id);
+  if (!user) return res.status(404).json({ error: "찾을 수 없습니다" });
+
+  let originalName = "";
+  try {
+    originalName = decodeURIComponent(req.header("X-Filename") || "");
+  } catch {
+    originalName = req.header("X-Filename") || "";
+  }
+  const ext = extname(originalName).toLowerCase();
+  if (!ALLOWED_PHOTO_EXT.has(ext)) {
+    return res.status(400).json({ error: "허용되지 않는 확장자입니다 (jpg/jpeg/png/webp/heic만 가능)" });
+  }
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    return res.status(400).json({ error: "파일이 비어 있습니다" });
+  }
+  if (req.body.length > MAX_PHOTO_BYTES) {
+    return res.status(400).json({ error: "파일이 너무 큽니다 (최대 20MB)" });
+  }
+
+  const filename = `u${id}_${Date.now()}_${randomBytes(4).toString("hex")}${ext}`;
+  writeFileSync(join(AVATAR_DIR, filename), req.body);
+  db.prepare("UPDATE user SET avatar = ? WHERE id = ?").run(filename, id);
+
+  const row = db.prepare("SELECT id, name, bgg_username, bga_username, avatar FROM user WHERE id = ?").get(id);
+  res.status(201).json(row);
+});
+
+app.get("/api/avatars/:filename", (req, res) => {
+  const filename = req.params.filename;
+  if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+    return res.status(400).json({ error: "잘못된 파일명입니다" });
+  }
+  const base = resolve(AVATAR_DIR);
+  const filePath = resolve(join(AVATAR_DIR, filename));
+  if (!filePath.startsWith(base + sep)) {
+    return res.status(400).json({ error: "잘못된 경로입니다" });
+  }
+  if (!existsSync(filePath)) return res.status(404).json({ error: "찾을 수 없습니다" });
+  res.set("Cache-Control", "public, max-age=31536000");
+  res.sendFile(filePath);
 });
 
 // ---------- games ----------
@@ -314,20 +381,34 @@ function computeGameStats(gameId, userId, playCount) {
   };
 }
 
-// custom_name만 수정 가능. 빈 문자열이면 NULL로 되돌려 원래(BGG) 이름으로 복귀시킨다.
+// custom_name/coop_default/win_condition 중 보낸 필드만 수정한다.
+// custom_name이 빈 문자열이면 NULL로 되돌려 원래(BGG) 이름으로 복귀시킨다.
 app.patch("/api/games/:id", (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare("SELECT id FROM game WHERE id = ?").get(id);
   if (!existing) return res.status(404).json({ error: "게임을 찾을 수 없습니다" });
-  if (!("custom_name" in (req.body || {}))) {
-    return res.status(400).json({ error: "custom_name이 필요합니다" });
+  const body = req.body || {};
+  const hasCustomName = "custom_name" in body;
+  const hasCoopDefault = "coop_default" in body;
+  const hasWinCondition = "win_condition" in body;
+  if (!hasCustomName && !hasCoopDefault && !hasWinCondition) {
+    return res.status(400).json({ error: "custom_name, coop_default, win_condition 중 하나가 필요합니다" });
   }
 
-  let customName = req.body.custom_name;
-  if (typeof customName === "string") customName = customName.trim();
-  if (!customName) customName = null;
+  if (hasCustomName) {
+    let customName = body.custom_name;
+    if (typeof customName === "string") customName = customName.trim();
+    if (!customName) customName = null;
+    db.prepare("UPDATE game SET custom_name = ? WHERE id = ?").run(customName, id);
+  }
+  if (hasCoopDefault) {
+    db.prepare("UPDATE game SET coop_default = ? WHERE id = ?").run(body.coop_default ? 1 : 0, id);
+  }
+  if (hasWinCondition) {
+    const wc = ["high", "low", "none"].includes(body.win_condition) ? body.win_condition : "high";
+    db.prepare("UPDATE game SET win_condition = ? WHERE id = ?").run(wc, id);
+  }
 
-  db.prepare("UPDATE game SET custom_name = ? WHERE id = ?").run(customName, id);
   const row = db.prepare(
     "SELECT *, name AS original_name, COALESCE(custom_name, name) AS name FROM game WHERE id = ?"
   ).get(id);
@@ -604,7 +685,7 @@ app.get("/api/plays/:id", (req, res) => {
   const id = Number(req.params.id);
 
   const play = db.prepare(`
-    SELECT p.*, COALESCE(g.custom_name, g.name) AS game_name
+    SELECT p.*, COALESCE(g.custom_name, g.name) AS game_name, g.thumbnail AS game_thumbnail, g.image AS game_image
     FROM play p JOIN game g ON g.id = p.game_id WHERE p.id = ?
   `).get(id);
   if (!play) return res.status(404).json({ error: "찾을 수 없습니다" });

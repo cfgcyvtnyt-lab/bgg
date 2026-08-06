@@ -52,6 +52,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   health: () => request<{ ok: boolean }>("/health"),
   users: () => request<User[]>("/users"),
+  updateUser: (id: number, body: { default_location: string | null }) =>
+    request<User>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   games: (q?: string, limit = 50, offset = 0) => {
     const params = new URLSearchParams();
@@ -73,7 +75,7 @@ export const api = {
     };
   },
 
-  updateGame: (id: number, body: { custom_name: string }) =>
+  updateGame: (id: number, body: { custom_name?: string; coop_default?: boolean; win_condition?: "high" | "low" | "none" }) =>
     request<GameDetail>(`/games/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   translateGame: (id: number) =>
     request<{ description_ko: string }>(`/games/${id}/translate`, { method: "POST" }),
@@ -173,6 +175,29 @@ export const api = {
   deletePhoto: (id: number) =>
     request<{ ok: boolean }>(`/photos/${id}`, { method: "DELETE" }),
   photoUrl: (filename: string) => `${BASE}/photos/${filename}`,
+
+  // 승자 프로필 사진 (BGStats 스타일 표시용). 업로드 방식은 플레이 사진과 동일.
+  uploadAvatar: async (userId: number, file: File): Promise<User> => {
+    const requesterId = getUserId();
+    const headers: Record<string, string> = {
+      "Content-Type": file.type || "application/octet-stream",
+      "X-Filename": encodeURIComponent(file.name || "avatar.jpg"),
+    };
+    if (requesterId) headers["X-User-Id"] = requesterId;
+    const res = await fetch(`${BASE}/users/${userId}/avatar`, { method: "POST", headers, body: file });
+    if (!res.ok) {
+      let msg = `업로드 실패 (${res.status})`;
+      try {
+        const body = await res.json();
+        if (body?.error) msg = body.error;
+      } catch {
+        // JSON이 아니면 기본 메시지 사용
+      }
+      throw new Error(msg);
+    }
+    return res.json();
+  },
+  avatarUrl: (filename: string) => `${BASE}/avatars/${filename}`,
 
   // ---------- 슬리브 재고 ----------
   sleeves: () => request<Sleeve[]>("/sleeves"),

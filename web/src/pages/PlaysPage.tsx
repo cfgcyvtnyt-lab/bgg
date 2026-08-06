@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { Game, Play } from "../api/types";
+import type { Play, User } from "../api/types";
 import "../styles/Plays.css";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+// 사용자별 이니셜 원 색 고정 - 아바타가 없을 때도 항상 같은 색으로 보이게 이름 해시로 고른다.
+const INITIAL_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)", "var(--c8)", "var(--c9)", "var(--c10)"];
+function colorForName(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return INITIAL_COLORS[hash % INITIAL_COLORS.length];
+}
 
 function fmtDateHeader(dateStr: string) {
   // dateStr: YYYY-MM-DD (로컬 타임존 이슈를 피하려고 문자열을 직접 쪼갠다)
@@ -13,67 +21,22 @@ function fmtDateHeader(dateStr: string) {
   return { weekday: WEEKDAYS[date.getDay()], label: `${y}년 ${m}월 ${d}일` };
 }
 
-// 로컬 타임존 기준 YYYY-MM-DD (UTC 변환 시 날짜가 하루 밀리는 걸 피한다)
-function fmtLocalDate(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function todayStr() {
-  return fmtLocalDate(new Date());
-}
-
-function daysAgoStr(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return fmtLocalDate(d);
-}
-
 export default function PlaysPage() {
   const [plays, setPlays] = useState<Play[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // ---------- 필터 ----------
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [gameId, setGameId] = useState<number | null>(null);
-  const [gameName, setGameName] = useState("");
-  const [gameQuery, setGameQuery] = useState("");
-  const [gameOptions, setGameOptions] = useState<Game[]>([]);
-  const [showGameDropdown, setShowGameDropdown] = useState(false);
+  // URL의 game_id는 플레이 상세의 "N회 플레이 >" 링크로 들어올 때만 쓰인다.
+  // 화면에 필터 UI는 없다 (체감 성능 문제로 제거 - PLAN 참고).
+  const gameId = searchParams.get("game_id");
+  const gameNameParam = searchParams.get("game_name");
 
-  const activePreset = useMemo(() => {
-    if (!from && !to) return "all";
-    if (to === todayStr() && from === daysAgoStr(6)) return "7";
-    if (to === todayStr() && from === daysAgoStr(29)) return "30";
-    return null;
-  }, [from, to]);
-
-  function applyPreset(preset: "all" | "7" | "30") {
-    if (preset === "all") { setFrom(""); setTo(""); return; }
-    setTo(todayStr());
-    setFrom(daysAgoStr(preset === "7" ? 6 : 29));
-  }
-
-  // 게임 검색 드롭다운 - 입력할 때마다 바로 조회 (디바운스 없이도 /api/games가 충분히 가볍다)
   useEffect(() => {
-    const q = gameQuery.trim();
-    if (!q) { setGameOptions([]); return; }
-    let cancelled = false;
-    api.games(q, 20).then((list) => { if (!cancelled) setGameOptions(list); }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [gameQuery]);
-
-  function clearGameFilter() {
-    setGameId(null);
-    setGameName("");
-    setGameQuery("");
-    setGameOptions([]);
-  }
+    api.users().then(setUsers).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -87,9 +50,7 @@ export default function PlaysPage() {
           const page = await api.plays({
             limit: 500,
             offset,
-            from: from || undefined,
-            to: to || undefined,
-            game_id: gameId ?? undefined,
+            game_id: gameId ? Number(gameId) : undefined,
           });
           all.push(...page);
           if (page.length < 500) break;
@@ -101,7 +62,14 @@ export default function PlaysPage() {
         setLoading(false);
       }
     })();
-  }, [from, to, gameId]);
+  }, [gameId]);
+
+  // 이름 -> 아바타 파일명 맵 (프로필 사진이 있는 사용자만)
+  const avatarByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const u of users) if (u.avatar) map.set(u.name, u.avatar);
+    return map;
+  }, [users]);
 
   // BGStats처럼 날짜(일)별로 묶는다 - 서버가 이미 최신순으로 정렬해준다.
   const groups = useMemo(() => {
@@ -120,50 +88,12 @@ export default function PlaysPage() {
         <button className="icon-btn" onClick={() => navigate("/plays/new")} aria-label="기록 추가">＋</button>
       </div>
 
-      <div className="plays-filter-row">
-        <div className="chip-row plays-period-chips">
-          <button className={`chip${activePreset === "all" ? " chip-active" : ""}`} onClick={() => applyPreset("all")}>전체</button>
-          <button className={`chip${activePreset === "7" ? " chip-active" : ""}`} onClick={() => applyPreset("7")}>최근 7일</button>
-          <button className={`chip${activePreset === "30" ? " chip-active" : ""}`} onClick={() => applyPreset("30")}>최근 30일</button>
+      {gameId && (
+        <div className="plays-scoped-banner">
+          <span>{gameNameParam || "게임"} 플레이 목록</span>
+          <Link to="/plays" className="plays-scoped-clear">전체 기록 보기</Link>
         </div>
-        <div className="plays-date-inputs">
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="시작일" />
-          <span className="muted">~</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="종료일" />
-        </div>
-        <div className="plays-game-filter">
-          {gameId ? (
-            <div className="plays-game-selected chip chip-active">
-              {gameName}
-              <button className="plays-game-clear" onClick={clearGameFilter} aria-label="게임 필터 해제">×</button>
-            </div>
-          ) : (
-            <div className="plays-game-search">
-              <input
-                className="search-input"
-                placeholder="게임으로 필터링"
-                value={gameQuery}
-                onChange={(e) => { setGameQuery(e.target.value); setShowGameDropdown(true); }}
-                onFocus={() => setShowGameDropdown(true)}
-                onBlur={() => setTimeout(() => setShowGameDropdown(false), 150)}
-              />
-              {showGameDropdown && gameOptions.length > 0 && (
-                <div className="plays-game-dropdown">
-                  {gameOptions.map((g) => (
-                    <button
-                      key={g.id}
-                      className="filter-dropdown-item"
-                      onMouseDown={() => { setGameId(g.id); setGameName(g.custom_name || g.name); setGameQuery(""); setGameOptions([]); setShowGameDropdown(false); }}
-                    >
-                      {g.custom_name || g.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {!loading && !error && plays.length > 0 && (
         <p className="plays-total muted">{plays.length.toLocaleString()} 플레이</p>
@@ -172,7 +102,7 @@ export default function PlaysPage() {
       {loading && <p className="muted center-pad">불러오는 중...</p>}
       {error && <p className="error-text center-pad">{error}</p>}
       {!loading && !error && plays.length === 0 && (
-        <p className="muted center-pad">조건에 맞는 플레이 기록이 없습니다.</p>
+        <p className="muted center-pad">플레이 기록이 없습니다.</p>
       )}
 
       {groups.map(([date, list]) => {
@@ -184,26 +114,34 @@ export default function PlaysPage() {
               <span className="muted">{label}</span>
             </div>
             {list.map((p) => {
-              // win=1인 플레이어만 승자로 취급한다 (트로피 오귀속 버그 수정).
-              const winners = p.players.filter((pl) => pl.win === true || pl.win === 1).map((pl) => pl.name);
-              // 플레이어 나열은 승자를 먼저 보여준다 (원래 순서는 각 그룹 내에서 유지).
+              // win=1인 플레이어만 승자로 취급한다 (트로피 오귀속 버그 수정 - 이제 프로필 사진으로 표시).
+              const winners = p.players.filter((pl) => pl.win === true || pl.win === 1);
               const orderedPlayers = [
-                ...p.players.filter((pl) => pl.win === true || pl.win === 1),
+                ...winners,
                 ...p.players.filter((pl) => !(pl.win === true || pl.win === 1)),
               ];
               const humanCount = p.players.filter((pl) => !pl.is_automa).length;
               return (
                 <Link key={p.id} to={`/plays/${p.id}`} className="play-item">
-                  <div className="play-item-top">
-                    <span className="play-item-game">{p.game_name}</span>
-                    {winners.length > 0 && (
-                      <span className="play-item-winner">🏆 {winners.join(", ")}</span>
-                    )}
+                  <div className="play-item-text">
+                    <div className="play-item-game">{p.game_name}</div>
+                    <div className="play-item-loc muted">
+                      {p.location || "장소 미기록"} · {orderedPlayers.map((pl) => pl.name).join(", ") || "플레이어 없음"}
+                      {humanCount <= 1 ? " · 솔로" : ""}
+                      {p.is_coop ? " · 협력" : ""}
+                    </div>
                   </div>
-                  <div className="play-item-loc muted">
-                    {p.location || "장소 미기록"} · {orderedPlayers.map((pl) => pl.name).join(", ") || "플레이어 없음"}
-                    {humanCount <= 1 ? " · 솔로" : ""}
-                    {p.is_coop ? " · 협력" : ""}
+                  <div className="play-item-winners">
+                    {winners.map((w, i) => {
+                      const avatar = avatarByName.get(w.name);
+                      return avatar ? (
+                        <img key={i} className="winner-avatar" src={api.avatarUrl(avatar)} alt={w.name} title={w.name} />
+                      ) : (
+                        <div key={i} className="winner-initial" style={{ background: colorForName(w.name) }} title={w.name}>
+                          {w.name.slice(0, 1)}
+                        </div>
+                      );
+                    })}
                   </div>
                 </Link>
               );

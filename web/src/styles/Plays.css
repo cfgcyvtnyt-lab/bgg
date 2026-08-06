@@ -3,19 +3,39 @@
   margin: -2px 0 10px;
 }
 
-/* BGStats처럼 같은 날짜 안 항목들은 촘촘하게, 날짜 구분만 또렷하게 */
+/* 필터로 진입했을 때만 보이는 안내 배너 (game_id 쿼리 파라미터로 들어온 경우) */
+.plays-scoped-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.plays-scoped-clear {
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* BGStats처럼 날짜 구분만 어두운 배경 띠로, 항목 사이는 얇은 구분선 하나만 */
 .play-day-group {
-  margin-bottom: 6px;
+  margin-bottom: 0;
 }
 
 .play-day-divider {
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
   font-size: 13px;
-  margin: 12px 0 4px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border);
+  margin: 10px -16px 0;
+  padding: 6px 16px;
+  background: var(--panel);
 }
 
 .play-day-weekday {
@@ -24,129 +44,60 @@
 }
 
 .play-item {
-  display: block;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 10px;
-  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border);
   color: var(--text);
 }
 
-.play-item-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
+.play-item-text {
+  min-width: 0;
+  flex: 1;
 }
 
 .play-item-game {
   font-weight: 600;
-  font-size: 14.5px;
-  min-width: 0;
+  font-size: 15.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.play-item-winner {
-  font-size: 12px;
-  color: var(--accent);
-  flex: none;
+.play-item-loc {
+  font-size: 12.5px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.play-item-loc {
-  font-size: 12px;
-  margin-top: 4px;
-}
-
-.play-item-players {
+/* 승자 프로필 사진 (또는 이니셜) - 트로피 대신 BGG 스타일로 우측에 동그랗게 */
+.play-item-winners {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
+  flex: none;
+  gap: 4px;
 }
 
-.player-chip {
-  font-size: 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 2px 8px;
-  color: var(--muted);
+.winner-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
 }
 
-.player-chip.win {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-/* ---------- 기록 필터 줄 ---------- */
-
-.plays-filter-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.plays-period-chips {
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
-
-.plays-date-inputs {
+.winner-initial {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.plays-date-inputs input[type="date"] {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  padding: 6px 8px;
-}
-
-.plays-game-filter {
-  position: relative;
-}
-
-.plays-game-search {
-  position: relative;
-}
-
-.plays-game-search .search-input {
-  margin-bottom: 0;
-}
-
-.plays-game-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 96;
-  max-height: 240px;
-  overflow-y: auto;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-}
-
-.plays-game-selected {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.plays-game-clear {
-  background: none;
-  border: none;
-  color: inherit;
+  justify-content: center;
   font-size: 14px;
-  line-height: 1;
-  padding: 0;
+  font-weight: 700;
+  color: #fff;
 }

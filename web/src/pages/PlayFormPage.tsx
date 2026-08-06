@@ -3,6 +3,8 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { Game, GameDetail, Photo, PlayPlayer, ScoreTemplate } from "../api/types";
 import { evalScoreExpression } from "../utils/scoreParser";
+import { imgUrl } from "../utils/imgUrl";
+import { useUser } from "../context/UserContext";
 import PlayTimer from "../components/PlayTimer";
 import "../styles/PlayForm.css";
 
@@ -20,6 +22,11 @@ interface PlayerRow {
   // 점수 시트 템플릿이 있을 때만 쓴다: 항목 이름 -> 입력 텍스트(계산기 파서 재사용)
   breakdownText: Record<string, string>;
 }
+
+// 마지막으로 저장한 기록의 플레이어 이름 구성을 기억해뒀다가 다음 새 기록에 미리 채운다.
+const LAST_PLAYERS_KEY = "bgg_last_players";
+// 시작 플레이어 뽑기 애니메이션: 점점 느려지는 간격(ms), 마지막 항목이 최종 당첨.
+const DRAW_DELAYS = [60, 65, 70, 80, 90, 105, 125, 150, 180, 220, 270];
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -39,6 +46,7 @@ export default function PlayFormPage() {
   const isEdit = !!id;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { currentUser } = useUser();
 
   const [gameQuery, setGameQuery] = useState("");
   const [gameResults, setGameResults] = useState<Game[]>([]);
@@ -46,19 +54,36 @@ export default function PlayFormPage() {
   const [gameDetail, setGameDetail] = useState<GameDetail | null>(null);
   const [playedAt, setPlayedAt] = useState(todayStr());
 
-  // 장소는 드롭다운/칩으로만 고른다 - 자유 입력을 허용하면 Home/Home2/H. 처럼 표기가 갈린다.
+  // 장소는 드롭다운으로만 고른다 - 자유 입력을 허용하면 Home/Home2/H. 처럼 표기가 갈린다.
   const [locations, setLocations] = useState<{ name: string; count: number }[]>([]);
   const [location, setLocation] = useState("");
-  const [addingLocation, setAddingLocation] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
   const [newLocationText, setNewLocationText] = useState("");
+  // 사용자의 대표 장소. 새 기록을 열면 이 값이 미리 선택된다.
+  const [defaultLocation, setDefaultLocation] = useState("");
 
   const [comment, setComment] = useState("");
   const [isCoop, setIsCoop] = useState(false);
   const [coopSuccess, setCoopSuccess] = useState(true);
   const [players, setPlayers] = useState<PlayerRow[]>([emptyPlayer(), emptyPlayer()]);
   const [startPlayerIndex, setStartPlayerIndex] = useState<number | null>(null);
+  // 시작 플레이어 뽑기 애니메이션 중 현재 하이라이트된 인덱스
+  const [drawingIndex, setDrawingIndex] = useState<number | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
   const [durationMin, setDurationMin] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // 게임별 설정(협력 기본/승리 조건) 인라인 편집
+  const [editingGameSettings, setEditingGameSettings] = useState(false);
+  const [settingsCoop, setSettingsCoop] = useState(false);
+  const [settingsWinCondition, setSettingsWinCondition] = useState<"high" | "low" | "none">("high");
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  // 게임을 새로 고를 때 한 번만 coop_default를 반영한다 - 사용자가 이후 직접 토글한 걸 덮지 않기 위함.
+  const appliedCoopForGame = useRef<number | null>(null);
+  // 승패 자동 판정: 사용자가 승/패 체크를 직접 건드리면 그 뒤로는 자동 갱신을 멈춘다.
+  const [winAutoOverridden, setWinAutoOverridden] = useState(false);
+  // 새 기록에 기본 플레이어를 한 번만 채우기 위한 가드
+  const defaultPlayersApplied = useRef(false);
 
   // 점수 시트 템플릿: 있으면 항목별 입력 그리드, 없으면 기존 총점 입력.
   const [scoreTemplate, setScoreTemplate] = useState<ScoreTemplate | null>(null);
@@ -80,6 +105,39 @@ export default function PlayFormPage() {
   useEffect(() => {
     api.locations().then(setLocations).catch(() => setLocations([]));
   }, []);
+
+  // 현재 사용자의 대표 장소를 읽어온다. useUser 컨텍스트는 default_location을 안 들고 있을 수 있어
+  // (전역 캐시가 오래됐을 수 있음) 여기서 항상 새로 조회한다.
+  useEffect(() => {
+    if (!currentUser) return;
+    api.users().then((list) => {
+      const u = list.find((x) => x.id === currentUser.id);
+      setDefaultLocation(u?.default_location || "");
+    }).catch(() => {});
+  }, [currentUser]);
+
+  // 새 기록: 대표 장소가 있고 아직 장소를 고르지 않았다면 미리 채운다.
+  useEffect(() => {
+    if (isEdit || !defaultLocation || location) return;
+    setLocation(defaultLocation);
+  }, [isEdit, defaultLocation, location]);
+
+  // 새 기록: 현재 사용자를 항상 1번 플레이어로, 나머지는 마지막 저장 기록의 구성으로 미리 채운다.
+  useEffect(() => {
+    if (isEdit || !currentUser || defaultPlayersApplied.current) return;
+    defaultPlayersApplied.current = true;
+    let savedNames: string[] = [];
+    try {
+      const raw = localStorage.getItem(LAST_PLAYERS_KEY);
+      if (raw) savedNames = JSON.parse(raw);
+    } catch {
+      savedNames = [];
+    }
+    const rest = savedNames.filter((n) => n && n !== currentUser.name);
+    const names = [currentUser.name, ...rest];
+    if (names.length < 2) names.push("");
+    setPlayers(names.map((n) => ({ ...emptyPlayer(), name: n })));
+  }, [isEdit, currentUser]);
 
   // 수정 모드: 단건 조회 엔드포인트로 바로 가져온다.
   useEffect(() => {
@@ -130,11 +188,21 @@ export default function PlayFormPage() {
     api.game(Number(gid)).then((g) => setSelectedGame({ id: g.id, name: g.name })).catch(() => {});
   }, [isEdit, searchParams]);
 
-  // 게임을 고르면 그 게임의 내 기록 요약(최고/최저/평균, 평균시간, 최근 플레이, 상대 전적)을 미리보기로 보여준다.
+  // 게임을 고르면 그 게임의 내 기록 요약(최고/최저/평균, 평균시간, 최근 플레이)을 미리보기로 보여준다.
   useEffect(() => {
     if (!selectedGame) { setGameDetail(null); return; }
     api.game(selectedGame.id).then(setGameDetail).catch(() => setGameDetail(null));
   }, [selectedGame]);
+
+  // 게임을 새로 고를 때만 coop_default를 협력 모드 체크에 반영한다(수정 모드는 저장된 값을 그대로 쓴다).
+  // 같은 게임에 대해 인라인 설정을 저장해 gameDetail이 다시 오더라도 여기서 재적용하지 않는다(ref 가드).
+  useEffect(() => {
+    if (!gameDetail || isEdit) return;
+    if (appliedCoopForGame.current === gameDetail.id) return;
+    appliedCoopForGame.current = gameDetail.id;
+    setIsCoop(!!gameDetail.coop_default);
+    setWinAutoOverridden(false);
+  }, [gameDetail, isEdit]);
 
   // 게임별 점수 시트 템플릿. 템플릿이 있으면 총점 입력 대신 항목별 그리드를 보여준다.
   useEffect(() => {
@@ -155,6 +223,8 @@ export default function PlayFormPage() {
     setPlayers((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
   }
   function addPlayer() { setPlayers((prev) => [...prev, emptyPlayer()]); }
+  // 오토마 체크박스 대신: 누르면 이름 "봇"인 오토마 플레이어가 바로 추가된다.
+  function addBotPlayer() { setPlayers((prev) => [...prev, { ...emptyPlayer(), name: "봇", isAutoma: true }]); }
   function removePlayer(i: number) {
     setPlayers((prev) => prev.filter((_, idx) => idx !== i));
     setStartPlayerIndex((cur) => (cur === i ? null : cur != null && cur > i ? cur - 1 : cur));
@@ -183,6 +253,33 @@ export default function PlayFormPage() {
       idx === i ? { ...p, breakdownText: { ...p.breakdownText, [field]: value } } : p));
   }
 
+  // 승패 자동 판정: win_condition에 따라 최고점/최저점 플레이어에게 자동으로 승을 매긴다.
+  // 사용자가 승/패를 수동으로 건드리면(winAutoOverridden) 더 이상 갱신하지 않는다.
+  useEffect(() => {
+    if (isCoop || winAutoOverridden) return;
+    const wc = gameDetail?.win_condition || "high";
+    if (wc === "none") return;
+    const values = players.map((_p, i) => (scoreTemplate ? breakdownSums[i] : parsedScores[i]));
+    const scored = values.filter((v): v is number => v != null);
+    if (scored.length === 0) return;
+    const target = wc === "low" ? Math.min(...scored) : Math.max(...scored);
+    setPlayers((prev) => {
+      let changed = false;
+      const next = prev.map((p, i) => {
+        const shouldWin = values[i] != null && values[i] === target;
+        if (p.win !== shouldWin) { changed = true; return { ...p, win: shouldWin }; }
+        return p;
+      });
+      return changed ? next : prev;
+    });
+  }, [parsedScores, breakdownSums, scoreTemplate, gameDetail, isCoop, winAutoOverridden]);
+
+  // 승/패 체크박스를 사용자가 직접 누르면 자동 판정을 끈다.
+  function toggleWin(i: number, win: boolean) {
+    setWinAutoOverridden(true);
+    updatePlayer(i, { win });
+  }
+
   async function saveTemplate() {
     if (!selectedGame) return;
     const fields = templateFieldsText.split(",").map((f) => f.trim()).filter(Boolean);
@@ -203,16 +300,47 @@ export default function PlayFormPage() {
   // "사람 플레이어가 1명 이하"면 솔로 - 오토마만 상대인 판도 솔로다.
   const humanCount = players.filter((p) => p.name.trim() && !p.isAutoma).length;
 
+  // 플레이어들을 빠르게 순환 하이라이트하다가 점점 느려지며(DRAW_DELAYS) 한 명에 멈춘다.
   function pickStartPlayer() {
+    if (isDrawing) return;
     const filledIdx = players.map((p, i) => (p.name.trim() ? i : -1)).filter((i) => i >= 0);
     if (filledIdx.length === 0) return;
-    const pick = filledIdx[Math.floor(Math.random() * filledIdx.length)];
-    setStartPlayerIndex(pick);
+    const finalPick = filledIdx[Math.floor(Math.random() * filledIdx.length)];
+    setIsDrawing(true);
+    setStartPlayerIndex(null);
+
+    let step = 0;
+    const tick = () => {
+      const isLast = step === DRAW_DELAYS.length - 1;
+      const idx = isLast ? finalPick : filledIdx[Math.floor(Math.random() * filledIdx.length)];
+      setDrawingIndex(idx);
+      if (isLast) {
+        setTimeout(() => {
+          setDrawingIndex(null);
+          setStartPlayerIndex(finalPick);
+          setIsDrawing(false);
+        }, DRAW_DELAYS[step]);
+        return;
+      }
+      setTimeout(tick, DRAW_DELAYS[step]);
+      step++;
+    };
+    tick();
   }
 
   function selectLocation(name: string) {
     setLocation(name);
-    setAddingLocation(false);
+    setLocationOpen(false);
+  }
+
+  async function setAsDefaultLocation(name: string) {
+    if (!currentUser) return;
+    try {
+      await api.updateUser(currentUser.id, { default_location: name });
+      setDefaultLocation(name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "대표 장소 지정 실패");
+    }
   }
 
   const ALLOWED_PHOTO_EXT = [".jpg", ".jpeg", ".png", ".webp", ".heic"];
@@ -305,12 +433,42 @@ export default function PlayFormPage() {
       } else {
         const created = await api.addPlay(body);
         await uploadPendingPhotos(created.id);
+        // 다음 새 기록에 미리 채울 수 있게 이번 플레이어 이름 구성을 기억해둔다.
+        try {
+          localStorage.setItem(LAST_PLAYERS_KEY, JSON.stringify(finalPlayers.map((p) => p.name)));
+        } catch {
+          // localStorage 저장 실패는 무시(용량 초과 등)
+        }
       }
       navigate(-1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "저장 실패");
     } finally {
       setSaving(false);
+    }
+  }
+
+  // 게임 선택 시 인라인으로 협력 기본/승리 조건 설정 편집 열기
+  function openGameSettings() {
+    setSettingsCoop(!!gameDetail?.coop_default);
+    setSettingsWinCondition((gameDetail?.win_condition as "high" | "low" | "none") || "high");
+    setEditingGameSettings(true);
+  }
+
+  async function saveGameSettings() {
+    if (!selectedGame) return;
+    setSettingsSaving(true);
+    try {
+      const updated = await api.updateGame(selectedGame.id, {
+        coop_default: settingsCoop,
+        win_condition: settingsWinCondition,
+      });
+      setGameDetail((prev) => (prev ? { ...prev, coop_default: updated.coop_default, win_condition: updated.win_condition } : prev));
+      setEditingGameSettings(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "게임 설정 저장 실패");
+    } finally {
+      setSettingsSaving(false);
     }
   }
 
@@ -359,8 +517,15 @@ export default function PlayFormPage() {
               <ul className="game-search-dropdown">
                 {gameResults.map((g) => (
                   <li key={g.id}>
-                    <button onClick={() => { setSelectedGame({ id: g.id, name: g.name }); setGameQuery(""); setGameResults([]); }}>
-                      {g.name}
+                    <button
+                      className="game-search-item"
+                      onClick={() => { setSelectedGame({ id: g.id, name: g.name }); setGameQuery(""); setGameResults([]); }}
+                    >
+                      <span className="game-search-thumb">
+                        {g.thumbnail ? <img src={imgUrl(g.thumbnail)} alt="" loading="lazy" /> : <span className="game-search-thumb-empty">?</span>}
+                      </span>
+                      <span className="game-search-name">{g.name}</span>
+                      {g.year_published && <span className="muted game-search-year">{g.year_published}</span>}
                     </button>
                   </li>
                 ))}
@@ -391,11 +556,6 @@ export default function PlayFormPage() {
             {stats!.avgDurationMin != null && <span>평균 {stats!.avgDurationMin}분</span>}
             {stats!.lastPlayedAt && <span>최근 {stats!.lastPlayedAt}</span>}
           </div>
-          {stats!.opponents.length > 0 && (
-            <div className="preview-opponents muted">
-              {stats!.opponents.map((o) => `${o.name} ${o.games}판 ${o.myWins}승`).join(" · ")}
-            </div>
-          )}
         </div>
       )}
       {gameDetail && !hasScorePreview && gameDetail.playCount === 0 && (
@@ -409,38 +569,40 @@ export default function PlayFormPage() {
         </div>
       </div>
 
-      <div className="field">
+      <div className="field location-field">
         <label>장소</label>
-        {location && !addingLocation ? (
-          <div className="selected-game">
-            <span>{location}</span>
-            <button className="btn-small" onClick={() => setAddingLocation(true)}>변경</button>
-          </div>
-        ) : (
-          <>
-            <div className="chip-row">
-              {locationChips.map((l) => (
-                <button key={l.name} className={`chip${location === l.name ? " chip-active" : ""}`}
-                  onClick={() => selectLocation(l.name)}>
-                  {l.name}{l.count > 0 ? ` (${l.count})` : ""}
+        <button className="location-current" onClick={() => setLocationOpen((o) => !o)}>
+          <span>{location || "장소 선택"}</span>
+          <span className="location-caret">{locationOpen ? "▴" : "▾"}</span>
+        </button>
+        {locationOpen && (
+          <div className="location-dropdown">
+            {locationChips.map((l) => (
+              <div key={l.name} className="location-dropdown-row">
+                <button
+                  className={`location-dropdown-item${location === l.name ? " active" : ""}`}
+                  onClick={() => selectLocation(l.name)}
+                >
+                  {l.name}
                 </button>
-              ))}
-              <button className="chip" onClick={() => setAddingLocation(true)}>+ 새 장소</button>
-            </div>
-            {addingLocation && (
-              <div className="new-location-row">
-                <input
-                  placeholder="새 장소 이름"
-                  value={newLocationText}
-                  onChange={(e) => setNewLocationText(e.target.value)}
-                  autoFocus
-                />
-                <button className="btn-small" onClick={() => { if (newLocationText.trim()) selectLocation(newLocationText.trim()); setNewLocationText(""); }}>
-                  추가
-                </button>
+                {defaultLocation === l.name ? (
+                  <span className="default-location-badge muted">대표</span>
+                ) : (
+                  <button className="btn-tiny" onClick={() => setAsDefaultLocation(l.name)}>대표로 지정</button>
+                )}
               </div>
-            )}
-          </>
+            ))}
+            <div className="new-location-row">
+              <input
+                placeholder="새 장소 이름"
+                value={newLocationText}
+                onChange={(e) => setNewLocationText(e.target.value)}
+              />
+              <button className="btn-small" onClick={() => { if (newLocationText.trim()) selectLocation(newLocationText.trim()); setNewLocationText(""); }}>
+                추가
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -466,7 +628,42 @@ export default function PlayFormPage() {
             <button className={!coopSuccess ? "btn-primary" : "btn-secondary"} onClick={() => setCoopSuccess(false)}>실패</button>
           </div>
         )}
+        {selectedGame && !editingGameSettings && (
+          <button className="btn-link game-settings-link" onClick={openGameSettings}>이 게임 설정</button>
+        )}
       </div>
+
+      {editingGameSettings && (
+        <div className="card game-settings-edit">
+          <label className="switch-label">
+            <input type="checkbox" checked={settingsCoop} onChange={(e) => setSettingsCoop(e.target.checked)} />
+            협력 게임 기본 체크
+          </label>
+          <div className="field" style={{ marginTop: 8 }}>
+            <label>승패 자동 판정</label>
+            <div className="win-condition-options">
+              <label className="switch-label">
+                <input type="radio" name="win_condition" checked={settingsWinCondition === "high"} onChange={() => setSettingsWinCondition("high")} />
+                최고점 승
+              </label>
+              <label className="switch-label">
+                <input type="radio" name="win_condition" checked={settingsWinCondition === "low"} onChange={() => setSettingsWinCondition("low")} />
+                최저점 승
+              </label>
+              <label className="switch-label">
+                <input type="radio" name="win_condition" checked={settingsWinCondition === "none"} onChange={() => setSettingsWinCondition("none")} />
+                수동
+              </label>
+            </div>
+          </div>
+          <div className="field-row" style={{ marginTop: 8 }}>
+            <button className="btn-small" disabled={settingsSaving} onClick={saveGameSettings}>
+              {settingsSaving ? "저장 중..." : "저장"}
+            </button>
+            <button className="btn-small" onClick={() => setEditingGameSettings(false)}>취소</button>
+          </div>
+        </div>
+      )}
 
       <div className="section-title">
         플레이어 <span className="muted" style={{ textTransform: "none" }}>({humanCount <= 1 ? "1인 · 솔로" : `${humanCount}인+`})</span>
@@ -496,7 +693,7 @@ export default function PlayFormPage() {
       )}
 
       {players.map((p, i) => (
-        <div key={i} className="player-row-edit">
+        <div key={i} className={`player-row-edit${drawingIndex === i ? " drawing-highlight" : ""}`}>
           <input
             className="player-name-input"
             placeholder="이름"
@@ -515,16 +712,13 @@ export default function PlayFormPage() {
           )}
           {!isCoop && (
             <label className="win-checkbox">
-              <input type="checkbox" checked={p.win} onChange={(e) => updatePlayer(i, { win: e.target.checked })} />
+              <input type="checkbox" checked={p.win} onChange={(e) => toggleWin(i, e.target.checked)} />
               승
             </label>
           )}
           <button className="remove-player-btn" onClick={() => removePlayer(i)} aria-label="플레이어 제거">✕</button>
-          <label className="automa-checkbox">
-            <input type="checkbox" checked={p.isAutoma} onChange={(e) => updatePlayer(i, { isAutoma: e.target.checked })} />
-            오토마/봇
-          </label>
-          {startPlayerIndex === i && <span className="start-player-tag">시작 플레이어</span>}
+          {p.isAutoma && <span className="automa-tag muted">봇</span>}
+          {startPlayerIndex === i && !isDrawing && <span className="start-player-tag">🚩 시작 플레이어</span>}
           {!scoreTemplate && p.scoreText.trim() && parsedScores[i] == null && (
             <div className="score-error">식을 계산할 수 없습니다</div>
           )}
@@ -533,8 +727,13 @@ export default function PlayFormPage() {
           )}
         </div>
       ))}
-      <button className="btn-secondary add-player-btn" onClick={addPlayer}>+ 플레이어 추가</button>
-      <button className="btn-secondary add-player-btn" onClick={pickStartPlayer}>🎲 시작 플레이어 뽑기</button>
+      <div className="add-player-row">
+        <button className="btn-secondary add-player-btn" onClick={addPlayer}>+ 플레이어 추가</button>
+        <button className="btn-secondary add-player-btn add-bot-btn" onClick={addBotPlayer}>+ 봇 추가</button>
+      </div>
+      <button className="btn-secondary add-player-btn" disabled={isDrawing} onClick={pickStartPlayer}>
+        {isDrawing ? "뽑는 중..." : "🎲 시작 플레이어 뽑기"}
+      </button>
 
       {scoreTemplate && (
         <div className="card score-grid-box">

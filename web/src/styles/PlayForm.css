@@ -20,19 +20,139 @@
 }
 
 .game-search-dropdown li button {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   text-align: left;
   background: none;
   border: none;
   color: var(--text);
-  padding: 9px 10px;
+  padding: 6px 10px;
   font-size: 14px;
   border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
 }
 
 .game-search-dropdown li:last-child button {
   border-bottom: none;
+}
+
+.game-search-thumb {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-search-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-search-thumb-empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.game-search-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-search-year {
+  flex: none;
+  font-size: 12px;
+}
+
+/* 장소: 선택된 값 한 줄 + 눌렀을 때만 펼치는 드롭다운 - 칩을 쭉 나열하던 것보다 자리를 덜 먹는다. */
+.location-field {
+  position: relative;
+}
+
+.location-current {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.location-caret {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.location-dropdown {
+  margin-top: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.location-dropdown-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  padding: 2px 6px 2px 0;
+}
+
+.location-dropdown-row:last-of-type {
+  border-bottom: none;
+}
+
+.location-dropdown-item {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-dropdown-item.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-tiny {
+  flex: none;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.default-location-badge {
+  flex: none;
+  font-size: 11px;
+  padding: 3px 7px;
 }
 
 /* 타이머는 입력 폼의 한 줄일 뿐이다. 큰 박스로 자리를 차지하지 않게 한 줄로 배치한다. */
@@ -120,15 +240,54 @@
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
   position: relative;
+  border-radius: 8px;
+  transition: background 0.1s ease;
 }
 
-.automa-checkbox {
+/* 시작 플레이어 뽑기 애니메이션 중 하이라이트되는 행 */
+.player-row-edit.drawing-highlight {
+  background: var(--accent-dim);
+}
+
+.automa-tag {
   grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: 4px;
   font-size: 12px;
-  color: var(--muted);
+}
+
+.game-settings-link {
+  margin-left: auto;
+}
+
+.game-settings-edit {
+  margin-bottom: 10px;
+}
+
+.win-condition-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.add-player-row {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+/* .add-player-btn 기본값이 width:100%라 flex row 안에서는 자리를 나눠 갖도록 덮어써야 한다
+   (안 그러면 두 버튼이 각자 100%를 요구해 가로 스크롤이 생긴다). */
+.add-player-row .add-player-btn {
+  width: auto;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+}
+
+.add-bot-btn {
+  flex: none;
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
 .start-player-tag {

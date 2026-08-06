@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { PlayDetail } from "../api/types";
+import type { PlayDetail, User } from "../api/types";
+import { imgUrl } from "../utils/imgUrl";
 import PhotoSlider from "../components/PhotoSlider";
 import "../styles/PlayDetail.css";
 
@@ -10,12 +11,21 @@ function fmtNum(n: number | null | undefined) {
   return Math.round(n).toLocaleString();
 }
 
+// 목록 페이지와 동일한 규칙 - 아바타 없는 사용자는 이니셜 원을 이름 해시로 고정된 색으로 보여준다.
+const INITIAL_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)", "var(--c8)", "var(--c9)", "var(--c10)"];
+function colorForName(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return INITIAL_COLORS[hash % INITIAL_COLORS.length];
+}
+
 export default function PlayDetailPage() {
   const { id } = useParams();
   const playId = Number(id);
   const navigate = useNavigate();
 
   const [play, setPlay] = useState<PlayDetail | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,20 +38,41 @@ export default function PlayDetailPage() {
       .finally(() => setLoading(false));
   }, [playId]);
 
+  useEffect(() => {
+    api.users().then(setUsers).catch(() => {});
+  }, []);
+
   if (loading) return <div className="page center-pad muted">불러오는 중...</div>;
   if (error || !play) return <div className="page center-pad error-text">{error || "기록을 찾을 수 없습니다"}</div>;
 
   const comboMap = new Map(play.comboStats.players.map((c) => [c.name, c]));
   const humanCount = play.players.filter((p) => !p.is_automa).length;
+  const winnerNames = play.players.filter((p) => p.win === true || p.win === 1).map((p) => p.name);
+  const avatarByName = new Map(users.filter((u) => u.avatar).map((u) => [u.name, u.avatar as string]));
+  const boxArt = imgUrl(play.game_thumbnail || play.game_image);
 
   return (
     <div className="page play-detail-page">
       <button className="back-btn" onClick={() => navigate(-1)}>← 뒤로</button>
 
-      <div className="page-header">
-        <h1><Link to={`/game/${play.game_id}`}>{play.game_name}</Link></h1>
+      <div className="play-detail-header">
+        <Link to={`/game/${play.game_id}`} className="play-detail-boxart">
+          {boxArt ? <img src={boxArt} alt="" /> : <div className="play-detail-boxart-empty">?</div>}
+        </Link>
+        <div className="play-detail-header-text">
+          <Link to={`/game/${play.game_id}`} className="play-detail-header-name">{play.game_name}</Link>
+          <div className="muted">{play.played_at}</div>
+        </div>
         <button className="icon-btn" style={{ background: "none", color: "var(--muted)" }}
           onClick={() => navigate(`/plays/${play.id}/edit`)} aria-label="기록 수정">✎</button>
+      </div>
+
+      <div className="card info-box">
+        <div className="info-row"><span className="muted">위치</span><span>{play.location || "미기록"}</span></div>
+        <div className="info-row"><span className="muted">승자</span><span>{winnerNames.length > 0 ? winnerNames.join(", ") : "-"}</span></div>
+        <div className="info-row"><span className="muted">의견</span><span>{play.comment || "없음"}</span></div>
+        <div className="info-row"><span className="muted">시간</span><span>{play.duration_min ? `${play.duration_min}분` : "-"}</span></div>
+        <div className="info-row"><span className="muted">인원</span><span>{humanCount <= 1 ? "1인" : `${humanCount}인+`}{play.is_coop ? " · 협력" : ""}</span></div>
       </div>
 
       {play.photos.length > 0 && (
@@ -50,33 +81,25 @@ export default function PlayDetailPage() {
         </div>
       )}
 
-      <div className="card info-box">
-        <div className="info-row"><span className="muted">날짜</span><span>{play.played_at}</span></div>
-        <div className="info-row"><span className="muted">장소</span><span>{play.location || "미기록"}</span></div>
-        <div className="info-row"><span className="muted">시간</span><span>{play.duration_min ? `${play.duration_min}분` : "-"}</span></div>
-        <div className="info-row"><span className="muted">인원</span><span>{humanCount <= 1 ? "1인" : `${humanCount}인+`}{play.is_coop ? " · 협력" : ""}</span></div>
-      </div>
-
-      {play.comment && (
-        <>
-          <div className="section-title">코멘트</div>
-          <div className="card"><p>{play.comment}</p></div>
-        </>
-      )}
-
       <div className="section-title">플레이어</div>
       <div className="card play-detail-players">
         {play.players.map((p, i) => {
           const combo = comboMap.get(p.name);
+          const isWinner = p.win === true || p.win === 1;
+          const avatar = avatarByName.get(p.name);
           return (
             <div key={i} className="play-detail-player-row">
-              <div className="play-detail-player-main">
-                <span className="play-detail-player-name">
-                  {p.name}{p.is_automa ? " 🤖" : ""}{p.win ? " 🏆" : ""}
-                </span>
-                <span>{p.score != null ? fmtNum(p.score) : "-"}</span>
+              <div className="play-detail-player-left">
+                {isWinner && <span className="player-wreath" aria-label="승자" title="승자">🏆</span>}
+                {avatar ? (
+                  <img className="player-avatar" src={api.avatarUrl(avatar)} alt="" />
+                ) : (
+                  <div className="player-initial" style={{ background: colorForName(p.name) }}>{p.name.slice(0, 1)}</div>
+                )}
+                <span className="play-detail-player-name">{p.name}{p.is_automa ? " 🤖" : ""}</span>
               </div>
-              <div className="play-detail-badges">
+              <div className="play-detail-player-right">
+                <span className="play-detail-player-score">{p.score != null ? fmtNum(p.score) : "-"}</span>
                 {p.isBestScore && <span className="badge badge-best">최고 점수!</span>}
                 {combo && combo.currentStreak >= 2 && (
                   <span className="badge badge-streak">{combo.currentStreak} 연승</span>
@@ -107,7 +130,12 @@ export default function PlayDetailPage() {
 
       {play.comboStats.matchCount > 1 && (
         <>
-          <div className="section-title">이 조합의 통계 ({play.comboStats.matchCount}판)</div>
+          <div className="section-title combo-stats-title">
+            <span>이 조합의 통계</span>
+            <Link to={`/plays?game_id=${play.game_id}&game_name=${encodeURIComponent(play.game_name || "")}`} className="combo-stats-link">
+              {play.comboStats.matchCount}회 플레이 &gt;
+            </Link>
+          </div>
           <div className="card combo-stats-table">
             <div className="combo-stats-header muted">
               <span>플레이어</span><span>승</span><span>승률</span><span>평균</span><span>최고</span>
