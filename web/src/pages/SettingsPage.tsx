@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { api } from "../api/client";
 import type { LocationCount } from "../api/types";
@@ -156,6 +157,11 @@ export default function SettingsPage() {
         </div>
         <button className="btn-primary" onClick={saveBga}>저장{saved ? "됨" : ""}</button>
         <p className="muted bga-note">동기화 기능은 아직 준비 중입니다. 아이디만 저장됩니다.</p>
+      </div>
+
+      <div className="section-title">슬리브 재고</div>
+      <div className="card">
+        <Link to="/sleeves" className="btn-secondary sleeve-link-btn">슬리브 재고 관리 열기</Link>
       </div>
 
       <SyncSection />

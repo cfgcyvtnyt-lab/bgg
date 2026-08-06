@@ -1,0 +1,87 @@
+.sleeves-page .page-header {
+  gap: 10px;
+}
+
+.sleeve-form {
+  margin-bottom: 14px;
+}
+
+.sleeve-table-wrap {
+  overflow-x: auto;
+}
+
+.sleeve-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.sleeve-table th {
+  text-align: left;
+  padding: 8px 6px;
+  color: var(--muted);
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sleeve-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.sleeve-qty-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.qty-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.sleeve-note-cell {
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sleeve-actions-cell {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.sleeve-edit-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.sleeve-edit-form input {
+  flex: 1;
+  min-width: 90px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.sleeve-edit-actions {
+  display: flex;
+  gap: 6px;
+}

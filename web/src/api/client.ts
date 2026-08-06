@@ -1,6 +1,6 @@
 import type {
   User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
-  NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse, ScoreTemplate,
+  NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse, ScoreTemplate, Sleeve,
 } from "./types";
 
 const BASE = "/api";
@@ -162,6 +162,15 @@ export const api = {
   deletePhoto: (id: number) =>
     request<{ ok: boolean }>(`/photos/${id}`, { method: "DELETE" }),
   photoUrl: (filename: string) => `${BASE}/photos/${filename}`,
+
+  // ---------- 슬리브 재고 ----------
+  sleeves: () => request<Sleeve[]>("/sleeves"),
+  addSleeve: (body: Partial<Sleeve>) =>
+    request<Sleeve>("/sleeves", { method: "POST", body: JSON.stringify(body) }),
+  updateSleeve: (id: number, body: Partial<Sleeve>) =>
+    request<Sleeve>(`/sleeves/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteSleeve: (id: number) =>
+    request<{ ok: boolean }>(`/sleeves/${id}`, { method: "DELETE" }),
 
   // ---------- 피드 ----------
   feed: (params: {

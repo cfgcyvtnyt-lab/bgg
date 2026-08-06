@@ -1343,6 +1343,60 @@ app.delete("/api/aliases/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- 슬리브 재고 ----------
+// 공유 값(user_id 없음) - 둘이 같이 관리하는 실물 재고라 컬렉션과 같은 성격.
+
+app.get("/api/sleeves", (req, res) => {
+  const rows = db.prepare("SELECT * FROM sleeve ORDER BY size").all();
+  res.json(rows);
+});
+
+app.post("/api/sleeves", (req, res) => {
+  const { size, maker, kind, thickness, quantity, note } = req.body || {};
+  if (!size || !String(size).trim()) return res.status(400).json({ error: "size가 필요합니다" });
+
+  const result = db
+    .prepare(
+      `INSERT INTO sleeve (size, maker, kind, thickness, quantity, note, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    )
+    .run(String(size).trim(), maker ?? null, kind ?? null, thickness ?? null, Number(quantity) || 0, note ?? null);
+
+  const row = db.prepare("SELECT * FROM sleeve WHERE id = ?").get(result.lastInsertRowid);
+  res.status(201).json(row);
+});
+
+app.patch("/api/sleeves/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare("SELECT * FROM sleeve WHERE id = ?").get(id);
+  if (!existing) return res.status(404).json({ error: "찾을 수 없습니다" });
+
+  const { size, maker, kind, thickness, quantity, note } = req.body || {};
+  const next = {
+    size: size !== undefined ? String(size).trim() : existing.size,
+    maker: maker !== undefined ? maker : existing.maker,
+    kind: kind !== undefined ? kind : existing.kind,
+    thickness: thickness !== undefined ? thickness : existing.thickness,
+    quantity: quantity !== undefined ? Number(quantity) || 0 : existing.quantity,
+    note: note !== undefined ? note : existing.note,
+  };
+  if (!next.size) return res.status(400).json({ error: "size가 필요합니다" });
+
+  db.prepare(
+    `UPDATE sleeve SET size = ?, maker = ?, kind = ?, thickness = ?, quantity = ?, note = ?, updated_at = datetime('now')
+     WHERE id = ?`
+  ).run(next.size, next.maker, next.kind, next.thickness, next.quantity, next.note, id);
+
+  res.json(db.prepare("SELECT * FROM sleeve WHERE id = ?").get(id));
+});
+
+app.delete("/api/sleeves/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const result = db.prepare("DELETE FROM sleeve WHERE id = ?").run(id);
+  if (result.changes === 0) return res.status(404).json({ error: "찾을 수 없습니다" });
+  res.json({ ok: true });
+});
+
 // ---------- 이미지 디스크 캐시 프록시 ----------
 
 // 허용 호스트를 BGG 이미지 CDN 하나로 제한한다. 임의 URL을 받아 서버가 아무 데나

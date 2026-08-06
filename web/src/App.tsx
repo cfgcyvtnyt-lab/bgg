@@ -10,6 +10,7 @@ import PlayDetailPage from "./pages/PlayDetailPage";
 import PlayFormPage from "./pages/PlayFormPage";
 import InsightsPage from "./pages/InsightsPage";
 import SettingsPage from "./pages/SettingsPage";
+import SleevesPage from "./pages/SleevesPage";
 import BottomNav from "./components/BottomNav";
 
 function Gate({ children }: { children: ReactNode }) {
@@ -32,6 +33,7 @@ function AppRoutes() {
         <Route path="/plays/:id" element={<PlayDetailPage />} />
         <Route path="/insights" element={<InsightsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/sleeves" element={<SleevesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <BottomNav />

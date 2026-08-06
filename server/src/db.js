@@ -166,6 +166,18 @@ CREATE TABLE IF NOT EXISTS name_alias (
   canonical TEXT NOT NULL,      -- 대표로 쓸 이름
   UNIQUE(kind, alias)
 );
+
+-- 슬리브 재고. 구글시트에서 이관한 공유 값(둘이 같이 쓴다) - user_id 없음.
+CREATE TABLE IF NOT EXISTS sleeve (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  size        TEXT NOT NULL,        -- "64x89" 같은 규격
+  maker       TEXT,
+  kind        TEXT,
+  thickness   TEXT,
+  quantity    INTEGER NOT NULL DEFAULT 0,
+  note        TEXT,
+  updated_at  TEXT
+);
 `;
 
 export function openDb(path = "data/app.db") {

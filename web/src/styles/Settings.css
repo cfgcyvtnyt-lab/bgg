@@ -55,6 +55,12 @@
   font-size: 13px;
 }
 
+.sleeve-link-btn {
+  display: inline-block;
+  text-decoration: none;
+  text-align: center;
+}
+
 .alias-row-action select,
 .alias-row-action input {
   flex: 1;

@@ -223,6 +223,17 @@ export interface LocationCount {
   count: number;
 }
 
+export interface Sleeve {
+  id: number;
+  size: string;
+  maker: string | null;
+  kind: string | null;
+  thickness: string | null;
+  quantity: number;
+  note: string | null;
+  updated_at: string | null;
+}
+
 export interface ComboPlayerStat {
   name: string;
   plays: number;
