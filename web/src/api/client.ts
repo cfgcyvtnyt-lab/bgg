@@ -81,6 +81,11 @@ export const api = {
     request<{ description_ko: string }>(`/games/${id}/translate`, { method: "POST" }),
   setRating: (id: number, rating: number | null) =>
     request<{ my_rating: number | null }>(`/games/${id}/rating`, { method: "PATCH", body: JSON.stringify({ rating }) }),
+  setWantToPlay: (id: number, wantToPlay: boolean) =>
+    request<{ want_to_play: number }>(`/games/${id}/want-to-play`, {
+      method: "PATCH",
+      body: JSON.stringify({ want_to_play: wantToPlay }),
+    }),
 
   tags: () => request<TagCount[]>("/tags"),
 

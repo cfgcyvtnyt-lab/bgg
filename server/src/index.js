@@ -248,6 +248,32 @@ app.patch("/api/games/:id/rating", (req, res) => {
   res.json({ my_rating: row ? row.rating : null });
 });
 
+// 플레이 희망은 평점과 마찬가지로 사람마다 다른 값이라 game_rating(사용자별)에 있다.
+// 컬렉션 표에서 바로 켜고 끌 수 있어야 해서 별도 라우트로 뺐다.
+app.patch("/api/games/:id/want-to-play", (req, res) => {
+  const gameId = Number(req.params.id);
+  const userId = requireUser(req, res);
+  if (!userId) return;
+
+  const game = db.prepare("SELECT id FROM game WHERE id = ?").get(gameId);
+  if (!game) return res.status(404).json({ error: "게임을 찾을 수 없습니다" });
+
+  const { want_to_play } = req.body || {};
+  if (typeof want_to_play !== "boolean") {
+    return res.status(400).json({ error: "want_to_play는 true/false여야 합니다" });
+  }
+
+  db.prepare(`
+    INSERT INTO game_rating (user_id, game_id, want_to_play) VALUES (?, ?, ?)
+    ON CONFLICT(user_id, game_id) DO UPDATE SET want_to_play = excluded.want_to_play
+  `).run(userId, gameId, want_to_play ? 1 : 0);
+
+  const row = db.prepare(
+    "SELECT want_to_play FROM game_rating WHERE user_id = ? AND game_id = ?"
+  ).get(userId, gameId);
+  res.json({ want_to_play: row ? row.want_to_play : 0 });
+});
+
 // 무료 구글 gtx 엔드포인트로 번역. 공식 API 키가 필요 없는 대신 한 번에 보낼 수 있는 길이가
 // 제한적이라 문장 단위로 잘라 여러 번 호출한 뒤 이어붙인다.
 async function translateToKorean(text) {

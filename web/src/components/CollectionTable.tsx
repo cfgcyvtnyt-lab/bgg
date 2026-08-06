@@ -2,15 +2,16 @@ import { useState } from "react";
 import { api } from "../api/client";
 import type { CollectionListEntry } from "../api/types";
 import { ratingColor, weightColor } from "../utils/ratingTier";
+import StarRating from "./StarRating";
 import "../styles/CollectionTable.css";
 
 const STATUS_OPTIONS = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
 
 type SortKey =
   | "name" | "status" | "price_paid" | "price_sold" | "tags"
-  | "my_rating" | "play_count" | "weight" | "bgg_rating" | "note";
+  | "my_rating" | "play_count" | "weight" | "bgg_rating" | "note" | "want_to_play";
 
-type EditingCell = { rowKey: string; field: "price_paid" | "price_sold" | "tags" | "note" } | null;
+type EditingCell = { rowKey: string; field: "name" | "price_paid" | "price_sold" | "tags" | "note" } | null;
 
 function rowKeyOf(e: CollectionListEntry): string {
   return e.id != null ? `c${e.id}` : `u${e.game_id}`;
@@ -49,6 +50,7 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
       case "weight": return e.weight ?? -Infinity;
       case "bgg_rating": return e.bgg_rating ?? -Infinity;
       case "note": return e.note || "";
+      case "want_to_play": return e.want_to_play ? 1 : 0;
       default: return "";
     }
   }
@@ -70,6 +72,67 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
       await api.updateCollection(e.id, body as never);
     } catch (err) {
       // 실패 시 이전 상태로 되돌린다
+      setOverrides((o) => ({ ...o, [key]: prev ?? {} }));
+      alert(err instanceof Error ? err.message : "저장 실패");
+    } finally {
+      setSavingKeys((s) => {
+        const next = new Set(s);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
+  // 이름/평점은 게임 단위(game_id) 데이터라 컬렉션 소유 여부(e.id)와 무관하게 편집 가능하다.
+  async function patchName(e: CollectionListEntry, customName: string) {
+    const key = rowKeyOf(e);
+    const prev = overrides[key];
+    setSavingKeys((s) => new Set(s).add(key));
+    try {
+      const updated = await api.updateGame(e.game_id, { custom_name: customName.trim() });
+      setOverrides((o) => ({ ...o, [key]: { ...o[key], game_name: updated.name } }));
+    } catch (err) {
+      setOverrides((o) => ({ ...o, [key]: prev ?? {} }));
+      alert(err instanceof Error ? err.message : "저장 실패");
+    } finally {
+      setSavingKeys((s) => {
+        const next = new Set(s);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
+  async function patchRating(e: CollectionListEntry, rating: number | null) {
+    const key = rowKeyOf(e);
+    const prev = overrides[key];
+    setOverrides((o) => ({ ...o, [key]: { ...o[key], my_rating: rating } }));
+    setSavingKeys((s) => new Set(s).add(key));
+    try {
+      const { my_rating } = await api.setRating(e.game_id, rating);
+      setOverrides((o) => ({ ...o, [key]: { ...o[key], my_rating } }));
+    } catch (err) {
+      setOverrides((o) => ({ ...o, [key]: prev ?? {} }));
+      alert(err instanceof Error ? err.message : "저장 실패");
+    } finally {
+      setSavingKeys((s) => {
+        const next = new Set(s);
+        next.delete(key);
+        return next;
+      });
+    }
+  }
+
+  // 플레이 희망은 평점과 같이 사용자별 값이라 collection이 아니라 game_rating을 고친다.
+  async function patchWantToPlay(e: CollectionListEntry, want: boolean) {
+    const key = rowKeyOf(e);
+    const prev = overrides[key];
+    setOverrides((o) => ({ ...o, [key]: { ...o[key], want_to_play: want ? 1 : 0 } }));
+    setSavingKeys((s) => new Set(s).add(key));
+    try {
+      const { want_to_play } = await api.setWantToPlay(e.game_id, want);
+      setOverrides((o) => ({ ...o, [key]: { ...o[key], want_to_play } }));
+    } catch (err) {
       setOverrides((o) => ({ ...o, [key]: prev ?? {} }));
       alert(err instanceof Error ? err.message : "저장 실패");
     } finally {
@@ -144,6 +207,7 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
               <th onClick={() => toggleSort("price_sold")}>판매가{caret("price_sold")}</th>
               <th onClick={() => toggleSort("tags")}>용도{caret("tags")}</th>
               <th onClick={() => toggleSort("my_rating")}>내 평점{caret("my_rating")}</th>
+              <th onClick={() => toggleSort("want_to_play")}>플레이 희망{caret("want_to_play")}</th>
               <th onClick={() => toggleSort("play_count")}>플레이 수{caret("play_count")}</th>
               <th onClick={() => toggleSort("weight")}>웨이트{caret("weight")}</th>
               <th onClick={() => toggleSort("bgg_rating")}>긱 평점{caret("bgg_rating")}</th>
@@ -165,7 +229,19 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
                       onChange={() => toggleSelect(key)}
                     />
                   </td>
-                  <td className="ct-name-col">{e.game_name}</td>
+                  <EditableCell
+                    editable
+                    active={editing?.rowKey === key && editing.field === "name"}
+                    display={e.game_name || ""}
+                    value={e.game_name || ""}
+                    type="text"
+                    className="ct-name-col"
+                    onStart={() => setEditing({ rowKey: key, field: "name" })}
+                    onCommit={(v) => {
+                      setEditing(null);
+                      if (v !== (e.game_name || "")) patchName(e, v);
+                    }}
+                  />
                   <td>
                     {editable ? (
                       <select
@@ -219,7 +295,20 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
                       patch(e, { tags });
                     }}
                   />
-                  <td className="ct-readonly">{e.my_rating ?? ""}</td>
+                  <td className="ct-rating-col">
+                    <StarRating size={14} value={e.my_rating ?? null} onChange={(v) => patchRating(e, v)} />
+                  </td>
+                  <td className="ct-want-col">
+                    <button
+                      type="button"
+                      className={`ct-want-icon${e.want_to_play ? " active" : ""}`}
+                      onClick={() => patchWantToPlay(e, !e.want_to_play)}
+                      title={e.want_to_play ? "플레이 희망 해제" : "플레이 희망으로 표시"}
+                      aria-pressed={!!e.want_to_play}
+                    >
+                      ▶
+                    </button>
+                  </td>
                   <td className="ct-readonly">{e.play_count}</td>
                   <td className="ct-readonly" style={{ color: weightColor(e.weight) }}>{e.weight ?? ""}</td>
                   <td className="ct-readonly" style={{ color: ratingColor(e.bgg_rating) }}>{e.bgg_rating ?? ""}</td>
@@ -246,7 +335,7 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
 }
 
 function EditableCell({
-  editable, active, display, value, type, onStart, onCommit,
+  editable, active, display, value, type, onStart, onCommit, className,
 }: {
   editable: boolean;
   active: boolean;
@@ -255,13 +344,14 @@ function EditableCell({
   type: "text" | "number";
   onStart: () => void;
   onCommit: (v: string) => void;
+  className?: string;
 }) {
   if (!editable) {
     return <td className="ct-readonly" />;
   }
   if (active) {
     return (
-      <td className="ct-editing">
+      <td className={`ct-editing${className ? ` ${className}` : ""}`}>
         <input
           type={type}
           autoFocus
@@ -276,7 +366,7 @@ function EditableCell({
     );
   }
   return (
-    <td className="ct-editable" onClick={onStart}>
+    <td className={`ct-editable${className ? ` ${className}` : ""}`} onClick={onStart}>
       {display || <span className="muted">-</span>}
     </td>
   );

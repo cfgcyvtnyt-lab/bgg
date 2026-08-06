@@ -5,59 +5,12 @@ import type { GameDetail, Play, ScoreTemplate, TagCount, GameSleeve } from "../a
 import { imgUrl } from "../utils/imgUrl";
 import { ratingColor, weightColor } from "../utils/ratingTier";
 import { bggGameUrl, bggSleevesUrl } from "../utils/bggUrl";
+import StarRating from "../components/StarRating";
 import "../styles/GameDetail.css";
 
 const STATUS_LIST = ["보유", "선주문", "위시리스트", "방출 예정", "방출 확정", "방출 완료"];
 const RECENT_PLAYS_COUNT = 5;
 const INTRO_TRUNCATE_CHARS = 160; // 대략 4줄 분량 - CSS 라인 수 대신 글자 수로 근사한다.
-
-// 0.5 단위 별점 입력. 별 하나가 2점(=★ 한 칸당 rating 2)이라 클릭 위치의 좌/우 절반으로 0.5 단위를 구현한다.
-function StarRating({ value, onChange, disabled, size = 22 }: {
-  value: number | null;
-  onChange: (v: number | null) => void;
-  disabled?: boolean;
-  size?: number;
-}) {
-  const stars = [1, 2, 3, 4, 5];
-  function handleClick(e: React.MouseEvent<HTMLSpanElement>, star: number) {
-    if (disabled) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const half = e.clientX - rect.left < rect.width / 2;
-    const newValue = star * 2 - (half ? 1 : 0);
-    // 이미 같은 값을 다시 클릭하면 평점을 지운다(토글).
-    onChange(value === newValue ? null : newValue);
-  }
-  return (
-    <span className="star-rating-stars">
-      {stars.map((star) => {
-        const filled = value != null ? Math.max(0, Math.min(1, value - (star - 1) * 2)) : 0;
-        return (
-          <span
-            key={star}
-            onClick={(e) => handleClick(e, star)}
-            style={{
-              position: "relative",
-              display: "inline-block",
-              fontSize: size,
-              cursor: disabled ? "default" : "pointer",
-              color: "var(--border)",
-            }}
-          >
-            ★
-            <span
-              style={{
-                position: "absolute", inset: 0, overflow: "hidden",
-                width: `${filled * 100}%`, color: "#d9a441",
-              }}
-            >
-              ★
-            </span>
-          </span>
-        );
-      })}
-    </span>
-  );
-}
 
 function fmtNum(n: number | null | undefined) {
   if (n == null) return "-";

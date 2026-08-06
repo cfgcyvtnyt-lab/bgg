@@ -132,3 +132,26 @@
   padding: 3px 6px;
   font-size: 13px;
 }
+
+.ct-rating-col {
+  white-space: nowrap;
+}
+
+/* 플레이 희망 열 - 현재는 표시 전용(서버에 수정 API 없음) */
+.ct-want-col {
+  text-align: center;
+}
+
+.ct-want-icon {
+  color: var(--border);
+  font-size: 14px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ct-want-icon.active {
+  color: #d9a441;
+}
