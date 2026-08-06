@@ -86,7 +86,12 @@ function MonthCard({ item }: { item: FeedItemMonth }) {
             {item.topGames.map((g) => (
               <Link key={g.gameId} to={`/game/${g.gameId}`} className="month-grid-cell" onClick={(e) => e.stopPropagation()}>
                 {g.thumbnail ? (
-                  <img src={imgUrl(g.thumbnail)} alt={g.name} loading="lazy" />
+                  <>
+                    {/* contain으로 바뀌며 생긴 레터박스 여백을 같은 이미지를 블러 배경으로 깔아 채운다 -
+                        같은 URL이라 브라우저 캐시를 그대로 써서 추가 네트워크 요청이 없다 */}
+                    <img className="month-grid-bg" src={imgUrl(g.thumbnail)} alt="" aria-hidden="true" loading="lazy" />
+                    <img className="month-grid-fg" src={imgUrl(g.thumbnail)} alt={g.name} loading="lazy" />
+                  </>
                 ) : (
                   <div className="month-grid-noimg">{g.name}</div>
                 )}
