@@ -9,6 +9,7 @@ import PlaysPage from "./pages/PlaysPage";
 import PlayDetailPage from "./pages/PlayDetailPage";
 import PlayFormPage from "./pages/PlayFormPage";
 import InsightsPage from "./pages/InsightsPage";
+import ChallengesPage from "./pages/ChallengesPage";
 import SettingsPage from "./pages/SettingsPage";
 import SleevesPage from "./pages/SleevesPage";
 import BottomNav from "./components/BottomNav";
@@ -32,6 +33,7 @@ function AppRoutes() {
         <Route path="/plays/:id/edit" element={<PlayFormPage />} />
         <Route path="/plays/:id" element={<PlayDetailPage />} />
         <Route path="/insights" element={<InsightsPage />} />
+        <Route path="/challenges" element={<ChallengesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/sleeves" element={<SleevesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

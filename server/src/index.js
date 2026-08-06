@@ -1290,6 +1290,174 @@ app.get("/api/insights", (req, res) => {
   });
 });
 
+// ---------- 도전 과제 (계정별) ----------
+// 진행률은 저장하지 않고 조회 시 계산한다 - 플레이가 쌓이면 자동으로 반영되어야 하므로.
+
+function gamePlayCount(userId, gameId, from, to) {
+  let sql = "SELECT COUNT(*) AS c FROM play WHERE user_id = ? AND game_id = ?";
+  const params = [userId, gameId];
+  if (from) { sql += " AND played_at >= ?"; params.push(from); }
+  if (to) { sql += " AND played_at <= ?"; params.push(to); }
+  return db.prepare(sql).get(...params).c;
+}
+
+function totalPlaysCount(userId, from, to) {
+  let sql = "SELECT COUNT(*) AS c FROM play WHERE user_id = ?";
+  const params = [userId];
+  if (from) { sql += " AND played_at >= ?"; params.push(from); }
+  if (to) { sql += " AND played_at <= ?"; params.push(to); }
+  return db.prepare(sql).get(...params).c;
+}
+
+// 이 사용자 기준 "새로 배운" 게임: 그 게임의 (이 사용자) 첫 플레이일이 기간 안에 드는 경우.
+function newGamesCount(userId, from, to) {
+  const rows = db.prepare(
+    "SELECT MIN(played_at) AS first FROM play WHERE user_id = ? GROUP BY game_id"
+  ).all(userId);
+  let count = 0;
+  for (const r of rows) {
+    if (from && r.first < from) continue;
+    if (to && r.first > to) continue;
+    count++;
+  }
+  return count;
+}
+
+// insights의 hIndex와 같은 정의(x판 이상 플레이한 게임이 x개 이상인 최대 x), 이 사용자 전체 기간 기준.
+function computeHIndexForUser(userId) {
+  const rows = db.prepare(
+    "SELECT COUNT(*) AS c FROM play WHERE user_id = ? GROUP BY game_id"
+  ).all(userId);
+  const counts = rows.map((r) => r.c).sort((a, b) => b - a);
+  let hIndex = 0;
+  for (let i = 0; i < counts.length; i++) {
+    if (counts[i] >= i + 1) hIndex = i + 1;
+    else break;
+  }
+  return hIndex;
+}
+
+function gameDisplayName(gameId) {
+  const row = db.prepare("SELECT COALESCE(custom_name, name) AS name FROM game WHERE id = ?").get(gameId);
+  return row ? row.name : null;
+}
+
+function computeChallengeProgress(target, userId) {
+  if (!target || !target.type) return null;
+
+  switch (target.type) {
+    case "NxM": {
+      const gameIds = Array.isArray(target.gameIds) ? target.gameIds : [];
+      const m = Number(target.m) || 0;
+      const n = Number(target.n) || gameIds.length;
+      const games = gameIds.map((gid) => {
+        const plays = gamePlayCount(userId, gid, target.from, target.to);
+        return { gameId: gid, name: gameDisplayName(gid), plays, target: m };
+      });
+      const completed = games.reduce((sum, g) => sum + Math.min(g.plays, m), 0);
+      const denom = n * m;
+      const percent = denom > 0 ? Math.min(100, Math.round((completed / denom) * 100)) : 0;
+      return {
+        type: "NxM", games, percent,
+        completedGames: games.filter((g) => g.plays >= m).length,
+        totalGames: n,
+      };
+    }
+    case "totalPlays": {
+      const current = totalPlaysCount(userId, target.from, target.to);
+      const percent = target.target ? Math.min(100, Math.round((current / target.target) * 100)) : 0;
+      return { type: "totalPlays", current, target: target.target, percent };
+    }
+    case "newGames": {
+      const current = newGamesCount(userId, target.from, target.to);
+      const percent = target.target ? Math.min(100, Math.round((current / target.target) * 100)) : 0;
+      return { type: "newGames", current, target: target.target, percent };
+    }
+    case "shelfOfShame": {
+      const gameIds = Array.isArray(target.gameIds) ? target.gameIds : [];
+      const games = gameIds.map((gid) => {
+        const plays = gamePlayCount(userId, gid, null, null);
+        return { gameId: gid, name: gameDisplayName(gid), done: plays > 0, plays };
+      });
+      const doneCount = games.filter((g) => g.done).length;
+      const percent = games.length ? Math.round((doneCount / games.length) * 100) : 0;
+      return { type: "shelfOfShame", games, percent, doneCount, totalGames: games.length };
+    }
+    case "hIndex": {
+      const current = computeHIndexForUser(userId);
+      const percent = target.target ? Math.min(100, Math.round((current / target.target) * 100)) : 0;
+      return { type: "hIndex", current, target: target.target, percent };
+    }
+    default:
+      return null;
+  }
+}
+
+function serializeChallenge(row, userId) {
+  let target = null;
+  try { target = JSON.parse(row.target_json || "null"); } catch { target = null; }
+  return { ...row, target, progress: computeChallengeProgress(target, userId) };
+}
+
+app.get("/api/challenges", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const rows = db.prepare("SELECT * FROM challenge WHERE user_id = ? ORDER BY created_at DESC").all(userId);
+  res.json(rows.map((r) => serializeChallenge(r, userId)));
+});
+
+app.post("/api/challenges", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const { name, description, target } = req.body || {};
+  if (!name || !String(name).trim()) return res.status(400).json({ error: "name이 필요합니다" });
+  if (!target || !target.type) return res.status(400).json({ error: "target이 필요합니다" });
+
+  const result = db.prepare(
+    "INSERT INTO challenge (user_id, name, description, target_json) VALUES (?, ?, ?, ?)"
+  ).run(userId, String(name).trim(), description ?? null, JSON.stringify(target));
+
+  const row = db.prepare("SELECT * FROM challenge WHERE id = ?").get(result.lastInsertRowid);
+  res.status(201).json(serializeChallenge(row, userId));
+});
+
+app.patch("/api/challenges/:id", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const id = Number(req.params.id);
+
+  const existing = db.prepare("SELECT * FROM challenge WHERE id = ?").get(id);
+  if (!existing) return res.status(404).json({ error: "찾을 수 없습니다" });
+  if (existing.user_id !== userId) return res.status(403).json({ error: "본인 도전 과제만 수정할 수 있습니다" });
+
+  const updates = [];
+  const params = [];
+  const body = req.body || {};
+  if ("name" in body) { updates.push("name = ?"); params.push(String(body.name || "").trim()); }
+  if ("description" in body) { updates.push("description = ?"); params.push(body.description ?? null); }
+  if ("target" in body) { updates.push("target_json = ?"); params.push(JSON.stringify(body.target)); }
+  if (updates.length) {
+    params.push(id);
+    db.prepare(`UPDATE challenge SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+  }
+
+  const row = db.prepare("SELECT * FROM challenge WHERE id = ?").get(id);
+  res.json(serializeChallenge(row, userId));
+});
+
+app.delete("/api/challenges/:id", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const id = Number(req.params.id);
+
+  const existing = db.prepare("SELECT * FROM challenge WHERE id = ?").get(id);
+  if (!existing) return res.status(404).json({ error: "찾을 수 없습니다" });
+  if (existing.user_id !== userId) return res.status(403).json({ error: "본인 도전 과제만 삭제할 수 있습니다" });
+
+  db.prepare("DELETE FROM challenge WHERE id = ?").run(id);
+  res.json({ ok: true });
+});
+
 // ---------- 이름 정리 (플레이어/장소 별칭) ----------
 
 // 설정 화면에서 "현재 이렇게 기록되고 있다"를 보여주기 위한 원본 이름 + 판수 목록.

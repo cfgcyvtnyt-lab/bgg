@@ -1,0 +1,160 @@
+.challenge-card {
+  margin-bottom: 10px;
+}
+
+.challenge-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.challenge-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.challenge-done-badge {
+  font-size: 11px;
+  color: var(--record);
+  border: 1px solid var(--record);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.challenge-card-percent {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.challenge-progress-track {
+  background: var(--border);
+  border-radius: 999px;
+  height: 8px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.challenge-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.challenge-period {
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.challenge-detail {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.challenge-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.challenge-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+}
+
+.challenge-detail-name {
+  color: var(--text);
+}
+
+.challenge-detail-value {
+  color: var(--muted);
+}
+
+.challenge-detail-value.done {
+  color: var(--c2);
+}
+
+.challenge-detail-summary {
+  margin-top: 6px;
+  font-size: 12.5px;
+}
+
+.challenge-delete-btn {
+  margin-top: 12px;
+}
+
+.challenge-template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.challenge-template-card {
+  text-align: left;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.challenge-template-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.challenge-template-desc {
+  font-size: 13px;
+}
+
+.challenge-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+}
+
+.field-row .field {
+  flex: 1;
+}
+
+.challenge-game-picker {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.challenge-game-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.challenge-game-picker-row:last-child {
+  border-bottom: none;
+}
+
+.challenge-game-picker-row span:first-of-type {
+  flex: 1;
+}
+
+.challenge-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.challenge-form-actions .btn-primary,
+.challenge-form-actions .btn-secondary {
+  flex: 1;
+}

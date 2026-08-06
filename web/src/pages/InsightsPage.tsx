@@ -60,6 +60,8 @@ export default function InsightsPage() {
     <div className="page insights-page">
       <div className="page-header"><h1>인사이트</h1></div>
 
+      <Link to="/challenges" className="challenges-entry-link">도전 과제 &gt;</Link>
+
       <div className="summary-grid">
         <div className="summary-card">
           <div className="summary-value">{fmt(data.totalPlays)}</div>

@@ -1,6 +1,7 @@
 import type {
   User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
   NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse, ScoreTemplate, Sleeve,
+  Challenge, ChallengeTarget,
 } from "./types";
 
 const BASE = "/api";
@@ -186,6 +187,15 @@ export const api = {
     sp.set("offset", String(params.offset ?? 0));
     return request<FeedResponse>(`/feed?${sp}`);
   },
+
+  // ---------- 도전 과제 ----------
+  challenges: () => request<Challenge[]>("/challenges"),
+  addChallenge: (body: { name: string; description?: string | null; target: ChallengeTarget }) =>
+    request<Challenge>("/challenges", { method: "POST", body: JSON.stringify(body) }),
+  updateChallenge: (id: number, body: { name?: string; description?: string | null; target?: ChallengeTarget }) =>
+    request<Challenge>(`/challenges/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteChallenge: (id: number) =>
+    request<{ ok: boolean }>(`/challenges/${id}`, { method: "DELETE" }),
 };
 
 export { getUserId };

@@ -186,6 +186,47 @@ export interface Insights {
   spending: { totalPaid: number; totalSold: number; net: number };
 }
 
+// ---------- 도전 과제 ----------
+// target은 challenge.target_json을 서버가 파싱해서 내려준다. 타입별로 모양이 다르다.
+export type ChallengeTarget =
+  | { type: "NxM"; n: number; m: number; from?: string; to?: string; gameIds: number[] }
+  | { type: "totalPlays"; target: number; from?: string; to?: string }
+  | { type: "newGames"; target: number; from?: string; to?: string }
+  | { type: "shelfOfShame"; gameIds: number[] }
+  | { type: "hIndex"; target: number };
+
+export interface ChallengeProgressNxM {
+  type: "NxM";
+  games: { gameId: number; name: string | null; plays: number; target: number }[];
+  percent: number;
+  completedGames: number;
+  totalGames: number;
+}
+export interface ChallengeProgressCount {
+  type: "totalPlays" | "newGames" | "hIndex";
+  current: number;
+  target: number;
+  percent: number;
+}
+export interface ChallengeProgressShelf {
+  type: "shelfOfShame";
+  games: { gameId: number; name: string | null; done: boolean; plays: number }[];
+  percent: number;
+  doneCount: number;
+  totalGames: number;
+}
+export type ChallengeProgress = ChallengeProgressNxM | ChallengeProgressCount | ChallengeProgressShelf;
+
+export interface Challenge {
+  id: number;
+  user_id: number;
+  name: string;
+  description: string | null;
+  target: ChallengeTarget;
+  progress: ChallengeProgress | null;
+  created_at: string;
+}
+
 // POST/PATCH /api/plays 요청 바디. 서버는 is_coop/win 등을 truthy 값이면 다 받아준다.
 export interface PlayInput {
   game_id?: number;
