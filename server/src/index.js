@@ -459,6 +459,18 @@ app.get("/api/locations", (req, res) => {
   res.json([...merged.values()].sort((a, b) => b.count - a.count));
 });
 
+// 장소 이름 바꾸기. name_alias(병합 표시)와 달리 원본 play.location 값 자체를 고친다 -
+// 오타·표기 통일처럼 "그냥 다른 이름으로 대체"하고 싶을 때 쓴다. 별칭 병합 기능은 그대로 둔다.
+app.patch("/api/locations", (req, res) => {
+  const { from, to } = req.body || {};
+  if (!from || !to) return res.status(400).json({ error: "from, to가 필요합니다" });
+  if (from === to) return res.status(400).json({ error: "from과 to가 같습니다" });
+
+  const result = db.prepare("UPDATE play SET location = ? WHERE location = ?").run(to, from);
+  invalidateFeedCache();
+  res.json({ ok: true, changed: result.changes });
+});
+
 app.get("/api/plays", (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
@@ -1204,6 +1216,16 @@ app.get("/api/insights", (req, res) => {
   const cheapest = [...costPerPlay].sort((a, b) => a.costPerPlay - b.costPerPlay);
   const priciest = [...costPerPlay].sort((a, b) => b.costPerPlay - a.costPerPlay);
 
+  // 지출 요약: 컬렉션 전체(취득 이력 전부) 합계 - 공유 값이라 사용자 필터와 무관하다.
+  const spendingRow = db.prepare(
+    "SELECT COALESCE(SUM(price_paid), 0) AS totalPaid, COALESCE(SUM(price_sold), 0) AS totalSold FROM collection"
+  ).get();
+  const spending = {
+    totalPaid: spendingRow.totalPaid,
+    totalSold: spendingRow.totalSold,
+    net: spendingRow.totalPaid - spendingRow.totalSold,
+  };
+
   res.json({
     totalPlays,
     distinctGames,
@@ -1217,6 +1239,7 @@ app.get("/api/insights", (req, res) => {
     bestStreak,
     ownedNotPlayed,
     costPerPlay: { cheapest, priciest },
+    spending,
   });
 });
 
@@ -1367,13 +1390,16 @@ app.get("/api/search", async (req, res) => {
 // ---------- BGG 동기화 ----------
 
 // 동시 실행 방지용 상태. running 중엔 /api/sync가 409를 반환한다.
-const syncState = { running: false, lastRunAt: null, lastResult: null, lastError: null };
+// lastSuccessAt: 마지막 "성공" 동기화 시각만 따로 둔다 - 하루 1회 제한은 성공 기준이어야
+// 실패가 반복돼도 계속 재시도할 수 있다(BGG는 "하루 1회"를 요청했지 "하루 1회 시도"가 아니다).
+const syncState = { running: false, lastRunAt: null, lastSuccessAt: null, lastResult: null, lastError: null };
 
 async function runSyncSafe() {
   syncState.running = true;
   try {
     const result = await runSync(db, BGG_API_KEY);
     syncState.lastRunAt = new Date().toISOString();
+    syncState.lastSuccessAt = syncState.lastRunAt;
     syncState.lastResult = result;
     syncState.lastError = null;
     return result;
@@ -1386,9 +1412,23 @@ async function runSyncSafe() {
   }
 }
 
+// BGG 신고 조건이 "하루 1회"라 서버가 스스로 지킨다. force=1은 설정 화면 "지금 동기화"
+// 버튼에서 사용자가 확인 다이얼로그를 거친 뒤에만 붙는다.
 app.post("/api/sync", async (req, res) => {
   if (syncState.running) {
     return res.status(409).json({ error: "이미 동기화가 진행 중입니다" });
+  }
+  const force = req.query.force === "1";
+  if (!force && syncState.lastSuccessAt) {
+    const elapsedMs = Date.now() - new Date(syncState.lastSuccessAt).getTime();
+    const remainingMs = SYNC_INTERVAL_MS - elapsedMs;
+    if (remainingMs > 0) {
+      return res.status(429).json({
+        error: "오늘 이미 동기화했습니다",
+        remainingMs,
+        lastSuccessAt: syncState.lastSuccessAt,
+      });
+    }
   }
   try {
     const result = await runSyncSafe();

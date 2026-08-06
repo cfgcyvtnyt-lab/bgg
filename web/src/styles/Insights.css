@@ -24,6 +24,12 @@
   margin-top: 2px;
 }
 
+.spending-summary {
+  font-size: 12.5px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
 .level-badges {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -153,9 +159,14 @@
 
 .monthly-bar {
   width: 10px;
-  background: var(--accent);
+  background: var(--accent-dim);
   border-radius: 3px 3px 0 0;
   min-height: 2px;
+}
+
+/* 최대값 달만 진하게 - 단색 팔레트는 유지하되 그 달만 강조한다 */
+.monthly-bar.is-max {
+  background: var(--accent);
 }
 
 .monthly-bar-label {

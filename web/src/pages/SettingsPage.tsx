@@ -1,110 +1,116 @@
 import { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 import { api } from "../api/client";
-import type { NameAlias, NameCount } from "../api/types";
+import type { LocationCount } from "../api/types";
 import "../styles/Settings.css";
 
 // BGA 계정 연동/동기화는 아직 없다. 아이디만 로컬에 저장해두고 나중에 쓸 자리를 마련한다.
 const BGA_KEY = "bgg_bga_username";
 
-// 같은 사람/장소가 다른 표기로 기록돼 통계가 갈라지는 걸 사용자가 직접 합칠 수 있게 하는 섹션.
-// 원본 데이터는 절대 고치지 않고 name_alias 매핑만 추가/삭제한다. 기본값은 없다 - 뭘 합칠지는 사용자만 안다.
-function NameAliasSection() {
-  const [kind, setKind] = useState<"player" | "location">("player");
-  const [names, setNames] = useState<NameCount[]>([]);
-  const [aliases, setAliases] = useState<NameAlias[]>([]);
+// 장소 표기를 직접 바꾸는 섹션. name_alias(조회 시점 병합)와 달리 play.location 원본 값을
+// UPDATE로 실제 고친다 - 예전 "이름 정리"보다 더 강한 조작이라 확인 다이얼로그를 반드시 거친다.
+function LocationManageSection() {
+  const [locations, setLocations] = useState<LocationCount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mergeTarget, setMergeTarget] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
-      const [n, a] = await Promise.all([api.names(kind), api.aliases(kind)]);
-      setNames(n);
-      setAliases(a);
+      setLocations(await api.locations());
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { load(); }, [kind]);
+  useEffect(() => { load(); }, []);
 
-  async function merge(alias: string) {
-    const canonical = mergeTarget[alias];
-    if (!canonical) return;
-    setBusy(alias);
-    try {
-      await api.addAlias({ kind, alias, canonical });
-      setMergeTarget((m) => ({ ...m, [alias]: "" }));
-      await load();
-    } finally {
-      setBusy(null);
-    }
+  function startRename(name: string) {
+    setRenaming(name);
+    setNewName(name);
   }
 
-  async function unmerge(alias: string) {
-    const row = aliases.find((a) => a.alias === alias);
-    if (!row) return;
-    setBusy(alias);
+  async function confirmRename(from: string) {
+    const to = newName.trim();
+    if (!to || to === from) { setRenaming(null); return; }
+    const count = locations.find((l) => l.name === from)?.count ?? 0;
+    if (!window.confirm(`"${from}" → "${to}"로 바꾸면 ${count}판이 바뀝니다. 계속할까요?`)) return;
+    setBusy(true);
     try {
-      await api.deleteAlias(row.id);
+      await api.renameLocation(from, to);
+      setRenaming(null);
       await load();
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
-
-  const aliasMap = new Map(aliases.map((a) => [a.alias, a.canonical]));
 
   return (
     <>
-      <div className="section-title">이름 정리</div>
+      <div className="section-title">장소 관리</div>
       <div className="card">
-        <div className="view-toggle alias-kind-toggle">
-          <button className={kind === "player" ? "active" : ""} onClick={() => setKind("player")}>플레이어</button>
-          <button className={kind === "location" ? "active" : ""} onClick={() => setKind("location")}>장소</button>
-        </div>
-
         {loading && <p className="muted center-pad">불러오는 중...</p>}
-        {!loading && names.length === 0 && <p className="muted center-pad">기록된 이름이 없습니다.</p>}
+        {!loading && locations.length === 0 && <p className="muted center-pad">기록된 장소가 없습니다.</p>}
 
-        {!loading && names.map((n) => {
-          const canonical = aliasMap.get(n.name);
-          return (
-            <div key={n.name} className="alias-row">
-              <div className="alias-row-main">
-                <span>{n.name}</span>
-                <span className="muted">{n.count}판</span>
-              </div>
-              {canonical ? (
-                <div className="alias-row-action">
-                  <span className="muted">→ {canonical}로 합쳐짐</span>
-                  <button className="btn-small" disabled={busy === n.name} onClick={() => unmerge(n.name)}>해제</button>
-                </div>
-              ) : (
-                <div className="alias-row-action">
-                  <select
-                    value={mergeTarget[n.name] || ""}
-                    onChange={(e) => setMergeTarget((m) => ({ ...m, [n.name]: e.target.value }))}
-                  >
-                    <option value="">다른 이름으로 합치기...</option>
-                    {names.filter((x) => x.name !== n.name).map((x) => (
-                      <option key={x.name} value={x.name}>{x.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    className="btn-small"
-                    disabled={!mergeTarget[n.name] || busy === n.name}
-                    onClick={() => merge(n.name)}
-                  >
-                    합치기
-                  </button>
-                </div>
-              )}
+        {!loading && locations.map((l) => (
+          <div key={l.name} className="alias-row">
+            <div className="alias-row-main">
+              <span>{l.name}</span>
+              <span className="muted">{l.count}판</span>
             </div>
-          );
-        })}
+            {renaming === l.name ? (
+              <div className="alias-row-action">
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  autoFocus
+                />
+                <button className="btn-small" disabled={busy} onClick={() => confirmRename(l.name)}>확인</button>
+                <button className="btn-small" disabled={busy} onClick={() => setRenaming(null)}>취소</button>
+              </div>
+            ) : (
+              <div className="alias-row-action">
+                <button className="btn-small" onClick={() => startRename(l.name)}>이름 바꾸기</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// BGG는 하루 1회 동기화를 권장한다(서버가 429로 강제한다). 그래서 버튼을 누르면
+// "정말 지금 할 거냐"를 확인한 뒤 force=1로 그 제한을 우회한다.
+function SyncSection() {
+  const [syncing, setSyncing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function doSync() {
+    if (!window.confirm("BGG 서버 정책상 동기화는 하루 1회만 권장됩니다. 지금 강제로 동기화할까요?")) return;
+    setSyncing(true);
+    setMessage(null);
+    try {
+      await api.sync(true);
+      setMessage("동기화 완료");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "동기화 실패");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="section-title">BGG 동기화</div>
+      <div className="card">
+        <button className="btn-primary" disabled={syncing} onClick={doSync}>
+          {syncing ? "동기화 중..." : "지금 동기화"}
+        </button>
+        <p className="muted bga-note">평소엔 서버가 하루 1회 자동으로 동기화합니다.</p>
+        {message && <p className="muted bga-note">{message}</p>}
       </div>
     </>
   );
@@ -152,7 +158,8 @@ export default function SettingsPage() {
         <p className="muted bga-note">동기화 기능은 아직 준비 중입니다. 아이디만 저장됩니다.</p>
       </div>
 
-      <NameAliasSection />
+      <SyncSection />
+      <LocationManageSection />
     </div>
   );
 }

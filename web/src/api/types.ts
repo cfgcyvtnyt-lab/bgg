@@ -173,6 +173,8 @@ export interface Insights {
   bestStreak: number;
   ownedNotPlayed: { id: number; name: string }[];
   costPerPlay: { cheapest: CostPerPlayRow[]; priciest: CostPerPlayRow[] };
+  // 컬렉션 전체(취득 이력 전부) 합계 - 공유 값이라 사용자와 무관하다.
+  spending: { totalPaid: number; totalSold: number; net: number };
 }
 
 // POST/PATCH /api/plays 요청 바디. 서버는 is_coop/win 등을 truthy 값이면 다 받아준다.

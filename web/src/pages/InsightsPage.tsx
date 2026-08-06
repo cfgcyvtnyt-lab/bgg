@@ -13,6 +13,18 @@ function fmtHours(minutes: number) {
   return `${h.toLocaleString()}시간`;
 }
 
+// index.css의 --c1~--c10 팔레트를 순서대로 돌려쓴다 (항목이 10개 넘으면 반복).
+const PALETTE = Array.from({ length: 10 }, (_, i) => `var(--c${i + 1})`);
+function colorAt(i: number) {
+  return PALETTE[i % PALETTE.length];
+}
+
+// 만원 단위 반올림 표기 ("614만" 등).
+function fmtManwon(krw: number) {
+  const man = Math.round(krw / 10000);
+  return `${man.toLocaleString()}만`;
+}
+
 export default function InsightsPage() {
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,10 +79,18 @@ export default function InsightsPage() {
         </div>
       </div>
 
+      <div className="spending-summary muted">
+        총 구매 {fmtManwon(data.spending.totalPaid)} · 회수 {fmtManwon(data.spending.totalSold)} · 순지출 {fmtManwon(data.spending.net)}
+      </div>
+
       <div className="section-title">달성 레벨</div>
       <div className="level-badges">
-        {levelBadges.map((b) => (
-          <div key={b.key} className={`level-badge${b.value > 0 ? " earned" : ""}`}>
+        {levelBadges.map((b, i) => (
+          <div
+            key={b.key}
+            className={`level-badge${b.value > 0 ? " earned" : ""}`}
+            style={b.value > 0 ? { borderColor: colorAt(i), color: colorAt(i) } : undefined}
+          >
             <div className="level-badge-value">{b.value}</div>
             <div className="level-badge-label">{b.label}</div>
           </div>
@@ -124,7 +144,10 @@ export default function InsightsPage() {
         <div className="monthly-bars">
           {data.monthlyPlays.map((m) => (
             <div key={m.month} className="monthly-bar-col" title={`${m.month}: ${m.count}회`}>
-              <div className="monthly-bar" style={{ height: `${(m.count / maxMonthly) * 100}%` }} />
+              <div
+                className={`monthly-bar${m.count === maxMonthly ? " is-max" : ""}`}
+                style={{ height: `${(m.count / maxMonthly) * 100}%` }}
+              />
               <div className="monthly-bar-label">{m.month.slice(2).replace("-", "/")}</div>
             </div>
           ))}
@@ -134,11 +157,14 @@ export default function InsightsPage() {
       <div className="section-title">장소별 분포</div>
       <div className="card bar-chart">
         {data.byLocation.length === 0 && <p className="muted">기록이 없습니다.</p>}
-        {data.byLocation.map((l) => (
+        {data.byLocation.map((l, i) => (
           <div key={l.location} className="bar-row">
             <span className="bar-row-label">{l.location}</span>
             <div className="bar-row-track">
-              <div className="bar-row-fill" style={{ width: `${(l.count / maxLoc) * 100}%` }} />
+              <div
+                className="bar-row-fill"
+                style={{ width: `${(l.count / maxLoc) * 100}%`, background: colorAt(i) }}
+              />
             </div>
             <span className="bar-row-value">{fmt(l.count)}</span>
           </div>

@@ -55,7 +55,8 @@
   font-size: 13px;
 }
 
-.alias-row-action select {
+.alias-row-action select,
+.alias-row-action input {
   flex: 1;
   min-width: 0;
   padding: 6px 8px;

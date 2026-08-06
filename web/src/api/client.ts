@@ -109,8 +109,13 @@ export const api = {
     request<{ ok: boolean }>(`/plays/${id}`, { method: "DELETE" }),
 
   locations: () => request<LocationCount[]>("/locations"),
+  renameLocation: (from: string, to: string) =>
+    request<{ ok: boolean; changed: number }>("/locations", { method: "PATCH", body: JSON.stringify({ from, to }) }),
 
   insights: () => request<Insights>("/insights"),
+
+  // 설정 화면 "지금 동기화" 버튼용. force=1은 확인 다이얼로그를 거친 뒤에만 붙인다.
+  sync: (force?: boolean) => request<{ ok: boolean; result: unknown }>(`/sync${force ? "?force=1" : ""}`, { method: "POST" }),
 
   search: (q: string) => request<BggSearchResult[]>(`/search?${new URLSearchParams({ q })}`),
 

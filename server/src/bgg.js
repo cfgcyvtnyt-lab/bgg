@@ -78,7 +78,7 @@ async function fetchXml(url, apiKey, tries = 10) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         // 누가 부르는지 밝혀둔다. 익명 요청은 봇으로 간주되기 쉽다.
-        "User-Agent": "bgg-collection-manager/0.1 (personal use; 2 req/s)",
+        "User-Agent": "bgg-collection-manager/0.1 (+https://github.com/cfgcyvtnyt-lab/bgg)",
       },
     });
     if (resp.status === 200) return resp.text();
