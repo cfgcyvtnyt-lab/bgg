@@ -16,7 +16,7 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf-8"));
 }
 
-function upsertGames(db, games) {
+export function upsertGames(db, games) {
   const stmt = db.prepare(`
     INSERT INTO game (id, name, name_en, aliases, thumbnail, image, year_published,
                       min_players, max_players, playing_time, weight, bgg_rating,
@@ -61,7 +61,7 @@ function seedCollection(db, games) {
   return added;
 }
 
-function ensureUser(db, name, bggUsername) {
+export function ensureUser(db, name, bggUsername) {
   const found = db.prepare("SELECT id FROM user WHERE name = ?").get(name);
   if (found) return found.id;
   db.prepare("INSERT INTO user (name, bgg_username) VALUES (?, ?)")
@@ -69,7 +69,7 @@ function ensureUser(db, name, bggUsername) {
   return db.prepare("SELECT id FROM user WHERE name = ?").get(name).id;
 }
 
-function importPlays(db, userId, plays, knownGames) {
+export function importPlays(db, userId, plays, knownGames) {
   const insertPlay = db.prepare(`
     INSERT INTO play (user_id, game_id, played_at, duration_min, location,
                       comment, incomplete, bgg_play_id, source)
@@ -143,4 +143,7 @@ function main() {
   console.log(`저장: ${DB_PATH}`);
 }
 
-main();
+// sync.js가 upsertGames/ensureUser/importPlays만 가져다 쓸 때는 CLI를 실행하면 안 된다.
+if (process.argv[1] && process.argv[1].endsWith("import-bgg.js")) {
+  main();
+}

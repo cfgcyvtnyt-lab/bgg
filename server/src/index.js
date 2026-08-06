@@ -1,9 +1,11 @@
 import express from "express";
 import { openDb } from "./db.js";
+import { runSync } from "./sync.js";
 
 const DB_PATH = process.env.DB_PATH || "data/app.db";
 const PORT = process.env.PORT || 3001;
 const BGG_API_KEY = process.env.BGG_API_KEY;
+const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 const db = openDb(DB_PATH);
 const app = express();
@@ -543,6 +545,58 @@ app.get("/api/search", async (req, res) => {
   }
 });
 
+// ---------- BGG 동기화 ----------
+
+// 동시 실행 방지용 상태. running 중엔 /api/sync가 409를 반환한다.
+const syncState = { running: false, lastRunAt: null, lastResult: null, lastError: null };
+
+async function runSyncSafe() {
+  syncState.running = true;
+  try {
+    const result = await runSync(db, BGG_API_KEY);
+    syncState.lastRunAt = new Date().toISOString();
+    syncState.lastResult = result;
+    syncState.lastError = null;
+    return result;
+  } catch (err) {
+    syncState.lastRunAt = new Date().toISOString();
+    syncState.lastError = String(err.message || err);
+    throw err;
+  } finally {
+    syncState.running = false;
+  }
+}
+
+app.post("/api/sync", async (req, res) => {
+  if (syncState.running) {
+    return res.status(409).json({ error: "이미 동기화가 진행 중입니다" });
+  }
+  try {
+    const result = await runSyncSafe();
+    res.json({ ok: true, result });
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+app.get("/api/sync/status", (req, res) => {
+  res.json(syncState);
+});
+
 app.listen(PORT, () => {
   console.log(`서버 실행 중: http://localhost:${PORT}`);
 });
+
+// 하루 한 번 자동 동기화. NAS에 파이썬을 두지 않기 위해 서버가 직접 스케줄을 갖는다.
+if (BGG_API_KEY) {
+  setInterval(() => {
+    if (syncState.running) return;
+    runSyncSafe().catch((err) => console.error("자동 동기화 실패:", err));
+  }, SYNC_INTERVAL_MS);
+
+  if (process.env.SYNC_ON_START === "1") {
+    runSyncSafe().catch((err) => console.error("시작 시 동기화 실패:", err));
+  }
+} else {
+  console.log("BGG_API_KEY가 없어 자동 동기화 스케줄을 등록하지 않습니다.");
+}
