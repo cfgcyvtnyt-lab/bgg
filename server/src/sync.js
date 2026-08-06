@@ -5,6 +5,9 @@
 import { fetchCollection, fetchThings, fetchPlays } from "./bgg.js";
 import { upsertGames, importPlays } from "./import-bgg.js";
 
+// 이 기간 안에 상세를 받아온 게임은 다시 요청하지 않는다. BGG 호출량을 줄이는 핵심 장치.
+const DETAIL_TTL_DAYS = 14;
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -65,11 +68,23 @@ async function syncUser(db, user, apiKey) {
   const collection = await fetchCollection(user.bgg_username, apiKey);
   await sleep(1000); // 레이트리밋(초당 2회) 여유
 
+  // 게임 메타데이터(이름·썸네일·인원수 등)는 거의 바뀌지 않는데 매번 401개를 다시 받으면
+  // 동기화 한 번에 thing 호출만 21회다. BGG는 초당 2회 권장에 넘치면 IP를 막으므로,
+  // 최근에 받아온 게임은 건너뛰고 새 게임과 오래된 것만 갱신한다.
   const ids = collection.map((g) => g.id);
-  const details = await fetchThings(ids, apiKey);
+  const fresh = new Set(
+    db.prepare(`
+      SELECT id FROM game
+      WHERE synced_at IS NOT NULL
+        AND synced_at > datetime('now', '-${DETAIL_TTL_DAYS} days')
+    `).all().map((r) => r.id)
+  );
+  const staleIds = ids.filter((id) => !fresh.has(id));
+  const details = staleIds.length ? await fetchThings(staleIds, apiKey) : new Map();
   const games = collection.map((g) => ({ ...g, ...(details.get(g.id) || {}) }));
 
-  const gamesUpserted = upsertGames(db, games);
+  // 상세를 새로 받지 않은 게임은 기존 값을 덮어쓰지 않도록 제외한다.
+  const gamesUpserted = upsertGames(db, games.filter((g) => details.has(g.id)));
   const { updated: statusUpdated, added: statusAdded } = syncCollectionStatuses(db, games);
   const { wantToPlayUpdated, ratingsUpdated } = syncUserGameFlags(db, user.id, games);
 

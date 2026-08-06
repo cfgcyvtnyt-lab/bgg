@@ -4,9 +4,27 @@
   --border: #262626;
   --text: #f5f5f5;
   --muted: #a8a8a8;
-  --accent: #ff4d6d;
+  --accent: #4a9eff;
+  --accent-dim: #1e5f9e;
   --max-width: 620px;
   color-scheme: dark;
+
+  /* 승패·기록 갱신처럼 뜻이 정해진 색 */
+  --win: #3ba55c;
+  --lose: #a8a8a8;
+  --record: #f0b232;
+
+  /* 차트·뱃지용. 항목이 많은 파이(요일·장소·인원)에서 서로 구분되도록 색상환을 고르게 나눴다. */
+  --c1: #4a9eff;
+  --c2: #3ba55c;
+  --c3: #f0b232;
+  --c4: #e0575b;
+  --c5: #8b7ff5;
+  --c6: #22b8cf;
+  --c7: #e879b9;
+  --c8: #ff9f43;
+  --c9: #6c8ae4;
+  --c10: #4fc3a1;
 }
 
 * {

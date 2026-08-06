@@ -53,15 +53,37 @@ function toNum(v, cast) {
 
 /**
  * 202(준비 중)를 폴링하고, 401/403은 즉시 중단한다.
- * fetch_bgg.py의 fetch_xml()과 동일한 재시도 정책.
+ *
+ * BGG는 초당 2회를 권장하며 넘기면 429를 주고, 계속 두드리면 IP를 막는다.
+ * 그래서 429는 다른 오류와 달리 Retry-After를 따르고 지수 백오프로 물러난다.
+ * 403은 인증 실패일 수도 있지만 IP 차단일 수도 있어 어느 쪽이든 즉시 멈춘다.
  */
 async function fetchXml(url, apiKey, tries = 10) {
+  let backoff = 5000;
   for (let attempt = 1; attempt <= tries; attempt++) {
-    const resp = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+    const resp = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        // 누가 부르는지 밝혀둔다. 익명 요청은 봇으로 간주되기 쉽다.
+        "User-Agent": "bgg-collection-manager/0.1 (personal use; 2 req/s)",
+      },
+    });
     if (resp.status === 200) return resp.text();
     if (resp.status === 401 || resp.status === 403) {
-      throw new Error(`BGG 인증 실패(HTTP ${resp.status})`);
+      throw new Error(`BGG 접근 거부(HTTP ${resp.status}). 키가 잘못됐거나 IP가 차단됐을 수 있다.`);
     }
+
+    if (resp.status === 429) {
+      const retryAfter = Number(resp.headers.get("retry-after"));
+      const wait = Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter * 1000
+        : backoff;
+      console.log(`  429 레이트리밋 — ${Math.round(wait / 1000)}초 대기 (${attempt}/${tries})`);
+      await sleep(wait);
+      backoff = Math.min(backoff * 2, 120000);
+      continue;
+    }
+
     console.log(`  HTTP ${resp.status} — ${attempt}/${tries}, 10초 후 재시도`);
     await sleep(10000);
   }
