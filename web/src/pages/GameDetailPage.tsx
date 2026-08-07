@@ -5,7 +5,9 @@ import type { GameDetail, Play, ScoreTemplate, TagCount, GameSleeve, GameVersion
 import { imgUrl } from "../utils/imgUrl";
 import { ratingColor, weightColor } from "../utils/ratingTier";
 import { bggGameUrl, bggSleevesUrl } from "../utils/bggUrl";
+import { useUser } from "../context/UserContext";
 import StarRating from "../components/StarRating";
+import Modal from "../components/Modal";
 import "../styles/GameDetail.css";
 
 const STATUS_LIST = ["보유", "선주문", "위시리스트", "방출 예정", "방출 완료"];
@@ -19,23 +21,39 @@ function fmtNum(n: number | null | undefined) {
 
 type SectionKey = "myrecord" | "myinfo" | "history";
 
-// 접고 펼 수 있는 섹션 하나. 기본은 소개·내 기록만 펼쳐둔다(스펙).
+// 접고 펼 수 있는 섹션 하나.
+// - collapsible=false면 제목만 두고 항상 펼쳐둔다(내 기록은 접을 일이 없다).
+// - summary를 주면 접혀 있을 때 그 요약을 대신 보여준다.
 function Section({
-  title, sectionKey, open, onToggle, children,
+  title, sectionKey, open, onToggle, children, collapsible = true, summary,
 }: {
   title: string;
   sectionKey: SectionKey;
   open: boolean;
   onToggle: (key: SectionKey) => void;
   children: React.ReactNode;
+  collapsible?: boolean;
+  summary?: React.ReactNode;
 }) {
+  if (!collapsible) {
+    return (
+      <div className="detail-section">
+        <div className="detail-section-header detail-section-header-static">{title}</div>
+        <div className="detail-section-body">{children}</div>
+      </div>
+    );
+  }
   return (
     <div className="detail-section">
       <button className="detail-section-header" onClick={() => onToggle(sectionKey)}>
         <span>{title}</span>
         <span className={`detail-section-chevron${open ? " open" : ""}`}>▾</span>
       </button>
-      {open && <div className="detail-section-body">{children}</div>}
+      {open ? (
+        <div className="detail-section-body">{children}</div>
+      ) : (
+        summary && <div className="detail-section-body">{summary}</div>
+      )}
     </div>
   );
 }
@@ -44,6 +62,9 @@ export default function GameDetailPage() {
   const { id } = useParams();
   const gameId = Number(id);
   const navigate = useNavigate();
+  const { currentUser } = useUser();
+  // 트로피·금색 이름은 로그인한 사람이 이겼을 때만 붙인다.
+  const myName = currentUser?.name;
 
   const [game, setGame] = useState<GameDetail | null>(null);
   const [plays, setPlays] = useState<Play[]>([]);
@@ -326,6 +347,30 @@ export default function GameDetailPage() {
     }
   }
 
+  // 컬렉션에서 게임을 빼는 것. 상태만 바꾸는 게 아니라 취득 이력 행을 전부 지운다.
+  // 잘못 추가했거나 위시에서 마음이 떠난 게임을 목록에서 치우는 용도라, 지우면
+  // 구매·판매가가 지출 요약에서도 빠진다. 플레이 기록은 컬렉션과 무관하므로 남는다.
+  const [removingCollection, setRemovingCollection] = useState(false);
+  async function removeFromCollection() {
+    if (!game || game.collectionHistory.length === 0) return;
+    const rows = game.collectionHistory;
+    const paid = rows.reduce((sum, h) => sum + (h.price_paid || 0), 0);
+    const parts = [`"${game.name}"을(를) 컬렉션에서 삭제할까요?`];
+    parts.push(rows.length > 1 ? `취득 이력 ${rows.length}건이 지워집니다.` : "");
+    if (paid > 0) parts.push(`구매가 ${fmtNum(paid)}원이 지출 요약에서 빠집니다.`);
+    parts.push(playCount > 0 ? "플레이 기록은 남습니다." : "");
+    if (!window.confirm(parts.filter(Boolean).join(" "))) return;
+    setRemovingCollection(true);
+    try {
+      for (const h of rows) await api.deleteCollection(h.id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "컬렉션 삭제 실패");
+    } finally {
+      setRemovingCollection(false);
+    }
+  }
+
   // 별점 편집: StarRating은 0~10 원점수 스케일(별 하나=2점)로 값을 주고받는다 - my_rating과 동일 스케일이라 변환이 필요없다.
   async function saveRating(rating10: number | null) {
     if (!game) return;
@@ -349,10 +394,24 @@ export default function GameDetailPage() {
   if (loading) return <div className="page center-pad muted">불러오는 중...</div>;
   if (error || !game) return <div className="page center-pad error-text">{error || "게임을 찾을 수 없습니다"}</div>;
 
-  const thumb = imgUrl(game.image || game.thumbnail);
-  const currentStatus = game.collectionHistory.length > 0
-    ? game.collectionHistory[game.collectionHistory.length - 1].status
-    : "미보유";
+  // 박스아트는 110x110로만 그린다. 원본(game.image)은 1000~2000px에 몇 MB짜리도 있어서
+  // (Legacy of Yu 5.2MB) 그걸 받는 건 낭비다. 썸네일을 우선한다.
+  // 대체 이미지를 골랐으면 서버가 이미 thumbnail 자리에 넣어서 내려준다(COALESCE).
+  const thumb = imgUrl(game.thumbnail || game.image);
+  const latestEntry = game.collectionHistory.length > 0
+    ? game.collectionHistory[game.collectionHistory.length - 1]
+    : null;
+  const currentStatus = latestEntry ? latestEntry.status : "미보유";
+
+  // 컬렉션 정보가 접혀 있을 때 보여줄 요약. 온라인 플레이(BGA/TTS/App)는 실물을 안 쓰므로
+  // 판당 비용에서 빼는 인사이트 규칙과 맞추고 싶지만, 여기선 게임 상세라 전체 플레이로 계산한다.
+  const playCount = game.stats?.playCount ?? 0;
+  const costPerPlay = latestEntry?.price_paid && playCount > 0
+    ? Math.round(latestEntry.price_paid / playCount)
+    : null;
+  const sleeveLine = gameSleeves.length > 0
+    ? gameSleeves.map((s2) => `${s2.size} ${s2.count}장`).join(" · ")
+    : null;
 
   // 인원/시간/연령 줄: "1–4인 (베스트 1–2)" / "45–90분" / "14+"
   const playersLine = game.min_players && game.max_players
@@ -377,20 +436,33 @@ export default function GameDetailPage() {
   const hasPeopleOrTags = (game.designers?.length || game.artists?.length || game.categories?.length || game.mechanics?.length);
 
   const visiblePlays = plays.slice(0, RECENT_PLAYS_COUNT);
+  // BGG에 등록이 없는 게임은 음수 id로 넣는다(동기화가 건드리지 않고 BGG id와도 안 겹친다).
+  // 이런 게임은 BGG 링크·슬리브 페이지·다른 버전 이미지가 존재하지 않으므로 숨긴다.
+  const isLocalOnly = game.id < 0;
   const usedTags = allTags.map((t) => t.tag);
   const formTagList = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
 
   return (
     <div className="page game-detail-page">
-      <button className="back-btn" onClick={() => navigate(-1)}>← 뒤로</button>
+      {/* 기록 추가는 기록 탭과 같은 자리·같은 모양의 ＋ 버튼으로 둔다 */}
+      <div className="detail-topbar">
+        <button className="back-btn" onClick={() => navigate(-1)}>← 뒤로</button>
+        <button
+          className="icon-btn"
+          onClick={() => navigate(`/plays/new?game_id=${gameId}`)}
+          aria-label="이 게임 기록 추가"
+        >
+          ＋
+        </button>
+      </div>
 
       <div className="detail-hero">
         {thumb ? (
-          <button type="button" className="detail-hero-img-btn" onClick={openVersions} aria-label="다른 버전 이미지 선택">
-            <img src={thumb} alt="" />
+          <button type="button" className="detail-hero-img-btn" onClick={openVersions} disabled={isLocalOnly} aria-label="다른 버전 이미지 선택">
+            <img decoding="async" src={thumb} alt="" />
           </button>
         ) : (
-          <button type="button" className="detail-hero-empty" onClick={openVersions} aria-label="다른 버전 이미지 선택">?</button>
+          <button type="button" className="detail-hero-empty" onClick={openVersions} disabled={isLocalOnly} aria-label="다른 버전 이미지 선택">?</button>
         )}
         <div className="detail-hero-info">
           {editingName ? (
@@ -434,35 +506,49 @@ export default function GameDetailPage() {
           )}
           {game.name_en && <p className="muted">{game.name_en}{game.year_published ? ` (${game.year_published})` : ""}</p>}
 
+          {/* 긱 평점 + 내 평점(별) + 평가 수. 박스아트 옆 좁은 칸이라 이 세 개까지만 둔다. */}
           <div className="detail-hero-top">
-            <div className="rating-col">
-              {game.bgg_rating != null && (
-                <div className="rating-badge-mini" style={{ borderColor: ratingColor(game.bgg_rating), color: ratingColor(game.bgg_rating) }}>
-                  {game.bgg_rating.toFixed(1)}
-                </div>
-              )}
-              {/* 긱 평점 바로 아래 내 평점 - 별 탭이 그대로 편집. 같은 값 다시 클릭하면 지워진다 */}
-              <div className="my-rating-inline">
-                <StarRating size={16} value={game.my_rating ?? null} onChange={saveRating} disabled={ratingSaving} />
+            {game.bgg_rating != null && (
+              <div className="rating-badge-mini" style={{ borderColor: ratingColor(game.bgg_rating), color: ratingColor(game.bgg_rating) }}>
+                {game.bgg_rating.toFixed(1)}
               </div>
-            </div>
-            <div>
-              {game.users_rated != null && (
-                <div className="rating-badge-users muted">평가 {fmtNum(game.users_rated)}+</div>
-              )}
-              {rankParts.length > 0 && <div className="detail-hero-rankline">{rankParts.join(" · ")}</div>}
-            </div>
+            )}
+            {game.users_rated != null && (
+              <div className="rating-badge-users muted">평가 {fmtNum(game.users_rated)}+</div>
+            )}
+          </div>
+          {/* 별을 누르면 조절 창이 뜬다 */}
+          <div className="my-rating-inline">
+            <StarRating editable size={13} value={game.my_rating ?? null} onChange={saveRating} disabled={ratingSaving} />
           </div>
 
+        </div>
+      </div>
+
+      {/* 순위·인원·퍼블리셔는 박스아트 옆 좁은 칸(폰에서 220px)에 두면 "전체 196 / 위 ·"처럼
+          낱말이 쪼개지고, 기기 폭마다 접히는 자리가 달라 제각각으로 보인다.
+          박스아트 아래 전체 폭으로 내려 한 줄에 담기게 한다. */}
+      <div className="detail-hero-meta">
+        {rankParts.length > 0 && <div className="detail-hero-rankline">{rankParts.join(" · ")}</div>}
           <p className="muted detail-hero-statline">
-            {playersLine} · {playtimeLine}{ageLine ? ` · ${ageLine}` : ""} ·{" "}
-            <span className="detail-hero-weight" style={{ color: weightColor(game.weight) }}>
+            <span className="stat-part">{playersLine}</span>
+            <span className="stat-sep"> · </span>
+            <span className="stat-part">{playtimeLine}</span>
+            {ageLine && (
+              <>
+                <span className="stat-sep"> · </span>
+                <span className="stat-part">{ageLine}</span>
+              </>
+            )}
+            <span className="stat-sep"> · </span>
+            <span className="stat-part detail-hero-weight" style={{ color: weightColor(game.weight) }}>
               웨이트 {game.weight ? game.weight.toFixed(1) : "-"}
             </span>
           </p>
           {game.publishers && game.publishers.length > 0 && (
             <p className="detail-hero-publishers">퍼블리셔: {game.publishers.join(", ")}</p>
           )}
+          {!isLocalOnly && (
           <a
             className="bgg-link-btn"
             href={bggGameUrl(game.id, game.name_en)}
@@ -473,7 +559,7 @@ export default function GameDetailPage() {
           >
             BGG ↗
           </a>
-        </div>
+        )}
       </div>
 
       {/* 소개를 헤더 아래 한 덩어리로 - 접이식 섹션 없이 바로 이어붙이고, 길면 더보기로 디자이너/카테고리까지 펼친다 */}
@@ -482,8 +568,8 @@ export default function GameDetailPage() {
           <>
             <p className="intro-desc">{introShown}</p>
             {description!.length > INTRO_TRUNCATE_CHARS && (
-              <button className="btn-small intro-toggle" onClick={() => setIntroExpanded((v) => !v)}>
-                {introExpanded ? "접기" : "...더보기"}
+              <button className="show-more-btn" onClick={() => setIntroExpanded((v) => !v)}>
+                {introExpanded ? "접기" : "... 더보기"}
               </button>
             )}
             {translating && <span className="muted" style={{ fontSize: 12 }}>번역 중...</span>}
@@ -526,85 +612,33 @@ export default function GameDetailPage() {
         )}
       </div>
 
-      <Section title="내 기록" sectionKey="myrecord" open={open.myrecord} onToggle={toggle}>
-        {game.stats && game.stats.playCount > 0 ? (
-          <>
-            <div className="card info-box">
-              <div className="info-row"><span className="muted">플레이 횟수</span><span>{fmtNum(game.stats.playCount)}회</span></div>
-              {game.stats.winRateSplit?.solo && (
-                <div className="info-row">
-                  <span className="muted">승률 (솔로)</span>
-                  <span>{game.stats.winRateSplit.solo.rate}% ({game.stats.winRateSplit.solo.plays}판)</span>
-                </div>
-              )}
-              {game.stats.winRateSplit?.multi && (
-                <div className="info-row">
-                  <span className="muted">승률 (2인+)</span>
-                  <span>{game.stats.winRateSplit.multi.rate}% ({game.stats.winRateSplit.multi.plays}판)</span>
-                </div>
-              )}
-              {!game.stats.winRateSplit?.solo && !game.stats.winRateSplit?.multi && (
-                <div className="info-row"><span className="muted">승률</span><span>{game.stats.winRate != null ? `${game.stats.winRate}%` : "-"}</span></div>
-              )}
-              <div className="info-row"><span className="muted">평균 소요시간</span><span>{game.stats.avgDurationMin != null ? `${game.stats.avgDurationMin}분` : "-"}</span></div>
-              <div className="info-row"><span className="muted">마지막 플레이</span><span>{game.stats.lastPlayedAt || "-"}</span></div>
+      <Section
+        title="컬렉션 정보"
+        sectionKey="myinfo"
+        open={open.myinfo}
+        onToggle={toggle}
+        summary={
+          <div className="card info-box collection-summary">
+            <div className="info-row"><span className="muted">소유 상태</span><span>{currentStatus}</span></div>
+            {/* 판당 비용은 구매가 바로 옆에 괄호로 붙인다 - 줄을 따로 두면 라벨만 늘어난다 */}
+            <div className="info-row">
+              <span className="muted">구매가</span>
+              <span>
+                {costPerPlay != null && <span className="muted">({fmtNum(costPerPlay)}원/회) </span>}
+                {latestEntry?.price_paid != null ? `${fmtNum(latestEntry.price_paid)}원` : "-"}
+              </span>
             </div>
-
-            {(game.stats.score.solo || game.stats.score.multi) && (
-              <div className="card info-box">
-                {game.stats.score.solo && (
-                  <div className="info-row">
-                    <span className="muted">점수 (솔로, {game.stats.score.solo.count}판)</span>
-                    <span>최저 {fmtNum(game.stats.score.solo.worst)} · 평균 {fmtNum(game.stats.score.solo.avg)} · 최고 {fmtNum(game.stats.score.solo.best)}</span>
-                  </div>
-                )}
-                {game.stats.score.multi && (
-                  <div className="info-row">
-                    <span className="muted">점수 (2인+, {game.stats.score.multi.count}판)</span>
-                    <span>최저 {fmtNum(game.stats.score.multi.worst)} · 평균 {fmtNum(game.stats.score.multi.avg)} · 최고 {fmtNum(game.stats.score.multi.best)}</span>
-                  </div>
-                )}
+            {sleeveLine && (
+              <div className="info-row"><span className="muted">슬리브</span><span>{sleeveLine}</span></div>
+            )}
+            {latestEntry?.note && (
+              <div className="info-row collection-summary-note">
+                <span className="muted">메모</span><span>{latestEntry.note}</span>
               </div>
             )}
-          </>
-        ) : (
-          <p className="muted center-pad">아직 플레이 기록이 없습니다.</p>
-        )}
-
-        {/* 플레이 기록 목록 - BGStats처럼 한 줄에 날짜·장소·플레이어·점수. 최근 5개만, 전체는 PlaysPage로 링크 */}
-        <div className="play-list-header">
-          <span className="play-list-title">플레이 기록</span>
-          {plays.length > 0 && (
-            <Link
-              to={`/plays?game_id=${gameId}&game_name=${encodeURIComponent(game.name)}`}
-              className="play-list-link"
-            >
-              {plays.length}회 플레이 &gt;
-            </Link>
-          )}
-        </div>
-        {plays.length === 0 ? (
-          <p className="muted center-pad">아직 플레이 기록이 없습니다.</p>
-        ) : (
-          <div className="play-list">
-            {visiblePlays.map((p) => {
-              const playersSummary = p.players
-                .map((pl) => `${pl.name}${pl.win ? "🏆" : ""}${pl.score != null ? ` ${fmtNum(pl.score)}` : ""}`)
-                .join(", ");
-              return (
-                <Link key={p.id} to={`/plays/${p.id}`} className="play-row-compact">
-                  <span className="play-compact-date">{p.played_at}</span>
-                  {p.location && <span className="muted">· {p.location}</span>}
-                  <span className="play-compact-players">· {playersSummary}</span>
-                </Link>
-              );
-            })}
           </div>
-        )}
-      </Section>
-
-      {/* 소유 상태·구매가는 두 사람 공유 컬렉션 정보다. "내 것"은 평점·플레이 기록뿐. */}
-      <Section title="컬렉션 정보" sectionKey="myinfo" open={open.myinfo} onToggle={toggle}>
+        }
+      >
         <div className="card info-box">
           <div className="info-row"><span className="muted">소유 상태</span><span>{currentStatus}</span></div>
           <div className="field">
@@ -647,6 +681,16 @@ export default function GameDetailPage() {
           </div>
           <button className="btn-primary" disabled={saving} onClick={saveInfo}>{saving ? "저장 중..." : "저장"}</button>
 
+          {game.collectionHistory.length > 0 && (
+            <button
+              className="btn-small danger collection-remove-btn"
+              disabled={removingCollection}
+              onClick={removeFromCollection}
+            >
+              {removingCollection ? "삭제 중..." : "컬렉션에서 삭제"}
+            </button>
+          )}
+
           <div className="score-template-manage">
             <div className="info-row">
               <span className="muted">점수 시트</span>
@@ -680,14 +724,16 @@ export default function GameDetailPage() {
             <div className="info-row">
               <span className="muted">슬리브</span>
               <div className="field-row" style={{ gap: 8 }}>
-                <a
-                  className="btn-small"
-                  href={bggSleevesUrl(game.id, game.name_en)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  BGG 슬리브 페이지 ↗
-                </a>
+                {!isLocalOnly && (
+                  <a
+                    className="btn-small"
+                    href={bggSleevesUrl(game.id, game.name_en)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    BGG 슬리브 페이지 ↗
+                  </a>
+                )}
                 <button className="btn-small" onClick={() => setAddingSleeve((v) => !v)}>
                   {addingSleeve ? "취소" : "+ 규격 추가"}
                 </button>
@@ -773,6 +819,95 @@ export default function GameDetailPage() {
         </div>
       </Section>
 
+      <Section title="내 기록" sectionKey="myrecord" open onToggle={toggle} collapsible={false}>
+        {game.stats && game.stats.playCount > 0 ? (
+          <>
+            <div className="card info-box">
+              {/* 위 카드는 "얼마나·언제" 했는지, 아래 카드는 "얼마나 잘했는지"(승률·점수) */}
+              <div className="info-row"><span className="muted">플레이 횟수</span><span>{fmtNum(game.stats.playCount)}회</span></div>
+              <div className="info-row"><span className="muted">평균 소요시간</span><span>{game.stats.avgDurationMin != null ? `${game.stats.avgDurationMin}분` : "-"}</span></div>
+              <div className="info-row"><span className="muted">첫 플레이</span><span>{game.stats.firstPlayedAt || "-"}</span></div>
+              <div className="info-row"><span className="muted">마지막 플레이</span><span>{game.stats.lastPlayedAt || "-"}</span></div>
+            </div>
+
+            <div className="card info-box">
+              {game.stats.winRateSplit?.solo && (
+                <div className="info-row">
+                  <span className="muted">승률 (솔로)</span>
+                  <span>{game.stats.winRateSplit.solo.rate}% ({game.stats.winRateSplit.solo.plays}회)</span>
+                </div>
+              )}
+              {game.stats.winRateSplit?.multi && (
+                <div className="info-row">
+                  <span className="muted">승률 (2인+)</span>
+                  <span>{game.stats.winRateSplit.multi.rate}% ({game.stats.winRateSplit.multi.plays}회)</span>
+                </div>
+              )}
+              {!game.stats.winRateSplit?.solo && !game.stats.winRateSplit?.multi && (
+                <div className="info-row"><span className="muted">승률</span><span>{game.stats.winRate != null ? `${game.stats.winRate}%` : "-"}</span></div>
+              )}
+                {game.stats.score.solo && (
+                  <div className="info-row">
+                    <span className="muted">점수 (솔로, {game.stats.score.solo.count}회)</span>
+                    <span>
+                      최저 <b className="score-worst">{fmtNum(game.stats.score.solo.worst)}</b> · 평균 <b className="score-avg">{fmtNum(game.stats.score.solo.avg)}</b> · 최고 <b className="score-best">{fmtNum(game.stats.score.solo.best)}</b>
+                    </span>
+                  </div>
+                )}
+                {game.stats.score.multi && (
+                  <div className="info-row">
+                    <span className="muted">점수 (2인+, {game.stats.score.multi.count}회)</span>
+                    <span>
+                      최저 <b className="score-worst">{fmtNum(game.stats.score.multi.worst)}</b> · 평균 <b className="score-avg">{fmtNum(game.stats.score.multi.avg)}</b> · 최고 <b className="score-best">{fmtNum(game.stats.score.multi.best)}</b>
+                    </span>
+                  </div>
+                )}
+            </div>
+          </>
+        ) : null}
+
+        {/* 기록이 없으면 안내는 한 번만. 예전엔 통계 자리와 목록 자리에서 두 번 나왔다. */}
+        {plays.length === 0 ? (
+          <p className="muted empty-hint">아직 플레이 기록이 없습니다.</p>
+        ) : (
+          <>
+            {/* 플레이 기록 목록 - BGStats처럼 한 줄에 날짜·장소·플레이어·점수. 최근 5개만, 전체는 PlaysPage로 링크 */}
+            <div className="play-list-header">
+              <span className="play-list-title">플레이 기록</span>
+              <Link
+                to={`/plays?game_id=${gameId}&game_name=${encodeURIComponent(game.name)}`}
+                className="play-list-link"
+              >
+                {plays.length}회 플레이 &gt;
+              </Link>
+            </div>
+            <div className="play-list">
+            {visiblePlays.map((p) => (
+              <Link key={p.id} to={`/plays/${p.id}`} className="play-row-compact">
+                <span className="play-compact-left">
+                  <span className="play-compact-date">{p.played_at}</span>
+                  {p.location && <span className="play-compact-loc muted">{p.location}</span>}
+                </span>
+                <span className="play-compact-players">
+                  {p.players.map((pl, i) => (
+                    <span key={i} className="play-compact-player">
+                      {/* 트로피·금색 이름은 "내가 이겼을 때"만. 앱 전체가 같은 규칙이다.
+                          win은 SQLite에서 0/1로 오므로 && 로 쓰면 진 사람 앞에 "0"이 찍힌다. */}
+                      {pl.win && pl.name === myName ? <span className="play-compact-trophy" aria-label="승리">🏆</span> : null}
+                      <span className={pl.win && pl.name === myName ? "winner-name" : undefined}>{pl.name}</span>
+                      {pl.score != null && <span className="play-compact-score">{fmtNum(pl.score)}</span>}
+                    </span>
+                  ))}
+                </span>
+              </Link>
+            ))}
+            </div>
+          </>
+        )}
+      </Section>
+
+      {/* 소유 상태·구매가는 두 사람 공유 컬렉션 정보다. "내 것"은 평점·플레이 기록뿐. */}
+
       {game.collectionHistory.length > 1 && (
         <Section title="취득 이력" sectionKey="history" open={open.history} onToggle={toggle}>
           <div className="card">
@@ -790,33 +925,25 @@ export default function GameDetailPage() {
         </Section>
       )}
 
-      <button className="btn-primary record-btn" onClick={() => navigate(`/plays/new?game_id=${gameId}`)}>
-        플레이 기록하기
-      </button>
-
       {showVersions && (
-        <div className="version-modal-overlay" onClick={() => setShowVersions(false)}>
-          <div className="version-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="version-modal-header">
-              <span>다른 버전 이미지 선택</span>
-              <button className="btn-small" onClick={() => setShowVersions(false)}>닫기</button>
-            </div>
-
+        <Modal title="다른 버전 이미지 선택" onClose={() => setShowVersions(false)}>
             {game.custom_image && (
               <button className="btn-small version-reset-btn" disabled={imageSaving} onClick={() => chooseVersionImage(null)}>
                 기본 이미지로 되돌리기
               </button>
             )}
 
-            {versionsLoading && <p className="muted center-pad">불러오는 중...</p>}
-            {versionsError && <p className="error-text center-pad">{versionsError}</p>}
+            {versionsLoading && <p className="muted empty-hint">불러오는 중...</p>}
+            {versionsError && <p className="error-text empty-hint">{versionsError}</p>}
             {!versionsLoading && !versionsError && versions && versions.length === 0 && (
-              <p className="muted center-pad">다른 버전 이미지가 없습니다.</p>
+              <p className="muted empty-hint">다른 버전 이미지가 없습니다.</p>
             )}
             {!versionsLoading && versions && versions.length > 0 && (
               <div className="version-list">
                 {versions.map((v, i) => {
-                  const vThumb = imgUrl(v.image || v.thumbnail || undefined);
+                  // 후보 격자도 작게 그린다. 여기서 원본을 부르면 안 고른 버전까지
+                  // 전부 캐시에 쌓인다(실측 고아 108개 53MB의 주범이었다).
+                  const vThumb = imgUrl(v.thumbnail || v.image || undefined);
                   const selected = !!game.custom_image && game.custom_image === v.image;
                   return (
                     <button
@@ -826,15 +953,14 @@ export default function GameDetailPage() {
                       disabled={imageSaving}
                       onClick={() => chooseVersionImage(v.image)}
                     >
-                      {vThumb ? <img src={vThumb} alt="" /> : <div className="version-item-empty">?</div>}
+                      {vThumb ? <img decoding="async" src={vThumb} alt="" loading="lazy" /> : <div className="version-item-empty">?</div>}
                       <span className="version-item-name">{v.name || "이름 없음"}</span>
                     </button>
                   );
                 })}
               </div>
             )}
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
+import Modal from "./Modal";
 import type { BggSearchResult } from "../api/types";
-import "../styles/Modal.css";
 
 interface Props {
   onClose: () => void;
@@ -52,12 +52,7 @@ export default function BggSearchModal({ onClose, onAdded }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>BGG에서 게임 검색</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
+    <Modal title="BGG에서 게임 검색" onClose={onClose}>
         <form onSubmit={doSearch} className="modal-search-form">
           <input
             autoFocus
@@ -91,7 +86,6 @@ export default function BggSearchModal({ onClose, onAdded }: Props) {
           ))}
           {!loading && results.length === 0 && q && <p className="muted">검색 결과가 없습니다.</p>}
         </ul>
-      </div>
-    </div>
+    </Modal>
   );
 }

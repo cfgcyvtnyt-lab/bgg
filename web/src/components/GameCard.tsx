@@ -39,7 +39,10 @@ function formatDate(iso: string) {
 
 // 컬렉션 화면의 게임 카드 하나. 그리드/목록 뷰를 공유한다.
 export default function GameCard({ entry, view, sortField }: Props) {
-  const thumb = entry.thumbnail || entry.image;
+  // 서버가 custom_image → thumbnail → image 순으로 이미 골라서 보낸다.
+  // 예전엔 원본 image까지 같이 받아 여기서 폴백했는데, 245개 중 덕 보는 행이 0개면서
+  // 목록 응답만 33KB 무거워졌다.
+  const thumb = entry.thumbnail;
   const group = groupOf(entry.game_name);
   const sortInfo = sortField ? sortDisplayValue(entry, sortField) : null;
 
@@ -51,32 +54,33 @@ export default function GameCard({ entry, view, sortField }: Props) {
       data-idx-group={group}
     >
       <div className="game-card-thumb">
-        {thumb ? <img src={imgUrl(thumb)} alt="" loading="lazy" /> : <div className="game-card-thumb-empty">?</div>}
+        {thumb ? <img decoding="async" src={imgUrl(thumb)} alt="" /> : <div className="game-card-thumb-empty">?</div>}
       </div>
       {view === "list" ? (
         <div className="game-card-body">
-          <div className="game-card-name">{entry.game_name}</div>
+          {/* 아이콘은 제목 줄, 플레이 수는 최근 플레이 줄. 둘 다 오른쪽 끝에 붙는다. */}
+          <div className="game-card-row1">
+            <span className="game-card-name">{entry.game_name}</span>
+            <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
+          </div>
           <div className="game-card-row2">
             <span className="muted game-card-lastplay">
               {entry.last_played_at ? `최근 플레이: ${formatDate(entry.last_played_at)}` : "플레이 한 적 없음"}
             </span>
-            {/* 상태 아이콘·플레이 수(또는 현재 정렬 기준값)는 행 오른쪽 끝에 정렬 */}
-            <span className="game-card-row2-end">
-              <span className="muted game-card-playcount">
-                {sortInfo ?? `${entry.play_count} 플레이`}
-              </span>
-              <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
+            <span className="muted game-card-playcount">
+              {sortInfo ?? `${entry.play_count} 플레이`}
             </span>
           </div>
         </div>
       ) : (
         <div className="game-card-body">
-          <div className="game-card-name">{entry.game_name}</div>
+          {/* 아이콘은 제목 바로 옆에 붙이고, 플레이 수만 그 아래 줄에 둔다 */}
+          <div className="game-card-title-row">
+            <span className="game-card-name">{entry.game_name}</span>
+            <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
+          </div>
           <div className="game-card-meta">
             <span className="game-card-plays">{sortInfo ?? `플레이 ${entry.play_count}회`}</span>
-            <div className="game-card-meta-row">
-              <StatusIcon status={entry.status} wantToPlay={entry.want_to_play} />
-            </div>
           </div>
         </div>
       )}

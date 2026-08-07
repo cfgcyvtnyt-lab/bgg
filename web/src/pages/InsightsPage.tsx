@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { Insights } from "../api/types";
+import type { Challenge, Insights } from "../api/types";
+import DateField from "../components/DateField";
 import "../styles/Insights.css";
 
 function fmt(n: number) {
@@ -13,8 +14,12 @@ function fmtHours(minutes: number) {
   return `${h.toLocaleString()}시간`;
 }
 
-// index.css의 --c1~--c10 팔레트를 순서대로 돌려쓴다 (항목이 10개 넘으면 반복).
-const PALETTE = Array.from({ length: 10 }, (_, i) => `var(--c${i + 1})`);
+// 파이 조각용 팔레트. index.css의 --c1~--c10은 뱃지·강조용이라 다크 배경에서 파이로 쓰면
+// 너무 밝고 쨍하다. 같은 색상환을 유지하되 채도·명도를 낮춘 값을 따로 둔다.
+const PALETTE = [
+  "#3d7ab8", "#4a8f5f", "#b8893c", "#a85a5d", "#7268b0",
+  "#3d8f9c", "#a86b90", "#b57a45", "#5a6f9e", "#4a9080",
+];
 function colorAt(i: number) {
   return PALETTE[i % PALETTE.length];
 }
@@ -26,11 +31,13 @@ function fmtKRW(krw: number) {
 
 // 막대 그래프(일별/월별/연도별 플레이, TOP10) 색상: 값이 클수록 노랑·밝게, 작을수록 파랑·더 어둡게
 // 자연스럽게 이어지는 그라데이션. HSL 보간으로 hue(파랑210→노랑40)와 lightness를 동시에 움직인다.
+// 값이 클수록 노랑·밝게, 작을수록 파랑·어둡게. 다크 배경에서 형광처럼 튀지 않도록
+// 채도와 밝기를 낮게 잡는다(최댓값도 60%를 넘기지 않는다).
 function barGradient(count: number, max: number) {
   const t = max > 0 ? Math.max(0, Math.min(1, count / max)) : 0;
-  const hue = 210 - t * 170;
-  const sat = 55 + t * 25;
-  const light = 22 + t * 33;
+  const hue = 210 - t * 165;
+  const sat = 38 + t * 17;
+  const light = 20 + t * 24;
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
 
@@ -71,12 +78,21 @@ function pieSlices(items: { label: string; count: number }[]) {
 
 // 항목이 많으면(장소 등) 상위 topN개만 남기고 나머지는 "기타"로 합친다.
 // count 내림차순 정렬해서 반환하므로 앞쪽 몇 개가 곧 "상위"가 된다.
+// 서버가 이미 "기타"로 보내는 항목(장소 미기록)이 있으면 같은 조각으로 합친다 -
+// 따로 두면 범례에 "기타"가 두 번 나온다.
 function aggregateTopN(items: { label: string; count: number }[], topN: number, otherLabel = "기타") {
   const sorted = [...items].sort((a, b) => b.count - a.count);
-  if (sorted.length <= topN) return sorted;
-  const top = sorted.slice(0, topN);
-  const restSum = sorted.slice(topN).reduce((s, it) => s + it.count, 0);
-  return restSum > 0 ? [...top, { label: otherLabel, count: restSum }] : top;
+  const merge = (list: { label: string; count: number }[], extra: number) => {
+    const rest = extra + list.filter((it) => it.label === otherLabel).reduce((s, it) => s + it.count, 0);
+    const named = list.filter((it) => it.label !== otherLabel);
+    return rest > 0 ? [...named, { label: otherLabel, count: rest }] : named;
+  };
+  if (sorted.length <= topN) return merge(sorted, 0);
+  // "기타"는 상위 자리를 차지하지 않게 빼둔 뒤 잘라낸다
+  const named = sorted.filter((it) => it.label !== otherLabel);
+  const preset = sorted.filter((it) => it.label === otherLabel).reduce((s, it) => s + it.count, 0);
+  const restSum = named.slice(topN).reduce((s, it) => s + it.count, 0);
+  return merge(named.slice(0, topN), preset + restSum);
 }
 
 // mode="letter": 조각 안에 라벨 글자(요일), 범례 없음.
@@ -169,6 +185,10 @@ function bucketForPeriod(key: PeriodKey, from?: string, to?: string): Bucket {
   return "day";
 }
 
+const PERIOD_KEY = "bgg_insights_period";
+// 노플 게임은 이만큼만 먼저 보여주고 나머지는 접는다.
+const NOT_PLAYED_PREVIEW = 12;
+
 const BUCKET_TITLE: Record<Bucket, string> = { day: "일별 플레이", month: "월별 플레이", year: "연도별 플레이" };
 
 // 그래프 막대 아래 표시할 짧은 라벨. day는 촘촘해서 일부만(대략 6~8개 간격) 보여준다.
@@ -186,10 +206,23 @@ export default function InsightsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAllWinRates, setShowAllWinRates] = useState(false);
-  const [period, setPeriod] = useState<PeriodKey>("all");
+  const [showAllNotPlayed, setShowAllNotPlayed] = useState(false);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+
+  // 도전과제는 기간 필터와 무관한 값이라 한 번만 불러온다.
+  useEffect(() => {
+    api.challenges().then(setChallenges).catch(() => setChallenges([]));
+  }, []);
+  // 마지막으로 본 기간을 기억한다 - 들어올 때마다 "전체"로 되돌아가면 매번 다시 눌러야 한다.
+  const [period, setPeriod] = useState<PeriodKey>(() => {
+    const saved = localStorage.getItem(PERIOD_KEY);
+    return (saved === "month" || saved === "year" || saved === "all" || saved === "custom") ? saved : "all";
+  });
   const [anchor, setAnchor] = useState(() => new Date());
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+
+  useEffect(() => { localStorage.setItem(PERIOD_KEY, period); }, [period]);
 
   useEffect(() => {
     setLoading(true);
@@ -232,7 +265,29 @@ export default function InsightsPage() {
     <div className="page insights-page">
       <div className="page-header"><h1>인사이트</h1></div>
 
-      <Link to="/challenges" className="challenges-entry-link">도전 과제 &gt;</Link>
+      {/* 진행 중인 도전과제 요약. 진행률은 서버가 계산해 challenge.progress.percent로 준다. */}
+      <div className="section-title-row challenge-summary-head">
+        <div className="section-title">도전 과제</div>
+        <Link to="/challenges" className="challenges-entry-link">전체 보기 &gt;</Link>
+      </div>
+      <div className="card challenge-summary">
+        {challenges.length === 0 ? (
+          <p className="muted empty-hint">진행 중인 도전 과제가 없습니다.</p>
+        ) : (
+          challenges.map((c) => {
+            const pct = c.progress?.percent ?? 0;
+            return (
+              <Link key={c.id} to="/challenges" className="challenge-summary-row">
+                <span className="challenge-summary-name">{c.name}</span>
+                <div className="bar-row-track">
+                  <div className="bar-row-fill" style={{ width: `${Math.min(100, pct)}%` }} />
+                </div>
+                <span className="challenge-summary-pct muted">{Math.round(pct)}%</span>
+              </Link>
+            );
+          })
+        )}
+      </div>
 
       <div className="period-tabs">
         {PERIOD_TABS.map((t) => (
@@ -254,9 +309,9 @@ export default function InsightsPage() {
       )}
       {period === "custom" && (
         <div className="period-custom-row">
-          <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+          <DateField value={customFrom} onChange={setCustomFrom} />
           <span className="muted">~</span>
-          <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+          <DateField value={customTo} onChange={setCustomTo} />
         </div>
       )}
 
@@ -319,13 +374,13 @@ export default function InsightsPage() {
         ))}
       </div>
 
-      <div className="section-title">플레이어별 승률</div>
+      <div className="section-title">상대별 내 승률</div>
       <div className="card">
         {data.winRates.length === 0 && <p className="muted">기록이 없습니다.</p>}
-        {/* 온라인에서 한 판 만난 상대까지 다 나오면 의미가 없어서 기본은 5판 이상만 보여준다 */}
+        {/* 온라인에서 한 번 만난 상대까지 다 나오면 의미가 없어서 기본은 5회 이상만 보여준다 */}
         {(showAllWinRates ? data.winRates : data.winRates.filter((w) => w.plays >= 5)).map((w) => (
           <div key={w.name} className="winrate-row">
-            <span className="winrate-name">{w.name}</span>
+            <span className="winrate-name" title={w.name}>{w.name}</span>
             <div className="bar-row-track">
               <div className="bar-row-fill" style={{ width: `${Math.round(w.winRate * 100)}%` }} />
             </div>
@@ -333,10 +388,10 @@ export default function InsightsPage() {
           </div>
         ))}
         {!showAllWinRates && data.winRates.some((w) => w.plays < 5) && (
-          <button className="chip" onClick={() => setShowAllWinRates(true)}>전체 보기</button>
+          <button className="show-more-btn" onClick={() => setShowAllWinRates(true)}>... 더보기</button>
         )}
         {showAllWinRates && (
-          <button className="chip" onClick={() => setShowAllWinRates(false)}>접기</button>
+          <button className="show-more-btn" onClick={() => setShowAllWinRates(false)}>접기</button>
         )}
       </div>
 
@@ -363,30 +418,36 @@ export default function InsightsPage() {
       <div className="card">
         {data.ownedNotPlayed.length === 0 && <p className="muted">보유 게임을 모두 플레이했습니다.</p>}
         <div className="chip-row wrap">
-          {data.ownedNotPlayed.map((g) => (
+          {(showAllNotPlayed ? data.ownedNotPlayed : data.ownedNotPlayed.slice(0, NOT_PLAYED_PREVIEW)).map((g) => (
             <Link key={g.id} to={`/game/${g.id}`} className="chip">{g.name}</Link>
           ))}
         </div>
+        {/* 수십 개가 한꺼번에 깔리면 이 아래 내용이 화면 밖으로 밀린다 */}
+        {data.ownedNotPlayed.length > NOT_PLAYED_PREVIEW && (
+          <button className="show-more-btn" onClick={() => setShowAllNotPlayed((v) => !v)}>
+            {showAllNotPlayed ? "접기" : `... 더보기 (${data.ownedNotPlayed.length - NOT_PLAYED_PREVIEW}개)`}
+          </button>
+        )}
       </div>
 
-      <div className="section-title">판당 비용 - 가성비 좋은</div>
+      <div className="section-title">가성비 좋은 게임</div>
       <div className="card">
         {data.costPerPlay.cheapest.length === 0 && <p className="muted">데이터가 없습니다.</p>}
         {data.costPerPlay.cheapest.slice(0, 5).map((c) => (
           <div key={c.game_id} className="cost-row">
             <Link to={`/game/${c.game_id}`}>{c.game_name}</Link>
-            <span className="muted">{fmt(c.costPerPlay)}원/판 ({c.plays}회)</span>
+            <span className="muted">{fmt(c.costPerPlay)}원/회 ({c.plays}회)</span>
           </div>
         ))}
       </div>
 
-      <div className="section-title">판당 비용 - 비싼</div>
+      <div className="section-title">비싼 장식품</div>
       <div className="card">
         {data.costPerPlay.priciest.length === 0 && <p className="muted">데이터가 없습니다.</p>}
         {data.costPerPlay.priciest.slice(0, 5).map((c) => (
           <div key={c.game_id} className="cost-row">
             <Link to={`/game/${c.game_id}`}>{c.game_name}</Link>
-            <span className="muted">{fmt(c.costPerPlay)}원/판 ({c.plays}회)</span>
+            <span className="muted">{fmt(c.costPerPlay)}원/회 ({c.plays}회)</span>
           </div>
         ))}
       </div>

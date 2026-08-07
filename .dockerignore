@@ -1,0 +1,16 @@
+# 데이터는 이미지에 들어가면 안 된다 - 볼륨으로 붙인다.
+# 구매가·메모·사진이 이미지째 돌아다니는 걸 막는 역할도 겸한다.
+data/
+server/data/
+asset/
+*.db
+*.db-shm
+*.db-wal
+
+node_modules/
+web/node_modules/
+server/node_modules/
+web/dist/
+.git/
+.github/
+*.log

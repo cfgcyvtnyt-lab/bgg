@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { CollectionListEntry } from "../api/types";
 import { ratingColor, weightColor } from "../utils/ratingTier";
-import StarRating from "./StarRating";
+import { RatingBadge } from "./StarRating";
 import "../styles/CollectionTable.css";
 
 const STATUS_OPTIONS = ["보유", "선주문", "위시리스트", "방출 예정", "방출 완료"];
@@ -333,8 +333,10 @@ export default function CollectionTable({ entries }: { entries: CollectionListEn
                       patch(e, { tags });
                     }}
                   />
+                  {/* 표에서는 별 10개가 너무 넓다. 긱 평점처럼 색 있는 숫자 하나로 줄이고,
+                      누르면 StarRating과 같은 조절 창이 뜬다. */}
                   <td className="ct-rating-col">
-                    <StarRating editable size={14} value={e.my_rating ?? null} onChange={(v) => patchRating(e, v)} />
+                    <RatingBadge value={e.my_rating ?? null} onChange={(v) => patchRating(e, v)} />
                   </td>
                   <td className="ct-want-col">
                     <button

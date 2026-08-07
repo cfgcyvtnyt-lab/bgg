@@ -1,11 +1,3 @@
-.back-btn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  font-size: 14px;
-  padding: 0 0 12px;
-}
-
 .detail-hero {
   display: flex;
   gap: 14px;
@@ -14,10 +6,26 @@
 
 /* ---------- BGG식 헤더 ---------- */
 
+/* 긱 평점 뱃지와 평가 수만 한 줄로. 순위·인원 정보는 아래 .detail-hero-meta로 내렸다. */
 .detail-hero-top {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* 박스아트 옆이 아니라 그 아래 전체 폭. 좁은 칸에 두면 "전체 196 / 위 ·"처럼
+   낱말이 쪼개지고 기기마다 접히는 자리가 달라 제각각으로 보였다. */
+.detail-hero-meta {
+  margin-bottom: 16px;
+}
+
+.detail-hero-meta > * {
+  margin-bottom: 4px;
+}
+
+.detail-hero-meta > *:last-child {
+  margin-bottom: 0;
 }
 
 /* 긱 평점 뱃지 - 글자 대비 여백을 최소화해 작게(요청 반영) */
@@ -52,7 +60,8 @@
 .detail-hero-rankline {
   font-size: 12.5px;
   color: var(--text);
-  margin-top: 4px;
+  /* 낱말 한가운데가 아니라 띄어쓰기에서만 넘어가게 한다 */
+  word-break: keep-all;
 }
 
 .detail-hero-weight {
@@ -115,7 +124,6 @@
   height: 110px;
   object-fit: contain;
   background: transparent;
-  border-radius: 10px;
   flex: none;
 }
 
@@ -131,7 +139,6 @@
 .detail-hero-empty {
   width: 110px;
   height: 110px;
-  border-radius: 10px;
   background: var(--panel);
   border: 1px solid var(--border);
   display: flex;
@@ -143,36 +150,6 @@
 }
 
 /* ---------- 대체 이미지 선택 모달 ---------- */
-
-.version-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 100;
-}
-
-.version-modal {
-  width: 100%;
-  max-width: 480px;
-  max-height: 80vh;
-  overflow-y: auto;
-  background: var(--bg);
-  border-radius: 14px 14px 0 0;
-  padding: 14px;
-  box-sizing: border-box;
-}
-
-.version-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
 
 .version-reset-btn {
   width: 100%;
@@ -207,14 +184,12 @@
   width: 48px;
   height: 48px;
   object-fit: contain;
-  border-radius: 6px;
   flex: none;
 }
 
 .version-item-empty {
   width: 48px;
   height: 48px;
-  border-radius: 6px;
   background: var(--panel);
   flex: none;
 }
@@ -286,33 +261,6 @@
   font-size: 12px;
 }
 
-.score-split-box {
-  display: flex;
-  gap: 14px;
-  margin-bottom: 8px;
-}
-
-.score-split-col {
-  flex: 1;
-  min-width: 0;
-}
-
-.score-split-label {
-  font-size: 12px;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.detail-hero-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--text);
-}
-
 .detail-hero-statline {
   margin-top: 8px;
   font-size: 13px;
@@ -324,6 +272,8 @@
   margin-bottom: 10px;
 }
 
+/* "내 기록"·"컬렉션 정보"는 그 안의 "플레이 기록"과 같은 급의 제목이다.
+   크기·굵기·색을 .play-list-title과 맞춰 한 페이지 안에서 제목이 두 가지로 보이지 않게 한다. */
 .detail-section-header {
   width: 100%;
   display: flex;
@@ -331,16 +281,20 @@
   align-items: center;
   background: none;
   border: none;
-  padding: 6px 2px;
-  font-size: 15px;
+  padding: 8px 2px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  letter-spacing: 0.3px;
+  color: var(--muted);
 }
 
+/* 12px는 손가락으로 누르기에도 눈으로 찾기에도 작았다 */
 .detail-section-chevron {
   color: var(--muted);
   transition: transform 0.15s ease;
-  font-size: 12px;
+  font-size: 17px;
+  line-height: 1;
+  padding: 0 2px;
 }
 
 .detail-section-chevron.open {
@@ -349,6 +303,19 @@
 
 .detail-section-body {
   margin-top: 6px;
+}
+
+/* 접을 수 없는 섹션(내 기록)의 제목. 버튼이 아니라 글자만이라 정렬을 따로 맞춘다. */
+.detail-section-header-static {
+  display: block;
+  text-align: left;
+}
+
+/* 접혀 있을 때 보여주는 요약 - 메모는 길 수 있어 줄바꿈을 허용한다 */
+.collection-summary-note > span:last-child {
+  text-align: right;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* ---------- 소개 (헤더 바로 아래, 접이식 섹션 없이 한 덩어리) ---------- */
@@ -362,14 +329,6 @@
   line-height: 1.55;
   white-space: pre-wrap;
   margin-bottom: 4px;
-}
-
-.intro-toggle {
-  padding: 2px 0;
-  background: none;
-  border: none;
-  color: var(--accent);
-  font-size: 13px;
 }
 
 .intro-expanded {
@@ -429,15 +388,6 @@
   font-size: 14px;
 }
 
-.field-row {
-  display: flex;
-  gap: 10px;
-}
-
-.field-row .field {
-  flex: 1;
-}
-
 .score-template-manage {
   margin-top: 12px;
   padding-top: 10px;
@@ -474,6 +424,7 @@
 .play-list-title {
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.3px;
   color: var(--muted);
 }
 
@@ -488,35 +439,82 @@
   margin-bottom: 12px;
 }
 
+/* 날짜·장소는 왼쪽, 플레이어·점수는 오른쪽 끝으로 민다.
+   예전엔 전부 왼쪽에 붙여놔서 행마다 글자가 끝나는 자리가 제각각이었다. */
 .play-row-compact {
   display: flex;
-  gap: 5px;
-  align-items: baseline;
-  padding: 8px 2px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
   font-size: 12.5px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .play-row-compact:last-child {
   border-bottom: none;
 }
 
-.play-compact-date {
-  font-weight: 600;
+.play-compact-left {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   flex: none;
 }
 
-.play-compact-players {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.play-compact-date {
+  font-weight: 600;
 }
 
-.record-btn {
-  width: 100%;
-  padding: 14px;
-  font-size: 16px;
+.play-compact-loc {
+  font-size: 11.5px;
+}
+
+.play-compact-players {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  /* 사람 사이(14px)를 이름-점수 사이(3px)보다 훨씬 넓게 둬야 "ㅇ 51 ㅃ 47"이 붙어 보이지 않는다 */
+  gap: 4px 14px;
+  min-width: 0;
+  text-align: right;
+}
+
+.play-compact-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+/* 이름 앞 트로피는 글자보다 작게 - 줄 높이를 늘리지 않는다 */
+.play-compact-trophy {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.play-compact-score {
+  font-weight: 600;
+}
+
+/* 인원·시간·연령·웨이트가 각각 한 덩어리로 움직이게 한다. 줄바꿈은 가운뎃점에서만 일어난다. */
+.stat-part {
+  white-space: nowrap;
+}
+
+/* 별점 줄은 평점 뱃지 아래 한 줄 차지 */
+.my-rating-inline {
+  margin-top: 4px;
+}
+
+/* 퍼블리셔도 낱말이 안 쪼개지게 */
+.detail-hero-publishers {
+  word-break: keep-all;
+}
+
+/* 컬렉션에서 삭제 - 저장 아래 한 줄, 눈에 덜 띄게 */
+.collection-remove-btn {
+  display: block;
+  margin-top: 10px;
 }

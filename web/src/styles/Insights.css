@@ -1,5 +1,6 @@
 .period-tabs {
   display: flex;
+  justify-content: center;
   gap: 6px;
   margin-bottom: 12px;
   flex-wrap: wrap;
@@ -27,27 +28,40 @@
   margin-bottom: 14px;
 }
 
-.period-custom-row input[type="date"] {
+.period-custom-row .date-field {
   flex: 1;
   min-width: 0;
+}
+
+/* 좁은 칸이라 날짜 글자를 줄여야 두 개가 나란히 들어간다 */
+.period-custom-row .date-field-button {
+  padding: 8px 10px;
+  font-size: 13px;
 }
 
 .period-nav-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 6px;
   margin: -4px 0 14px;
 }
 
+/* 연도·달을 넘기는 화살표. 테두리 없이 글자만 두고 폭도 좁힌다 -
+   옆의 연도 글자가 주인공이고 화살표는 거들 뿐이다. */
 .period-nav-btn {
-  border: 1px solid var(--border);
-  background: var(--panel);
+  border: none;
+  background: none;
+  color: var(--muted);
+  width: 22px;
+  height: 26px;
+  padding: 0;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.period-nav-btn:hover {
   color: var(--text);
-  border-radius: 8px;
-  width: 30px;
-  height: 30px;
-  font-size: 13px;
 }
 
 .period-nav-label {
@@ -118,10 +132,25 @@
   height: 100px;
 }
 
-/* 375px 등 좁은 화면에서는 위아래로 쌓되 각 카드는 꽉 채운다 */
+/* 좁은 화면에서도 둘을 나란히 둔다. 위아래로 쌓으면 스크롤만 길어지고
+   두 분포를 견줘 보기도 나쁘다. 대신 375px에서 카드 안쪽이 138px뿐이라
+   원을 줄여야 장소 분포의 범례가 옆에 들어간다. */
 @media (max-width: 420px) {
-  .pie-two-col {
-    grid-template-columns: 1fr;
+  .pie-two-item .pie-chart-svg {
+    width: 76px;
+    height: 76px;
+  }
+
+  .pie-chart-row {
+    gap: 6px;
+  }
+
+  .pie-legend {
+    gap: 4px;
+  }
+
+  .pie-legend-label {
+    font-size: 10.5px;
   }
 }
 
@@ -154,16 +183,46 @@
   white-space: nowrap;
 }
 
-.pie-legend-value {
-  flex: none;
+.challenge-summary-head {
+  margin-top: 0;
 }
 
 .challenges-entry-link {
-  display: block;
-  text-align: right;
+  flex: none;
   color: var(--accent);
-  font-size: 13.5px;
-  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.challenge-summary {
+  margin-bottom: 14px;
+}
+
+/* 이름 · 진행바 · 퍼센트. 승률 행과 같은 3열 규칙을 쓴다. */
+.challenge-summary-row {
+  display: grid;
+  grid-template-columns: 1fr 90px 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.challenge-summary-row:last-child {
+  border-bottom: none;
+}
+
+.challenge-summary-name {
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.challenge-summary-pct {
+  font-size: 12px;
+  text-align: right;
 }
 
 .summary-grid {
@@ -230,7 +289,9 @@
    컴포넌트에서 인라인 style로 지정해 이 기본값을 덮어쓴다 */
 .bar-row-fill {
   height: 100%;
-  background: var(--accent-dim);
+  /* accent-dim(#1e5f9e)은 파랑이 아직 세서 어두운 배경에서 막대만 도드라진다.
+     채도를 더 낮춘 청회색으로 눌러 숫자가 먼저 읽히게 한다. */
+  background: #2c4f70;
   border-radius: 6px;
   min-width: 3px;
 }
@@ -253,8 +314,14 @@
   margin-bottom: 0;
 }
 
+/* BGA에서 만난 상대는 이름이 "jubayerrahmanarnob"처럼 길어서 칸을 밀어낸다.
+   grid 칸의 기본 최소폭이 auto라 min-width:0을 같이 줘야 말줄임이 먹는다. */
 .winrate-name {
+  min-width: 0;
   font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .winrate-value {

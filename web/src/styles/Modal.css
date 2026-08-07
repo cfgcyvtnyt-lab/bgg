@@ -1,23 +1,32 @@
+/* 모든 모달의 공통 껍데기. 하단에 붙이지 않고 가운데 띄운다 - 아래에 붙이면
+   하단 탭바와 겹쳐서 버튼이 눌리지 않는다. */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.65);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  z-index: 200;
+  padding: 16px;
+  box-sizing: border-box;
+  z-index: var(--z-modal);
 }
 
 .modal-sheet {
   width: 100%;
   max-width: var(--max-width);
-  max-height: 85vh;
+  max-height: 80vh;
   overflow-y: auto;
+  box-sizing: border-box;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-bottom: none;
-  border-radius: 16px 16px 0 0;
+  border-radius: 14px;
   padding: 16px;
+}
+
+/* 평점 조절처럼 내용이 적은 창 */
+.modal-sheet-narrow {
+  max-width: 380px;
 }
 
 .modal-header {

@@ -54,6 +54,8 @@
   font-size: 14px;
 }
 
+/* td 자체에 display:flex를 주면 그 칸이 table-cell이 아니게 되어 colgroup 폭을 무시한다.
+   (제조사·동작 열만 행마다 좌우로 밀려 보이던 원인) 그래서 안쪽 div에만 flex를 준다. */
 .sleeve-maker-cell {
   display: flex;
   flex-direction: column;
@@ -64,10 +66,11 @@
   font-size: 11px;
 }
 
+/* max-width를 따로 주면 colgroup이 정한 폭과 싸워서 이 열만 다른 행과 어긋난다.
+   폭은 col-note에 맡기고 여기선 넘치는 글자만 자른다. */
 .sleeve-note-cell {
   color: var(--muted);
   font-size: 13px;
-  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

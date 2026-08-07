@@ -1,8 +1,30 @@
 import type {
-  User, Game, GameDetail, CollectionEntry, CollectionListEntry, Play, PlayInput, Insights, BggSearchResult,
-  NameAlias, NameCount, LocationCount, PlayDetail, Photo, FeedResponse, ScoreTemplate, Sleeve, GameSleeve,
-  Challenge, ChallengeTarget, TagCount, GameVersion,
+  BgaImportResult,
+  BgaPlayItem,
+  BgaSessionRow,
+  BggSearchResult,
+  Challenge,
+  ChallengeTarget,
+  CollectionEntry,
+  CollectionListEntry,
+  FeedResponse,
+  Game,
+  GameDetail,
+  GameSleeve,
+  GameVersion,
+  Insights,
+  LocationCount,
+  Photo,
+  Play,
+  PlayDetail,
+  PlayInput,
+  ScoreTemplate,
+  Sleeve,
+  CleanupResult,
+  TagCount,
+  User,
 } from "./types";
+import { clearListCache } from "../utils/listCache";
 
 const BASE = "/api";
 
@@ -46,6 +68,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(msg);
   }
   if (res.status === 204) return undefined as T;
+  // 뭔가를 바꾸는 요청이 성공했으면 화면들이 들고 있는 목록 캐시를 비운다.
+  // 호출처마다 직접 비우게 하면(기록 저장, 컬렉션 수정, 평점, 임포트...) 하나씩 빠뜨리게 된다.
+  // 번역·청소처럼 목록과 무관한 POST도 같이 비우지만, 다시 받는 비용이 몇십 ms라 문제없다.
+  if ((options.method || "GET").toUpperCase() !== "GET") clearListCache();
   return res.json();
 }
 
@@ -131,6 +157,10 @@ export const api = {
   locations: () => request<LocationCount[]>("/locations"),
   renameLocation: (from: string, to: string) =>
     request<{ ok: boolean; changed: number }>("/locations", { method: "PATCH", body: JSON.stringify({ from, to }) }),
+  saveLocation: (name: string, body: { online?: boolean } = {}) =>
+    request<{ ok: boolean }>("/locations", { method: "POST", body: JSON.stringify({ name, ...body }) }),
+  deleteLocation: (name: string) =>
+    request<{ ok: boolean }>(`/locations?name=${encodeURIComponent(name)}`, { method: "DELETE" }),
 
   insights: (params: { from?: string; to?: string; bucket?: "day" | "month" | "year" } = {}) => {
     const sp = new URLSearchParams();
@@ -141,19 +171,37 @@ export const api = {
     return request<Insights>(`/insights${qs ? `?${qs}` : ""}`);
   },
 
-  // 설정 화면 "지금 동기화" 버튼용. force=1은 확인 다이얼로그를 거친 뒤에만 붙인다.
-  sync: (force?: boolean) => request<{ ok: boolean; result: unknown }>(`/sync${force ? "?force=1" : ""}`, { method: "POST" }),
+  // 설정 화면 "정리" 버튼용. GET은 dry run이라 무엇을 얼마나 지울지만 알려준다.
+  cleanupStatus: () => request<CleanupResult>("/cleanup"),
+  cleanup: () => request<CleanupResult>("/cleanup", { method: "POST" }),
 
   search: (q: string) => request<BggSearchResult[]>(`/search?${new URLSearchParams({ q })}`),
 
-  names: (kind: "player" | "location") =>
-    request<NameCount[]>(`/names?${new URLSearchParams({ kind })}`),
-  aliases: (kind?: "player" | "location") =>
-    request<NameAlias[]>(`/aliases${kind ? `?kind=${kind}` : ""}`),
-  addAlias: (body: { kind: "player" | "location"; alias: string; canonical: string }) =>
-    request<NameAlias>("/aliases", { method: "POST", body: JSON.stringify(body) }),
-  deleteAlias: (id: number) =>
-    request<{ ok: boolean }>(`/aliases/${id}`, { method: "DELETE" }),
+  // ---------- BGA 임포트 ----------
+  // 비밀번호는 로그인 요청에만 실려 가고 서버는 세션만 메모리에 들고 있는다(저장 안 함).
+  bgaLogin: (userId: number, username: string, password: string) =>
+    request<{ ok: boolean; playerId: number; playerName: string }>("/bga/login", {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId, username, password }),
+    }),
+  bgaSession: () => request<BgaSessionRow[]>("/bga/session"),
+  bgaPlays: (userId: number, opts: { pages?: number; player?: number } = {}) => {
+    const sp = new URLSearchParams({ user_id: String(userId) });
+    if (opts.pages) sp.set("pages", String(opts.pages));
+    if (opts.player) sp.set("player", String(opts.player));
+    return request<{ total: number; items: BgaPlayItem[] }>(`/bga/plays?${sp}`);
+  },
+  bgaImport: (body: {
+    user_id: number;
+    table_ids: number[];
+    mapping: Record<string, number | null>;
+    remember?: boolean;
+    player?: number;
+  }) =>
+    request<{ ok: boolean; added: number; results: BgaImportResult[] }>("/bga/import", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   // ---------- 사진 ----------
   // multipart 대신 파일을 통째로 body로 보낸다 (의존성 추가 금지 - 서버도 raw body로 받는다).
@@ -164,6 +212,7 @@ export const api = {
       "X-Filename": encodeURIComponent(file.name || "photo.jpg"),
     };
     if (userId) headers["X-User-Id"] = userId;
+    clearListCache(); // 사진은 피드 카드에 실린다
     const res = await fetch(`${BASE}/plays/${playId}/photos`, { method: "POST", headers, body: file });
     if (!res.ok) {
       let msg = `업로드 실패 (${res.status})`;
@@ -177,8 +226,6 @@ export const api = {
     }
     return res.json();
   },
-  updatePhoto: (id: number, body: { published?: boolean; caption?: string | null }) =>
-    request<Photo>(`/photos/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deletePhoto: (id: number) =>
     request<{ ok: boolean }>(`/photos/${id}`, { method: "DELETE" }),
   photoUrl: (filename: string) => `${BASE}/photos/${filename}`,
@@ -227,13 +274,14 @@ export const api = {
   // ---------- 피드 ----------
   feed: (params: {
     author?: number; filter?: "photo" | "event"; game_id?: number; category?: string;
-    limit?: number; offset?: number;
+    q?: string; limit?: number; offset?: number;
   } = {}) => {
     const sp = new URLSearchParams();
     if (params.author) sp.set("author", String(params.author));
     if (params.filter) sp.set("filter", params.filter);
     if (params.game_id) sp.set("game_id", String(params.game_id));
     if (params.category) sp.set("category", params.category);
+    if (params.q) sp.set("q", params.q);
     sp.set("limit", String(params.limit ?? 20));
     sp.set("offset", String(params.offset ?? 0));
     return request<FeedResponse>(`/feed?${sp}`);
@@ -243,8 +291,6 @@ export const api = {
   challenges: () => request<Challenge[]>("/challenges"),
   addChallenge: (body: { name: string; description?: string | null; target: ChallengeTarget }) =>
     request<Challenge>("/challenges", { method: "POST", body: JSON.stringify(body) }),
-  updateChallenge: (id: number, body: { name?: string; description?: string | null; target?: ChallengeTarget }) =>
-    request<Challenge>(`/challenges/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteChallenge: (id: number) =>
     request<{ ok: boolean }>(`/challenges/${id}`, { method: "DELETE" }),
 };

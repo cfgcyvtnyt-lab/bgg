@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from "rea
 import type { ReactNode } from "react";
 import type { User } from "../api/types";
 import { api } from "../api/client";
+import { clearListCache } from "../utils/listCache";
 
 const STORAGE_KEY = "bgg_user_id";
 const STORAGE_NAME_KEY = "bgg_user_name";
@@ -35,6 +36,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const setCurrentUser = useCallback((u: User) => {
     localStorage.setItem(STORAGE_KEY, String(u.id));
     localStorage.setItem(STORAGE_NAME_KEY, u.name);
+    // 목록 캐시는 계정 구분 없이 담겨 있어서, 전환하면 비워야 남의 기록이 안 보인다
+    clearListCache();
+    try { sessionStorage.removeItem("bgg_feed_count"); } catch { /* 무시 */ }
     setCurrentUserState(u);
   }, []);
 

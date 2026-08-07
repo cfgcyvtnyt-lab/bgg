@@ -3,13 +3,15 @@ import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "node:fs";
 import { extname, join, resolve, sep } from "node:path";
 import { openDb } from "./db.js";
-import { runSync } from "./sync.js";
-import { fetchVersions } from "./bgg.js";
+import { fetchVersions, fetchThings } from "./bgg.js";
+import { upsertGames } from "./import-bgg.js";
+import { runCleanup } from "./cleanup.js";
+import { translateToKorean } from "./translate.js";
+import { login as bgaLogin, fetchAllPlays as bgaFetchAllPlays, fetchGameMap as bgaFetchGameMap } from "./bga.js";
 
 const DB_PATH = process.env.DB_PATH || "data/app.db";
 const PORT = process.env.PORT || 3001;
 const BGG_API_KEY = process.env.BGG_API_KEY;
-const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 // 이미지 디스크 캐시. BGG를 매번 핫링크하지 않기 위한 프록시 저장 위치.
 const IMAGE_CACHE_DIR = process.env.IMAGE_CACHE_DIR || "data/cache/images";
@@ -28,6 +30,7 @@ mkdirSync(AVATAR_DIR, { recursive: true });
 const db = openDb(DB_PATH);
 const app = express();
 app.use(express.json());
+
 
 // X-User-Id 헤더로 요청자를 식별한다. 플레이 기록은 계정별로 완전히 분리되므로
 // 이 값이 없으면 플레이/인사이트 관련 엔드포인트는 동작할 수 없다.
@@ -157,14 +160,27 @@ app.get("/api/games", (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
 
+  // 이 엔드포인트는 검색 드롭다운·목록용이다. SELECT *로 내리면 description(게임당 ~1.2KB)과
+  // description_ko까지 실려 20건에 53KB가 나갔다. 목록에 필요한 컬럼만 고른다.
+  // 상세 화면은 /api/games/:id가 따로 전부 내려준다.
+  // aliases는 검색 조건(WHERE ... aliases LIKE)으로만 쓰고 응답에는 싣지 않는다.
+  // 게임당 별칭이 10개 넘는 것도 있어 목록에서는 순수한 무게다. 상세(/api/games/:id)에는 들어간다.
+  const LIST_COLS = `
+    id, name_en, custom_name, custom_image, year_published,
+    min_players, max_players, playing_time, weight, bgg_rating, bgg_rank,
+    item_type, synced_at,
+    COALESCE(custom_name, name) AS name,
+    COALESCE(custom_image, thumbnail) AS thumbnail,
+    COALESCE(custom_image, image) AS image
+  `;
+
   let rows;
   if (q) {
     // aliases는 JSON 배열을 문자열째로 저장하므로 LIKE로 부분 일치만 확인해도 충분하다.
     // custom_name도 검색 대상에 포함해야 사용자가 지정한 한글 이름으로도 찾을 수 있다.
     const like = `%${q}%`;
     rows = db.prepare(`
-      SELECT *, COALESCE(custom_name, name) AS name,
-             COALESCE(custom_image, thumbnail) AS thumbnail, COALESCE(custom_image, image) AS image
+      SELECT ${LIST_COLS}
       FROM game
       WHERE name LIKE ? OR name_en LIKE ? OR aliases LIKE ? OR custom_name LIKE ?
       ORDER BY COALESCE(custom_name, name)
@@ -172,13 +188,12 @@ app.get("/api/games", (req, res) => {
     `).all(like, like, like, like, limit, offset);
   } else {
     rows = db.prepare(`
-      SELECT *, COALESCE(custom_name, name) AS name,
-             COALESCE(custom_image, thumbnail) AS thumbnail, COALESCE(custom_image, image) AS image
+      SELECT ${LIST_COLS}
       FROM game
       ORDER BY COALESCE(custom_name, name) LIMIT ? OFFSET ?
     `).all(limit, offset);
   }
-  res.json(rows.map((g) => ({ ...g, aliases: parseJsonArray(g.aliases) })));
+  res.json(rows);
 });
 
 app.get("/api/games/:id", (req, res) => {
@@ -281,87 +296,29 @@ app.patch("/api/games/:id/want-to-play", (req, res) => {
   res.json({ want_to_play: row ? row.want_to_play : 0 });
 });
 
-function sleepMs(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-// 문장 단위로 잘라 chunkChars 이내로 뭉친다. 구글/MyMemory 둘 다 한 번에 보낼 수 있는
-// 길이가 제한적이라 공통으로 쓴다.
-function splitIntoChunks(text, chunkChars) {
-  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
-  const chunks = [];
-  let cur = "";
-  for (const s of sentences) {
-    if (cur && cur.length + s.length > chunkChars) {
-      chunks.push(cur);
-      cur = "";
-    }
-    cur += (cur ? " " : "") + s;
-  }
-  if (cur) chunks.push(cur);
-  return chunks;
-}
-
-// 구글 무료 gtx 엔드포인트. 공식 API 키가 필요 없는 대신 요즘 429로 자주 막힌다.
-async function translateViaGoogle(text) {
-  const chunks = splitIntoChunks(text, 1500);
-  if (chunks.length === 0) return "";
-  const parts = [];
-  for (const chunk of chunks) {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gt&sl=en&tl=ko&dt=t&q=${encodeURIComponent(chunk)}`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`구글 번역 요청 실패 (HTTP ${resp.status})`);
-    const data = await resp.json();
-    parts.push((data[0] || []).map((piece) => piece[0]).join(""));
-  }
-  return parts.join(" ");
-}
-
-// MyMemory API (키 불필요). 구글 gtx가 429로 막혔을 때 쓰는 폴백 - 한 번에 보낼 수 있는
-// 길이가 500자 안팎으로 더 짧아서 청크를 작게 쪼개고, 요청 사이 300ms씩 쉬어 과호출을 피한다.
-async function translateViaMyMemory(text) {
-  const chunks = splitIntoChunks(text, 480);
-  if (chunks.length === 0) return "";
-  const parts = [];
-  for (let i = 0; i < chunks.length; i++) {
-    if (i > 0) await sleepMs(300);
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunks[i])}&langpair=en|ko`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`MyMemory 번역 요청 실패 (HTTP ${resp.status})`);
-    const data = await resp.json();
-    const translated = data?.responseData?.translatedText;
-    if (data?.responseStatus !== 200 || !translated) {
-      throw new Error("MyMemory 번역 실패");
-    }
-    parts.push(translated);
-  }
-  return parts.join(" ");
-}
-
-// 구글 gtx 먼저 시도하고, 429 등으로 막히면 MyMemory로 폴백한다. 둘 다 실패하면 그대로 던져서
-// 호출부가 조용히 실패 처리(영문 표시)하게 둔다.
-async function translateToKorean(text) {
-  try {
-    return await translateViaGoogle(text);
-  } catch (err) {
-    console.log(`구글 번역 실패, MyMemory로 폴백: ${err.message || err}`);
-    return await translateViaMyMemory(text);
-  }
-}
-
+// 번역은 translate.js로 분리했다 - 일괄 채우기 스크립트와 같은 코드를 쓰기 위해서다.
 // 설명 번역. 캐시(description_ko)가 있으면 재번역하지 않는다.
+// 실패하면 하루 동안 재시도하지 않는다. 무료 번역 API가 며칠씩 막혀 있는 동안
+// 미번역 게임 상세를 열 때마다 외부 요청을 다시 때리면 매번 느리고 429만 쌓인다.
+const TRANSLATE_RETRY_MS = 24 * 60 * 60 * 1000;
+
 app.post("/api/games/:id/translate", async (req, res) => {
   const id = Number(req.params.id);
-  const game = db.prepare("SELECT id, description, description_ko FROM game WHERE id = ?").get(id);
+  const game = db.prepare("SELECT id, description, description_ko, translate_failed_at FROM game WHERE id = ?").get(id);
   if (!game) return res.status(404).json({ error: "게임을 찾을 수 없습니다" });
   if (game.description_ko) return res.json({ description_ko: game.description_ko });
   if (!game.description) return res.status(400).json({ error: "번역할 원문 설명이 없습니다" });
 
+  if (game.translate_failed_at && Date.now() - new Date(game.translate_failed_at).getTime() < TRANSLATE_RETRY_MS) {
+    return res.status(503).json({ error: "최근 번역에 실패해 잠시 쉬는 중입니다" });
+  }
+
   try {
     const ko = await translateToKorean(game.description);
-    db.prepare("UPDATE game SET description_ko = ? WHERE id = ?").run(ko, id);
+    db.prepare("UPDATE game SET description_ko = ?, translate_failed_at = NULL WHERE id = ?").run(ko, id);
     res.json({ description_ko: ko });
   } catch (err) {
+    db.prepare("UPDATE game SET translate_failed_at = ? WHERE id = ?").run(new Date().toISOString(), id);
     res.status(500).json({ error: String(err.message || err) });
   }
 });
@@ -381,7 +338,7 @@ function computeGameStats(gameId, userId, playCount) {
   ).all(gameId, userId);
   if (playRows.length === 0) {
     return {
-      playCount: 0, winRate: null, avgDurationMin: null, lastPlayedAt: null,
+      playCount: 0, winRate: null, avgDurationMin: null, firstPlayedAt: null, lastPlayedAt: null,
       score: { solo: null, multi: null }, winRateSplit: { solo: null, multi: null }, opponents: [],
     };
   }
@@ -439,6 +396,7 @@ function computeGameStats(gameId, userId, playCount) {
     ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
     : null;
   const lastPlayedAt = playRows.reduce((max, p) => (p.played_at > max ? p.played_at : max), playRows[0].played_at);
+  const firstPlayedAt = playRows.reduce((min, p) => (p.played_at < min ? p.played_at : min), playRows[0].played_at);
 
   // 상대별 전적: 나를 제외한 "사람" 참가자를 별칭 기준으로 합쳐서 판수/내 승수를 집계한다. 오토마는 상대가 아니다.
   const opponentMap = new Map();
@@ -461,6 +419,7 @@ function computeGameStats(gameId, userId, playCount) {
     playCount,
     winRate: playCount ? Math.round((myWins / playCount) * 100) : null,
     avgDurationMin,
+    firstPlayedAt,
     lastPlayedAt,
     score,
     winRateSplit,
@@ -579,7 +538,7 @@ app.get("/api/collection", (req, res) => {
   // c.want_to_play(공유 테이블)는 더 이상 쓰지 않는다 - 아래 gr.want_to_play(사용자별)로 덮어써서 무시한다.
   const rows = db.prepare(`
     SELECT c.*, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en,
-           COALESCE(g.custom_image, g.thumbnail) AS thumbnail, COALESCE(g.custom_image, g.image) AS image,
+           COALESCE(g.custom_image, g.thumbnail, g.image) AS thumbnail,
            g.year_published, g.min_players, g.max_players, g.playing_time, g.weight,
            g.bgg_rating, g.bgg_rank, g.item_type,
            gr.rating AS my_rating,
@@ -605,7 +564,7 @@ app.get("/api/collection", (req, res) => {
   // collection 행을 새로 만들면 소유 개수(보유 95 등)가 오염되므로 조회에서만 합친다.
   const unownedRows = db.prepare(`
     SELECT g.id AS game_id, COALESCE(g.custom_name, g.name) AS game_name, g.name_en AS game_name_en,
-           COALESCE(g.custom_image, g.thumbnail) AS thumbnail, COALESCE(g.custom_image, g.image) AS image,
+           COALESCE(g.custom_image, g.thumbnail, g.image) AS thumbnail,
            g.year_published, g.min_players, g.max_players, g.playing_time,
            g.weight, g.bgg_rating, g.bgg_rank, g.item_type, gr.rating AS my_rating,
            COALESCE(gr.want_to_play, 0) AS want_to_play
@@ -736,10 +695,28 @@ function loadPhotos(playId) {
 
 // 기록 입력에서 장소를 자유 입력 대신 목록에서 고르게 하기 위한 엔드포인트.
 // name_alias(location)를 적용해 표기가 갈린 이름(Home/Home2/H. 등)을 합친 뒤 사용 횟수와 함께 반환한다.
+// 장소는 계정별로 따로 관리한다. 두 사람이 가는 곳이 다르고(ㅇ은 Home/BGA, ㅃ는 B.),
+// 섞어 보여주면 남의 장소가 내 선택지에 끼어든다. 플레이 기록이 계정별인 것과 같은 이유다.
+// 온라인 장소는 판당 비용에서 뺀다 - 내 실물 제품으로 논 게 아니라서 그 판까지 나누면
+// 값이 실제보다 싸게 나온다. 아래는 설정을 따로 안 건드렸을 때의 기본값이고,
+// 사용자가 장소 관리에서 켜고 끄면 location_pref가 우선한다.
+const DEFAULT_ONLINE_LOCATIONS = new Set(["BGA", "BoardGameArena", "TTS", "App"]);
+
+// 이 계정의 "이 장소는 온라인인가" 판정기. pref에 값이 있으면 그걸, 없으면 기본값을 쓴다.
+function onlineLocationChecker(userId) {
+  const pref = new Map(
+    db.prepare("SELECT name, online FROM location_pref WHERE user_id = ? AND online IS NOT NULL").all(userId)
+      .map((r) => [r.name, !!r.online])
+  );
+  return (name) => (pref.has(name) ? pref.get(name) : DEFAULT_ONLINE_LOCATIONS.has(name));
+}
+
 app.get("/api/locations", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
   const rows = db.prepare(
-    "SELECT location AS name, COUNT(*) AS count FROM play WHERE location IS NOT NULL AND location != '' GROUP BY location"
-  ).all();
+    "SELECT location AS name, COUNT(*) AS count FROM play WHERE user_id = ? AND location IS NOT NULL AND location != '' GROUP BY location"
+  ).all(userId);
   const aliasMap = loadAliasMap("location");
   const merged = new Map();
   for (const r of rows) {
@@ -748,17 +725,57 @@ app.get("/api/locations", (req, res) => {
     cur.count += r.count;
     merged.set(canonical, cur);
   }
-  res.json([...merged.values()].sort((a, b) => b.count - a.count));
+  // 아직 한 판도 안 한 장소도 고를 수 있어야 하므로 pref에만 있는 이름을 0회로 붙인다.
+  for (const r of db.prepare("SELECT name FROM location_pref WHERE user_id = ?").all(userId)) {
+    if (!merged.has(r.name)) merged.set(r.name, { name: r.name, count: 0 });
+  }
+  const isOnline = onlineLocationChecker(userId);
+  const list = [...merged.values()].map((l) => ({ ...l, online: isOnline(l.name) }));
+  res.json(list.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)));
+});
+
+// 장소 추가 / 설정 변경. 이름만 주면 빈 장소를 만들고, online을 주면 판당 비용 제외 여부를 바꾼다.
+app.post("/api/locations", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const name = (req.body?.name || "").trim();
+  if (!name) return res.status(400).json({ error: "name이 필요합니다" });
+  const { online } = req.body || {};
+  db.prepare("INSERT OR IGNORE INTO location_pref (user_id, name) VALUES (?, ?)").run(userId, name);
+  if (online !== undefined) {
+    db.prepare("UPDATE location_pref SET online = ? WHERE user_id = ? AND name = ?").run(online ? 1 : 0, userId, name);
+  }
+  res.json({ ok: true });
+});
+
+// 장소 삭제. 기록이 있는 장소면 그 판들의 장소 표시만 지운다(플레이 자체는 남는다).
+// 프론트가 confirm으로 건수를 알려주고 물은 뒤에 부른다.
+app.delete("/api/locations", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const name = (req.query.name || "").toString();
+  if (!name) return res.status(400).json({ error: "name이 필요합니다" });
+  const result = db.prepare("UPDATE play SET location = NULL WHERE user_id = ? AND location = ?").run(userId, name);
+  db.prepare("DELETE FROM location_pref WHERE user_id = ? AND name = ?").run(userId, name);
+  if (result.changes > 0) invalidateFeedCache();
+  res.json({ ok: true, cleared: result.changes });
 });
 
 // 장소 이름 바꾸기. name_alias(병합 표시)와 달리 원본 play.location 값 자체를 고친다 -
 // 오타·표기 통일처럼 "그냥 다른 이름으로 대체"하고 싶을 때 쓴다. 별칭 병합 기능은 그대로 둔다.
 app.patch("/api/locations", (req, res) => {
+  const userId = requireUser(req, res);
+  if (!userId) return;
   const { from, to } = req.body || {};
   if (!from || !to) return res.status(400).json({ error: "from, to가 필요합니다" });
   if (from === to) return res.status(400).json({ error: "from과 to가 같습니다" });
 
-  const result = db.prepare("UPDATE play SET location = ? WHERE location = ?").run(to, from);
+  // 내 기록의 장소만 바꾼다. 상대 기록까지 건드리면 남의 데이터를 고치는 셈이다.
+  const result = db.prepare("UPDATE play SET location = ? WHERE location = ? AND user_id = ?").run(to, from, userId);
+  // 설정도 새 이름으로 따라간다. 합치는 경우(to가 이미 있음)엔 원래 to의 설정을 살린다.
+  const target = db.prepare("SELECT name FROM location_pref WHERE user_id = ? AND name = ?").get(userId, to);
+  if (target) db.prepare("DELETE FROM location_pref WHERE user_id = ? AND name = ?").run(userId, from);
+  else db.prepare("UPDATE location_pref SET name = ? WHERE user_id = ? AND name = ?").run(to, userId, from);
   invalidateFeedCache();
   res.json({ ok: true, changed: result.changes });
 });
@@ -1162,19 +1179,28 @@ function buildFeedItems() {
   }
 
   const items = [];
+  // 피드에는 안 띄우고 월간 결산에만 넣을 사건(최고점 갱신).
+  const monthOnlyEvents = [];
   // 사용자·게임별 진행 상태: 판수, 1인/2인+ 각각의 최고·최저점
   const progress = new Map(); // key `${user_id}:${game_id}`
-  // 월별 결산 집계
-  const monthAgg = new Map(); // key YYYY-MM
-  const globalFirstPlayMonth = new Map(); // game_id -> YYYY-MM (그 게임이 처음 기록된 달)
+  // 월별 결산 집계. 플레이 기록은 계정별로 따로 쌓이므로 결산도 사람별로 나눈다
+  // (예전엔 키가 YYYY-MM뿐이라 두 사람 플레이가 한 덩어리로 합산됐다).
+  const monthAgg = new Map(); // key `${user_id}:YYYY-MM`
+  const firstPlayMonth = new Map(); // `${user_id}:${game_id}` -> YYYY-MM (그 사람이 처음 그 게임을 한 달)
   // 도전과제 달성일을 정확히 계산하기 어려워 사용자의 가장 최근 플레이 날짜로 근사한다
   const maxDateByUser = new Map();
 
-  function getMonthAgg(monthKey) {
-    let a = monthAgg.get(monthKey);
+  function getMonthAgg(userId, monthKey) {
+    const key = `${userId}:${monthKey}`;
+    let a = monthAgg.get(key);
     if (!a) {
-      a = { totalPlays: 0, totalMinutes: 0, gameCounts: new Map(), newGames: [], bestUpdateCount: 0 };
-      monthAgg.set(monthKey, a);
+      a = {
+        userId, monthKey, totalPlays: 0, totalMinutes: 0, gameCounts: new Map(), newGames: [],
+        bestUpdateCount: 0,
+        // 제목 옆 "66회 · 20일 · 20개 게임"용. 이 루프를 도는 김에 같이 센다.
+        playedDays: new Set(),
+      };
+      monthAgg.set(key, a);
     }
     return a;
   }
@@ -1226,7 +1252,7 @@ function buildFeedItems() {
     }
 
     // 월간 결산 집계
-    const magg = getMonthAgg(monthKey);
+    const magg = getMonthAgg(play.user_id, monthKey);
     magg.totalPlays++;
     if (play.duration_min) magg.totalMinutes += play.duration_min;
     const gc = magg.gameCounts.get(play.game_id) || {
@@ -1234,10 +1260,13 @@ function buildFeedItems() {
     };
     gc.count++;
     magg.gameCounts.set(play.game_id, gc);
-    if (!globalFirstPlayMonth.has(play.game_id)) {
-      globalFirstPlayMonth.set(play.game_id, monthKey);
+    // "새 게임"도 그 사람 기준 첫 플레이여야 한다
+    const firstKey = `${play.user_id}:${play.game_id}`;
+    if (!firstPlayMonth.has(firstKey)) {
+      firstPlayMonth.set(firstKey, monthKey);
       magg.newGames.push(play.game_name);
     }
+    magg.playedDays.add(play.played_at);
 
     // 이벤트 판정 (그 사용자 기준)
     const key = `${play.user_id}:${play.game_id}`;
@@ -1265,51 +1294,22 @@ function buildFeedItems() {
     if (myScore != null) {
       const bestKey = isSolo ? "bestSolo" : "bestMulti";
       const worstKey = isSolo ? "worstSolo" : "worstMulti";
-      // 1~2판째의 "갱신"은 표본이 너무 적어 무의미하므로 3판 이상 쌓인 뒤부터만 이벤트를 낸다
+      // 1~2판째의 "갱신"은 표본이 너무 적어 무의미하므로 3판 이상 쌓인 뒤부터만 친다.
+      // 최고점은 피드에 낱개로 띄우지 않고 월간 결산에만 모아 보여준다 - 자주 나서 피드가 시끄러웠다.
+      // 최저점은 아예 안 만든다. 못한 기록을 굳이 알려줄 이유가 없다.
       const enoughPlays = prog.count >= 3;
       if (enoughPlays && prog[bestKey] != null && myScore > prog[bestKey]) {
-        items.push({
-          type: "event", kind: "best", date: play.played_at, seq: play.id + 0.3,
-          userId: play.user_id, author, game_id: play.game_id, game_name: play.game_name,
-          score: myScore, solo: isSolo,
+        monthOnlyEvents.push({
+          kind: "best", date: play.played_at,
+          userId: play.user_id, game_id: play.game_id, game_name: play.game_name, score: myScore,
         });
         magg.bestUpdateCount++;
-      }
-      if (enoughPlays && prog[worstKey] != null && myScore < prog[worstKey]) {
-        items.push({
-          type: "event", kind: "worst", date: play.played_at, seq: play.id + 0.4,
-          userId: play.user_id, author, game_id: play.game_id, game_name: play.game_name,
-          score: myScore, solo: isSolo,
-        });
       }
       if (prog[bestKey] == null || myScore > prog[bestKey]) prog[bestKey] = myScore;
       if (prog[worstKey] == null || myScore < prog[worstKey]) prog[worstKey] = myScore;
     }
 
     progress.set(key, prog);
-  }
-
-  // 월간 결산 카드 - 이미 끝난 달만(진행 중인 이번 달은 아직 결산할 수 없다), 다음 달 1일자로 삽입
-  const curMonth = currentMonthKey();
-  for (const [monthKey, agg] of monthAgg) {
-    if (monthKey >= curMonth) continue;
-    // BGStats 3x3 결산 이미지처럼 최다 플레이 9개까지 보여준다
-    const topGames = [...agg.gameCounts.values()].sort((a, b) => b.count - a.count).slice(0, 9);
-    const [y, m] = monthKey.split("-").map(Number);
-    items.push({
-      type: "month",
-      date: `${nextMonthKey(monthKey)}-01`,
-      seq: -1,
-      month: monthKey,
-      year: y,
-      monthNum: m,
-      totalPlays: agg.totalPlays,
-      newGames: agg.newGames,
-      newGameCount: agg.newGames.length,
-      topGames,
-      bestUpdateCount: agg.bestUpdateCount,
-      totalMinutes: agg.totalMinutes,
-    });
   }
 
   // 도전과제 달성 이벤트 - 진행률이 저장되지 않고 매번 계산되는 값이라 달성 시각을 정확히 알 수 없다.
@@ -1328,6 +1328,58 @@ function buildFeedItems() {
     });
   }
 
+  // 결산 카드에 넣을 그 달의 사건들. 이미 만들어 둔 이벤트 아이템을 사용자·월로 다시 묶는다
+  // (그래서 이 블록이 도전과제 이벤트 생성 뒤에 있어야 한다).
+  // 최저점·에러플은 뺀다 - 결산은 그 달의 성과를 훑어보는 자리라 못한 기록까지 넣을 이유가 없다.
+  const DIGEST_KINDS = new Set(["first", "milestone", "challenge"]);
+  const eventsByUserMonth = new Map();
+  const digestSource = [
+    ...items.filter((it) => it.type === "event" && DIGEST_KINDS.has(it.kind)),
+    ...monthOnlyEvents,
+  ];
+  for (const it of digestSource) {
+    const key = `${it.userId}:${it.date.slice(0, 7)}`;
+    if (!eventsByUserMonth.has(key)) eventsByUserMonth.set(key, []);
+    eventsByUserMonth.get(key).push({
+      kind: it.kind,
+      gameId: it.game_id ?? null,
+      gameName: it.game_name ?? null,
+      score: it.score ?? null,
+      count: it.count ?? null,
+      challengeName: it.challenge_name ?? null,
+    });
+  }
+
+  // 월간 결산 카드 - 이미 끝난 달만(진행 중인 이번 달은 아직 결산할 수 없다), 다음 달 1일자로 삽입
+  const curMonth = currentMonthKey();
+  for (const agg of monthAgg.values()) {
+    const monthKey = agg.monthKey;
+    if (monthKey >= curMonth) continue;
+    // BGStats 3x3 결산 이미지처럼 최다 플레이 9개까지 보여준다
+    const topGames = [...agg.gameCounts.values()].sort((a, b) => b.count - a.count).slice(0, 9);
+    const [y, m] = monthKey.split("-").map(Number);
+    items.push({
+      type: "month",
+      date: `${nextMonthKey(monthKey)}-01`,
+      // 같은 달 카드가 사람 수만큼 생기므로 순서를 갈라 준다
+      seq: -1 - agg.userId * 0.001,
+      userId: agg.userId,
+      author: userName.get(agg.userId) || "?",
+      month: monthKey,
+      year: y,
+      monthNum: m,
+      totalPlays: agg.totalPlays,
+      newGames: agg.newGames,
+      newGameCount: agg.newGames.length,
+      topGames,
+      bestUpdateCount: agg.bestUpdateCount,
+      totalMinutes: agg.totalMinutes,
+      distinctGames: agg.gameCounts.size,
+      playedDays: agg.playedDays.size,
+      events: eventsByUserMonth.get(`${agg.userId}:${monthKey}`) || [],
+    });
+  }
+
   items.sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     return b.seq - a.seq;
@@ -1343,7 +1395,7 @@ function getFeedCache() {
 
 app.get("/api/feed", (req, res) => {
   const requesterId = currentUserId(req);
-  const { author, filter, limit, offset, game_id, category } = req.query;
+  const { author, filter, limit, offset, game_id, category, q } = req.query;
 
   const lim = Math.min(Number(limit) || 20, 100);
   const off = Number(offset) || 0;
@@ -1352,8 +1404,18 @@ app.get("/api/feed", (req, res) => {
   const gameIdFilter = game_id ? Number(game_id) : null;
   let items = getFeedCache().items;
 
+  // 검색어: 게임 이름·코멘트·태그(카테고리)·장소를 훑는다. 월간 결산은 특정 판이 아니라 제외한다.
+  const query = (q || "").trim().toLowerCase();
+
   items = items.filter((it) => {
-    if (authorId && (it.type === "play" || it.type === "event") && it.userId !== authorId) return false;
+    if (authorId && it.userId !== authorId) return false;
+    if (query) {
+      if (it.type === "month") return false;
+      const hay = it.type === "play"
+        ? [it.play.game_name, it.play.comment, it.play.location, ...(it.play.categories || [])]
+        : [it.game_name, it.challenge_name];
+      if (!hay.filter(Boolean).some((v) => String(v).toLowerCase().includes(query))) return false;
+    }
     // 태그(게임/카테고리) 탭 필터 - 월간 결산은 특정 게임에 속하지 않으므로 제외한다.
     if (gameIdFilter) {
       if (it.type === "month") return false;
@@ -1450,19 +1512,33 @@ app.get("/api/insights", (req, res) => {
   }
   const topGames = [...gameCounts.values()].sort((a, b) => b.count - a.count);
 
-  // 플레이어별 승률: 이 사용자가 기록한 판들의 play_player 기준
+  // 상대별 "내" 승률. 예전엔 각 사람의 자기 승률을 보여줬는데, 내 기록을 보는 화면에서
+  // 상대의 승률이 나오면 "저 사람과 붙어서 내가 어땠나"를 알 수 없다.
+  // 그래서 같이 한 판수와 그 중 내가 이긴 판수로 바꾼다.
+  const meName = applyAlias(playerAlias, db.prepare("SELECT name FROM user WHERE id = ?").get(userId)?.name || "");
   const playerStats = new Map();
   if (playIds.length) {
     const placeholders = playIds.map(() => "?").join(",");
     const pps = db.prepare(
       `SELECT play_id, name, win FROM play_player WHERE play_id IN (${placeholders})`
     ).all(...playIds);
+
+    const byPlay = new Map();
     for (const pp of pps) {
-      const name = applyAlias(playerAlias, pp.name);
-      const cur = playerStats.get(name) || { name, plays: 0, wins: 0 };
-      cur.plays++;
-      if (pp.win) cur.wins++;
-      playerStats.set(name, cur);
+      if (!byPlay.has(pp.play_id)) byPlay.set(pp.play_id, []);
+      byPlay.get(pp.play_id).push({ name: applyAlias(playerAlias, pp.name), win: !!pp.win });
+    }
+
+    for (const rows of byPlay.values()) {
+      const me = rows.find((r) => r.name === meName);
+      if (!me) continue; // 내가 안 낀 판(있을 리 없지만)은 셈에서 뺀다
+      for (const other of rows) {
+        if (other.name === meName) continue;
+        const cur = playerStats.get(other.name) || { name: other.name, plays: 0, wins: 0 };
+        cur.plays++;
+        if (me.win) cur.wins++; // 이 판에서 "내가" 이겼는지
+        playerStats.set(other.name, cur);
+      }
     }
   }
   const winRates = [...playerStats.values()]
@@ -1517,10 +1593,10 @@ app.get("/api/insights", (req, res) => {
     }
   }
 
-  // 장소별 분포
+  // 장소별 분포. 장소를 안 적은 판은 "기타"로 묶는다 - 미기록이라고 따로 티 낼 이유가 없다.
   const locationCounts = new Map();
   for (const p of plays) {
-    const loc = p.location ? applyAlias(locationAlias, p.location) : "(미기록)";
+    const loc = p.location ? applyAlias(locationAlias, p.location) : "기타";
     locationCounts.set(loc, (locationCounts.get(loc) || 0) + 1);
   }
   const byLocation = [...locationCounts.entries()].sort(([, a], [, b]) => b - a)
@@ -1595,13 +1671,13 @@ app.get("/api/insights", (req, res) => {
   `).all(userId);
 
   // 판당 비용: collection.price_paid를 이 사용자의 해당 게임 플레이 수로 나눈다.
-  // 단, BGA/TTS/App에서 한 판은 내 실물 제품으로 플레이한 게 아니므로 여기서는 제외한다
-  // (name_alias 병합까지 적용한 뒤 최종 이름 기준으로 걸러낸다).
-  const ONLINE_LOCATIONS = new Set(["BGA", "BoardGameArena", "TTS", "App"]);
+  // 단, 온라인으로 표시한 장소(기본값 BGA/TTS/App, 설정 → 장소에서 변경 가능)의 판은
+  // 내 실물 제품으로 논 게 아니므로 제외한다(name_alias 병합 후 최종 이름 기준).
+  const isOnlineLocation = onlineLocationChecker(userId);
   const offlineGameCounts = new Map();
   for (const p of plays) {
     const canonicalLoc = applyAlias(locationAlias, p.location || "");
-    if (ONLINE_LOCATIONS.has(canonicalLoc)) continue;
+    if (isOnlineLocation(canonicalLoc)) continue;
     const cur = offlineGameCounts.get(p.game_id) || { game_id: p.game_id, game_name: p.game_name, count: 0 };
     cur.count++;
     offlineGameCounts.set(p.game_id, cur);
@@ -1787,30 +1863,6 @@ app.post("/api/challenges", (req, res) => {
   res.status(201).json(serializeChallenge(row, userId));
 });
 
-app.patch("/api/challenges/:id", (req, res) => {
-  const userId = requireUser(req, res);
-  if (!userId) return;
-  const id = Number(req.params.id);
-
-  const existing = db.prepare("SELECT * FROM challenge WHERE id = ?").get(id);
-  if (!existing) return res.status(404).json({ error: "찾을 수 없습니다" });
-  if (existing.user_id !== userId) return res.status(403).json({ error: "본인 도전 과제만 수정할 수 있습니다" });
-
-  const updates = [];
-  const params = [];
-  const body = req.body || {};
-  if ("name" in body) { updates.push("name = ?"); params.push(String(body.name || "").trim()); }
-  if ("description" in body) { updates.push("description = ?"); params.push(body.description ?? null); }
-  if ("target" in body) { updates.push("target_json = ?"); params.push(JSON.stringify(body.target)); }
-  if (updates.length) {
-    params.push(id);
-    db.prepare(`UPDATE challenge SET ${updates.join(", ")} WHERE id = ?`).run(...params);
-  }
-
-  const row = db.prepare("SELECT * FROM challenge WHERE id = ?").get(id);
-  res.json(serializeChallenge(row, userId));
-});
-
 app.delete("/api/challenges/:id", (req, res) => {
   const userId = requireUser(req, res);
   if (!userId) return;
@@ -1824,58 +1876,9 @@ app.delete("/api/challenges/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------- 이름 정리 (플레이어/장소 별칭) ----------
-
-// 설정 화면에서 "현재 이렇게 기록되고 있다"를 보여주기 위한 원본 이름 + 판수 목록.
-// 원본 데이터는 건드리지 않으므로 여기 나오는 값은 항상 실제 저장된 값 그대로다.
-app.get("/api/names", (req, res) => {
-  const kind = req.query.kind;
-  if (kind !== "player" && kind !== "location") {
-    return res.status(400).json({ error: "kind는 player 또는 location이어야 합니다" });
-  }
-  const rows = kind === "player"
-    ? db.prepare("SELECT name, COUNT(*) AS count FROM play_player GROUP BY name ORDER BY count DESC").all()
-    : db.prepare(
-        "SELECT location AS name, COUNT(*) AS count FROM play WHERE location IS NOT NULL GROUP BY location ORDER BY count DESC"
-      ).all();
-
-  const aliasRows = db.prepare("SELECT alias, canonical FROM name_alias WHERE kind = ?").all(kind);
-  const aliasMap = new Map(aliasRows.map((r) => [r.alias, r.canonical]));
-
-  res.json(rows.map((r) => ({ ...r, canonical: aliasMap.get(r.name) || null })));
-});
-
-app.get("/api/aliases", (req, res) => {
-  const { kind } = req.query;
-  const rows = kind
-    ? db.prepare("SELECT * FROM name_alias WHERE kind = ? ORDER BY canonical, alias").all(kind)
-    : db.prepare("SELECT * FROM name_alias ORDER BY kind, canonical, alias").all();
-  res.json(rows);
-});
-
-app.post("/api/aliases", (req, res) => {
-  const { kind, alias, canonical } = req.body || {};
-  if (kind !== "player" && kind !== "location") {
-    return res.status(400).json({ error: "kind는 player 또는 location이어야 합니다" });
-  }
-  if (!alias || !canonical) return res.status(400).json({ error: "alias, canonical이 필요합니다" });
-  if (alias === canonical) return res.status(400).json({ error: "alias와 canonical이 같을 수 없습니다" });
-
-  db.prepare(`
-    INSERT INTO name_alias (kind, alias, canonical) VALUES (?, ?, ?)
-    ON CONFLICT(kind, alias) DO UPDATE SET canonical = excluded.canonical
-  `).run(kind, alias, canonical);
-
-  const row = db.prepare("SELECT * FROM name_alias WHERE kind = ? AND alias = ?").get(kind, alias);
-  res.status(201).json(row);
-});
-
-app.delete("/api/aliases/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const result = db.prepare("DELETE FROM name_alias WHERE id = ?").run(id);
-  if (result.changes === 0) return res.status(404).json({ error: "찾을 수 없습니다" });
-  res.json({ ok: true });
-});
+// name_alias(플레이어/장소 별칭)는 통계 병합용으로 서버 내부(applyAlias)에서만 쓴다.
+// 이걸 편집하는 HTTP API와 설정 UI를 만들었다가 뺐다 - 표기가 갈린 이름은 별칭으로
+// 겹쳐 보이게 하는 것보다 원본을 한 번 고치는 쪽(2026-08-07 ㅇ.→ㅇ 525건)이 깔끔했다.
 
 // ---------- 슬리브 재고 ----------
 // 공유 값(user_id 없음) - 둘이 같이 관리하는 실물 재고라 컬렉션과 같은 성격.
@@ -2092,75 +2095,279 @@ app.get("/api/search", async (req, res) => {
   }
 });
 
-// ---------- BGG 동기화 ----------
+// ---------- BGA 임포트 ----------
+// BGA는 공식 API가 없지만 Cloudflare 차단도 로그인 CAPTCHA도 없어서 서버에서 직접 된다.
+// 세션은 메모리에만 둔다(비밀번호는 저장하지 않는다). 서버를 껐다 켜면 다시 로그인해야 한다.
+//
+// 매칭을 고정하지 않는 이유: 두 사람이 아레나 계정을 바꿔 쓴다. 그래서 "brrbrrrr = 항상 ㅇ"이
+// 성립하지 않는다. 지난 선택은 "제안"으로만 쓰고 가져올 때마다 다시 고르게 한다.
+const bgaSessions = new Map(); // app user_id -> { session, at }
+let bgaGameMapCache = null;    // BGA game id -> { bggId, name }. 공개 목록이라 한 번만 받으면 된다.
 
-// 동시 실행 방지용 상태. running 중엔 /api/sync가 409를 반환한다.
-// lastSuccessAt: 마지막 "성공" 동기화 시각만 따로 둔다 - 하루 1회 제한은 성공 기준이어야
-// 실패가 반복돼도 계속 재시도할 수 있다(BGG는 "하루 1회"를 요청했지 "하루 1회 시도"가 아니다).
-const syncState = { running: false, lastRunAt: null, lastSuccessAt: null, lastResult: null, lastError: null };
-
-async function runSyncSafe() {
-  syncState.running = true;
-  try {
-    const result = await runSync(db, BGG_API_KEY);
-    syncState.lastRunAt = new Date().toISOString();
-    syncState.lastSuccessAt = syncState.lastRunAt;
-    syncState.lastResult = result;
-    syncState.lastError = null;
-    return result;
-  } catch (err) {
-    syncState.lastRunAt = new Date().toISOString();
-    syncState.lastError = String(err.message || err);
-    throw err;
-  } finally {
-    syncState.running = false;
-  }
+async function getBgaGameMap() {
+  if (!bgaGameMapCache) bgaGameMapCache = await bgaFetchGameMap();
+  return bgaGameMapCache;
 }
 
-// BGG 신고 조건이 "하루 1회"라 서버가 스스로 지킨다. force=1은 설정 화면 "지금 동기화"
-// 버튼에서 사용자가 확인 다이얼로그를 거친 뒤에만 붙는다.
-app.post("/api/sync", async (req, res) => {
-  if (syncState.running) {
-    return res.status(409).json({ error: "이미 동기화가 진행 중입니다" });
-  }
-  const force = req.query.force === "1";
-  if (!force && syncState.lastSuccessAt) {
-    const elapsedMs = Date.now() - new Date(syncState.lastSuccessAt).getTime();
-    const remainingMs = SYNC_INTERVAL_MS - elapsedMs;
-    if (remainingMs > 0) {
-      return res.status(429).json({
-        error: "오늘 이미 동기화했습니다",
-        remainingMs,
-        lastSuccessAt: syncState.lastSuccessAt,
-      });
-    }
+// 중복 방지 키에 앱 계정을 넣는다. 같은 아레나 판을 ㅇ·ㅃ가 각자 자기 계정에 넣을 수 있어야 한다
+// (플레이 기록은 계정별로 따로 쌓는다는 원칙).
+function bgaImportKey(appUserId, tableId) {
+  return `${appUserId}:${tableId}`;
+}
+
+app.post("/api/bga/login", async (req, res) => {
+  const userId = Number(req.body?.user_id);
+  const { username, password } = req.body || {};
+  if (!userId || !username || !password) {
+    return res.status(400).json({ error: "user_id, username, password가 필요합니다" });
   }
   try {
-    const result = await runSyncSafe();
-    res.json({ ok: true, result });
+    const session = await bgaLogin(username, password);
+    bgaSessions.set(userId, { session, at: new Date().toISOString() });
+    // 다음에 다시 입력하지 않게 아이디만 저장한다(비밀번호는 저장하지 않는다).
+    db.prepare("UPDATE user SET bga_username = ? WHERE id = ?").run(username, userId);
+    res.json({ ok: true, playerId: session.playerId, playerName: session.playerName });
+  } catch (err) {
+    res.status(401).json({ error: String(err.message || err) });
+  }
+});
+
+app.get("/api/bga/session", (req, res) => {
+  const rows = db.prepare("SELECT id, name, bga_username FROM user").all();
+  res.json(rows.map((u) => {
+    const s = bgaSessions.get(u.id);
+    return {
+      user_id: u.id, name: u.name, bga_username: u.bga_username,
+      loggedIn: !!s, playerId: s?.session?.playerId ?? null, at: s?.at ?? null,
+    };
+  }));
+});
+
+// 가져올 수 있는 판 목록. 실제로 넣지 않고 "무엇이 들어갈지"만 보여준다.
+// player 파라미터로 다른 아레나 계정의 판도 볼 수 있다(계정을 바꿔 쓰는 경우).
+app.get("/api/bga/plays", async (req, res) => {
+  const userId = Number(req.query.user_id);
+  const entry = bgaSessions.get(userId);
+  if (!entry) return res.status(401).json({ error: "먼저 BGA에 로그인하세요" });
+
+  const maxPages = Math.min(Number(req.query.pages) || 5, 30);
+  const playerId = Number(req.query.player) || null;
+
+  try {
+    const [tables, gameMap] = await Promise.all([
+      bgaFetchAllPlays(entry.session, { playerId, maxPages }),
+      getBgaGameMap(),
+    ]);
+    // 방금 받은 목록을 세션에 들고 있는다. 가져오기에서 다시 받으면 그만큼 느려진다.
+    entry.tables = tables;
+
+    // 이 앱 계정으로 이미 가져온 판. 한 번 가져오면 다시 안 뜬다.
+    const importedKeys = new Set(
+      db.prepare("SELECT source_key FROM sync_match WHERE source = 'bga'").all().map((r) => r.source_key)
+    );
+    // 지난번에 고른 이름 매칭. 고정이 아니라 "제안"으로만 쓴다.
+    const suggest = new Map(
+      db.prepare("SELECT source_key, mapped_user_id FROM sync_match WHERE source = 'bga_player'").all()
+        .map((r) => [r.source_key, r.mapped_user_id])
+    );
+
+    const items = tables.map((t) => {
+      const mapped = gameMap.get(t.bgaGameId);
+      const game = mapped
+        ? db.prepare("SELECT id, COALESCE(custom_name, name) AS name FROM game WHERE id = ?").get(mapped.bggId)
+        : null;
+
+      // 같은 게임·같은 날짜 기록이 이미 있으면 중복일 수 있다고 표시한다.
+      // 예전 BGStats -> BGG 경로로 들어온 판들은 테이블 id가 없어서 이 방법으로만 걸러진다.
+      const dupe = game
+        ? db.prepare("SELECT id FROM play WHERE user_id = ? AND game_id = ? AND played_at = ?")
+            .get(userId, game.id, t.playedAt)
+        : null;
+
+      return {
+        tableId: t.tableId,
+        playedAt: t.playedAt,
+        durationMin: t.durationMin,
+        bgaGameId: t.bgaGameId,
+        bgaGameName: t.bgaGameName,
+        bggId: mapped?.bggId ?? null,
+        gameName: game?.name ?? mapped?.name ?? t.bgaGameName,
+        // 앱 DB에 게임이 없어도 BGG id만 알면 가져올 때 자동으로 받아온다.
+        // 소유하지 않은 게임도 플레이 기록은 남을 수 있어야 한다.
+        inCollection: !!game,
+        needsFetch: !game && !!mapped,
+        canImport: !!mapped,
+        alreadyImported: importedKeys.has(bgaImportKey(userId, t.tableId)),
+        maybeDuplicate: !!dupe,
+        players: t.players.map((p) => ({ ...p, suggestUserId: suggest.get(p.name) ?? null })),
+      };
+    });
+
+    res.json({ total: items.length, items });
   } catch (err) {
     res.status(500).json({ error: String(err.message || err) });
   }
 });
 
-app.get("/api/sync/status", (req, res) => {
-  res.json(syncState);
+// 고른 판을 넣는다.
+//   user_id  : 이 기록이 들어갈 앱 계정 (이번에 그 판을 한 사람)
+//   mapping  : { "BGA이름": 앱계정id | null }  - 이번 가져오기에만 적용된다
+//   remember : true면 다음 가져오기의 "제안"으로 저장한다(고정은 아니다)
+app.post("/api/bga/import", async (req, res) => {
+  const userId = Number(req.body?.user_id);
+  const tableIds = (req.body?.table_ids || []).map(Number).filter(Boolean);
+  const mapping = req.body?.mapping || {};
+  const remember = !!req.body?.remember;
+
+  const entry = bgaSessions.get(userId);
+  if (!entry) return res.status(401).json({ error: "먼저 BGA에 로그인하세요" });
+  if (tableIds.length === 0) return res.json({ ok: true, added: 0, results: [] });
+
+  try {
+    // 목록 조회 때 받아둔 것을 그대로 쓴다. 없을 때만 다시 받는다.
+    const tables = entry.tables?.length
+      ? entry.tables
+      : await bgaFetchAllPlays(entry.session, { playerId: Number(req.body?.player) || null, maxPages: 30 });
+    const gameMap = await getBgaGameMap();
+    const wanted = new Map(tables.map((t) => [t.tableId, t]));
+    const userById = new Map(db.prepare("SELECT id, name FROM user").all().map((u) => [u.id, u.name]));
+
+    const insertPlay = db.prepare(`
+      INSERT INTO play (user_id, game_id, played_at, duration_min, location, source)
+      VALUES (?, ?, ?, ?, 'BGA', 'bga')
+    `);
+    const insertPlayer = db.prepare(`
+      INSERT INTO play_player (play_id, name, score, win, is_automa) VALUES (?, ?, ?, ?, 0)
+    `);
+    const markDone = db.prepare(`
+      INSERT INTO sync_match (source, source_key, game_id) VALUES ('bga', ?, ?)
+      ON CONFLICT(source, source_key) DO UPDATE SET game_id = excluded.game_id
+    `);
+    const rememberName = db.prepare(`
+      INSERT INTO sync_match (source, source_key, mapped_user_id) VALUES ('bga_player', ?, ?)
+      ON CONFLICT(source, source_key) DO UPDATE SET mapped_user_id = excluded.mapped_user_id
+    `);
+
+    if (remember) {
+      for (const [bgaName, appId] of Object.entries(mapping)) {
+        if (appId) rememberName.run(bgaName, Number(appId));
+      }
+    }
+
+    const results = [];
+    const fetched = []; // 이번에 BGG에서 새로 받아온 게임 이름
+    for (const id of tableIds) {
+      const t = wanted.get(id);
+      if (!t) { results.push({ tableId: id, ok: false, error: "목록에 없는 판" }); continue; }
+      const mapped = gameMap.get(t.bgaGameId);
+      if (!mapped) { results.push({ tableId: id, ok: false, error: "BGG id를 모르는 게임" }); continue; }
+      // 앱에 없는 게임이면 BGG에서 받아 넣는다. 컬렉션에 추가하지는 않는다 -
+      // 소유하지 않은 게임도 아레나에서 할 수 있고, 그 기록은 남아야 한다.
+      let game = db.prepare("SELECT id FROM game WHERE id = ?").get(mapped.bggId);
+      if (!game) {
+        if (!BGG_API_KEY) { results.push({ tableId: id, ok: false, error: "BGG API 키가 없어 게임을 받아올 수 없음" }); continue; }
+        try {
+          const details = await fetchThings([mapped.bggId], BGG_API_KEY);
+          const d = details.get(mapped.bggId);
+          if (!d) throw new Error("BGG에 없는 게임");
+          upsertGames(db, [{ id: mapped.bggId, ...d }]);
+          game = db.prepare("SELECT id FROM game WHERE id = ?").get(mapped.bggId);
+          fetched.push(mapped.name);
+        } catch (e) {
+          results.push({ tableId: id, ok: false, error: `게임 받아오기 실패 (BGG ${mapped.bggId}): ${e.message}` });
+          continue;
+        }
+      }
+
+      const info = insertPlay.run(userId, game.id, t.playedAt, t.durationMin);
+      const playId = Number(info.lastInsertRowid);
+      for (const p of t.players) {
+        // 이번에 고른 매칭대로 이름을 바꿔 넣는다. 안 고른 이름은 아레나 이름 그대로.
+        const appId = mapping[p.name];
+        const name = appId ? (userById.get(Number(appId)) ?? p.name) : p.name;
+        insertPlayer.run(playId, name, p.score, p.win ? 1 : 0);
+      }
+      markDone.run(bgaImportKey(userId, t.tableId), game.id);
+      results.push({ tableId: id, ok: true, playId, game: mapped.name, date: t.playedAt });
+    }
+
+    res.json({ ok: true, added: results.filter((r) => r.ok).length, fetchedGames: fetched, results });
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
 });
+
+// ---------- 청소 ----------
+
+const CLEANUP_PATHS = {
+  imageCacheDir: IMAGE_CACHE_DIR,
+  photoDir: PHOTO_ORIGINAL_DIR,
+  avatarDir: AVATAR_DIR,
+};
+
+// 상태만 본다(dry run). 설정 화면에서 "얼마나 지울 수 있나"를 먼저 보여주기 위한 것.
+app.get("/api/cleanup", (req, res) => {
+  try {
+    res.json(runCleanup(db, CLEANUP_PATHS, { dryRun: true }));
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+app.post("/api/cleanup", (req, res) => {
+  try {
+    const result = runCleanup(db, CLEANUP_PATHS);
+    console.log(`청소 완료: ${(result.freedBytes / 1048576).toFixed(1)}MB 회수`);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+// ---------- 웹앱 정적 서빙 ----------
+//
+// 개발할 때는 Vite 개발서버가 5199에서 앱을 띄우고 /api만 여기로 프록시한다.
+// 도커에 올릴 때는 그럴 게 없으므로 서버가 빌드 결과(web/dist)까지 직접 내보낸다.
+// WEB_DIST가 없으면(개발 중) 이 블록 전체를 건너뛴다.
+const WEB_DIST = process.env.WEB_DIST || "";
+if (WEB_DIST && existsSync(WEB_DIST)) {
+  // 해시가 박힌 에셋은 내용이 바뀌면 파일명이 바뀌므로 오래 캐시해도 안전하다.
+  app.use("/assets", express.static(join(WEB_DIST, "assets"), { maxAge: "1y", immutable: true }));
+  // index.html은 여기서 내보내지 않는다(index: false) - 아래에서 캐시를 끄고 직접 보낸다.
+  app.use(express.static(WEB_DIST, { maxAge: "1h", index: false }));
+
+  // 해시 라우터를 쓰지만, 새로고침이나 직접 진입에 대비해 나머지는 index.html로 보낸다.
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/")) return next();
+    // 확장자가 붙은 요청이 여기까지 왔다면 없는 파일이다. 이때 index.html을 돌려주면
+    // 브라우저가 JS 자리에서 HTML을 받아 MIME 오류로 앱 전체가 죽는다(빈 화면).
+    // 404를 주면 최소한 그 파일만 실패하고 원인도 바로 보인다.
+    if (extname(req.path)) return next();
+    // 패치로 청크 파일명이 바뀌므로 index.html은 매번 확인해야 한다.
+    // 캐시된 옛 index.html이 사라진 청크를 가리키면 앱이 안 뜬다.
+    res.set("Cache-Control", "no-cache");
+    res.sendFile(resolve(join(WEB_DIST, "index.html")));
+  });
+  console.log(`웹앱 서빙: ${WEB_DIST}`);
+}
 
 app.listen(PORT, () => {
   console.log(`서버 실행 중: http://localhost:${PORT}`);
 });
 
-// 하루 한 번 자동 동기화. NAS에 파이썬을 두지 않기 위해 서버가 직접 스케줄을 갖는다.
-if (BGG_API_KEY) {
-  setInterval(() => {
-    if (syncState.running) return;
-    runSyncSafe().catch((err) => console.error("자동 동기화 실패:", err));
-  }, SYNC_INTERVAL_MS);
-
-  if (process.env.SYNC_ON_START === "1") {
-    runSyncSafe().catch((err) => console.error("시작 시 동기화 실패:", err));
+// NAS 도커에 올려두고 몇 달씩 안 들여다볼 걸 전제로, 청소는 자동으로 돈다.
+// 지우는 건 캐시와 고아 파일뿐이라(기록·컬렉션은 손대지 않는다) 실패해도 잃을 게 없다.
+// 시작 직후 한 번 도는 건 재시작이 잦은 개발 중엔 성가시므로 1분 늦춘다.
+const CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+function scheduledCleanup() {
+  try {
+    const r = runCleanup(db, CLEANUP_PATHS);
+    console.log(`자동 청소: 이미지 ${r.images.removed}개 · ${(r.freedBytes / 1048576).toFixed(1)}MB 회수`);
+  } catch (err) {
+    console.error("자동 청소 실패:", err);
   }
-} else {
-  console.log("BGG_API_KEY가 없어 자동 동기화 스케줄을 등록하지 않습니다.");
+}
+if (process.env.AUTO_CLEANUP !== "0") {
+  setTimeout(scheduledCleanup, 60 * 1000);
+  setInterval(scheduledCleanup, CLEANUP_INTERVAL_MS);
 }

@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { Game, Play, User } from "../api/types";
+import { getCached, setCached } from "../utils/listCache";
+import type { Game, Play, PlayPlayer, User } from "../api/types";
 import { useUser } from "../context/UserContext";
+import { TAB_RESET_EVENT } from "../components/BottomNav";
 import "../styles/Plays.css";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const PAGE_SIZE = 40;
 
 // 사용자별 이니셜 원 색 고정 - 아바타가 없을 때도 항상 같은 색으로 보이게 이름 해시로 고른다.
+
+// 무한 스크롤은 이제 창이 아니라 이 화면이 들어 있는 스크롤 상자를 봐야 한다.
+// 탭을 살려두려고 화면마다 자기 상자를 갖게 했기 때문이다(App.tsx 참고).
+function paneOf(el: Element | null): HTMLElement | null {
+  return (el?.closest(".app-pane") as HTMLElement) ?? null;
+}
+
 const INITIAL_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)", "var(--c7)", "var(--c8)", "var(--c9)", "var(--c10)"];
 function colorForName(name: string) {
   let hash = 0;
@@ -25,9 +34,7 @@ function fmtDateHeader(dateStr: string) {
 
 export default function PlaysPage() {
   const { currentUser } = useUser();
-  const [plays, setPlays] = useState<Play[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +44,13 @@ export default function PlaysPage() {
   // URL의 game_id는 플레이 상세의 "N회 플레이 >" 링크로 들어올 때나, 아래 필터 드롭다운으로 고를 때 쓰인다.
   const gameId = searchParams.get("game_id");
   const gameNameParam = searchParams.get("game_name");
+
+  // 뒤로 왔을 때 목록이 비었다가 채워지면 그 사이 스크롤 위치가 날아간다.
+  // 받아둔 게 있으면 첫 그림부터 목록이 완성돼 있게 해서 보던 자리에 그대로 있게 한다.
+  // (useEffect로 채우면 빈 화면이 한 프레임 지나가므로 상태 초기값으로 넣는다)
+  const warmPlays = getCached<Play[]>(`plays:${gameId ?? ""}`);
+  const [plays, setPlays] = useState<Play[]>(warmPlays ?? []);
+  const [loading, setLoading] = useState(!warmPlays);
 
   // 필터(깔때기) 드롭다운: 게임 이름 검색 후 선택
   const [filterOpen, setFilterOpen] = useState(false);
@@ -55,8 +69,9 @@ export default function PlaysPage() {
   const loadPage = useCallback(async (reset: boolean) => {
     if (loadingRef.current) return;
     loadingRef.current = true;
-    if (reset) setLoading(true);
-    else setLoadingMore(true);
+    const warm = reset && getCached<Play[]>(`plays:${gameId ?? ""}`);
+    if (reset && !warm) setLoading(true);
+    else if (!reset) setLoadingMore(true);
     setError(null);
     try {
       const off = reset ? 0 : offsetRef.current;
@@ -65,7 +80,11 @@ export default function PlaysPage() {
         offset: off,
         game_id: gameId ? Number(gameId) : undefined,
       });
-      setPlays((prev) => (reset ? page : [...prev, ...page]));
+      setPlays((prev) => {
+        const next = reset ? page : [...prev, ...page];
+        setCached(`plays:${gameId ?? ""}`, next);
+        return next;
+      });
       offsetRef.current = off + page.length;
       setHasMore(page.length === PAGE_SIZE);
     } catch (err) {
@@ -78,12 +97,33 @@ export default function PlaysPage() {
   }, [gameId]);
 
   // 필터(game_id)가 바뀌면 처음부터 다시 불러온다
+  // 캐시로 시작한 첫 순간에는 다시 받지 않는다. 서버는 한 번에 40개씩 주므로
+  // 깊이 내려가 봤다면 다시 받는 순간 목록이 짧아지면서 보던 자리가 날아간다.
+  const warmStart = useRef(!!warmPlays);
   useEffect(() => {
+    if (warmStart.current) {
+      warmStart.current = false;
+      offsetRef.current = warmPlays!.length;
+      return;
+    }
     offsetRef.current = 0;
     setHasMore(true);
     loadPage(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
+
+  // 아래 탭에서 "기록"을 누르면 목록을 첫 페이지로 되돌린다(피드와 같은 이유).
+  useEffect(() => {
+    function onReset(e: Event) {
+      if ((e as CustomEvent).detail !== "/plays") return;
+      warmStart.current = false;
+      offsetRef.current = 0;
+      setHasMore(true);
+      loadPage(true);
+    }
+    window.addEventListener(TAB_RESET_EVENT, onReset);
+    return () => window.removeEventListener(TAB_RESET_EVENT, onReset);
+  }, [loadPage]);
 
   // 하단 근처에 오면 다음 페이지를 불러온다 (무한 스크롤).
   // IntersectionObserver만 쓰면 일부 환경(임베디드 웹뷰 등)에서 콜백이 아예 안 불려
@@ -91,9 +131,10 @@ export default function PlaysPage() {
   useEffect(() => {
     if (!hasMore) return;
 
+    const pane = paneOf(sentinelRef.current);
     function maybeLoad() {
-      if (!hasMore || loadingRef.current) return;
-      const remaining = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+      if (!hasMore || loadingRef.current || !pane) return;
+      const remaining = pane.scrollHeight - pane.scrollTop - pane.clientHeight;
       if (remaining < 400) loadPage(false);
     }
 
@@ -101,18 +142,18 @@ export default function PlaysPage() {
     const observer = el
       ? new IntersectionObserver((entries) => {
           if (entries[0].isIntersecting) maybeLoad();
-        }, { rootMargin: "300px" })
+        }, { root: pane, rootMargin: "300px" })
       : null;
     observer?.observe(el!);
 
-    window.addEventListener("scroll", maybeLoad, { passive: true });
+    pane?.addEventListener("scroll", maybeLoad, { passive: true });
     window.addEventListener("resize", maybeLoad);
     // 첫 페이지가 화면을 다 못 채우면 스크롤이 생기지 않아 영영 안 불러온다.
     maybeLoad();
 
     return () => {
       observer?.disconnect();
-      window.removeEventListener("scroll", maybeLoad);
+      pane?.removeEventListener("scroll", maybeLoad);
       window.removeEventListener("resize", maybeLoad);
     };
   }, [hasMore, loadPage]);
@@ -203,10 +244,10 @@ export default function PlaysPage() {
         </div>
       )}
 
-      {loading && <p className="muted center-pad">불러오는 중...</p>}
-      {error && <p className="error-text center-pad">{error}</p>}
+      {loading && <p className="muted empty-hint">불러오는 중...</p>}
+      {error && <p className="error-text empty-hint">{error}</p>}
       {!loading && !error && plays.length === 0 && (
-        <p className="muted center-pad">플레이 기록이 없습니다.</p>
+        <p className="muted empty-hint">플레이 기록이 없습니다.</p>
       )}
 
       {groups.map(([date, list]) => {
@@ -239,7 +280,16 @@ export default function PlaysPage() {
                   <div className="play-item-text">
                     <div className="play-item-game">{p.game_name}</div>
                     <div className="play-item-loc muted">
-                      {p.location || "장소 미기록"} · {orderedPlayers.map((pl) => pl.name).join(", ") || "플레이어 없음"}
+                      {/* 장소를 안 적은 판은 "미기록"이라고 티 내지 않고 그냥 비운다 */}
+                      {p.location && <>{p.location}{orderedPlayers.length > 0 && " · "}</>}
+                      {/* 금색은 "내가 이겼을 때"만. 남이 이긴 건 표시하지 않는다(트로피 규칙과 동일) */}
+                      {orderedPlayers.map((pl, i) => (
+                        <span key={pl.id ?? i}>
+                          {i > 0 && ", "}
+                          <span className={pl === myPlayer && (pl.win === true || pl.win === 1) ? "winner-name" : undefined}>{pl.name}</span>
+                        </span>
+                      ))}
+                      {orderedPlayers.length === 0 && "플레이어 없음"}
                       {humanCount <= 1 ? " · 솔로" : ""}
                       {p.is_coop ? " · 협력" : ""}
                     </div>
@@ -253,10 +303,16 @@ export default function PlaysPage() {
                       // 협력/솔로는 성공 여부, 경쟁전은 "로그인 사용자가 이겼을 때만"(기존 규칙 유지).
                       const showTrophy = isSoloOrCoop ? succeeded : !!myPlayer && (myPlayer.win === true || myPlayer.win === 1);
                       const showLoss = isSoloOrCoop && !succeeded;
-                      // 프로필은 항상 전원 표시(BGStats 방식) - 로그인 사용자를 맨 앞(가장 오른쪽/최상단)에 둔다.
-                      const displayPlayers = myPlayer
-                        ? [myPlayer, ...p.players.filter((pl) => pl !== myPlayer)]
-                        : p.players;
+                      // 프로필은 항상 전원 표시(BGStats 방식). 겹쳐 그리므로 앞에 온 사람이 제일 위에 보인다.
+                      // 그 자리를 이긴 사람에게 준다 - 한 판을 훑을 때 누가 이겼는지가 먼저 읽힌다.
+                      // 승패가 같으면(협력·솔로 등) 로그인 사용자를 앞에 둔다.
+                      const rank = (pl: PlayPlayer) => (pl.win === true || pl.win === 1 ? 0 : 1);
+                      const displayPlayers = [...p.players].sort((a, b) => {
+                        if (rank(a) !== rank(b)) return rank(a) - rank(b);
+                        if (a === myPlayer) return -1;
+                        if (b === myPlayer) return 1;
+                        return 0;
+                      });
                       const MAX_VISIBLE = 4;
                       const visiblePlayers = displayPlayers.slice(0, MAX_VISIBLE);
                       const overflowCount = displayPlayers.length - visiblePlayers.length;
@@ -271,7 +327,7 @@ export default function PlaysPage() {
                               return (
                                 <span key={pl.id ?? i} className="avatar-slot" style={{ zIndex: visiblePlayers.length - i }} title={label}>
                                   {avatar ? (
-                                    <img className="winner-avatar" src={api.avatarUrl(avatar)} alt={label} />
+                                    <img decoding="async" className="winner-avatar" src={api.avatarUrl(avatar)} alt={label} />
                                   ) : (
                                     <div className="winner-initial" style={{ background: colorForName(pl.name) }}>
                                       {label.slice(0, 1)}

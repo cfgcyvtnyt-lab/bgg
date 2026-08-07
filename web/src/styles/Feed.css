@@ -1,6 +1,4 @@
-.feed-page {
-  padding-bottom: 24px;
-}
+/* 아래 여백은 .page가 이미 준다. 여기서 더하면 바닥에 빈 칸만 커진다. */
 
 .feed-tag-filter {
   display: flex;
@@ -67,10 +65,6 @@
   font-size: 12px;
 }
 
-.feed-publish-toggle {
-  flex: none;
-}
-
 /* 에러플 뱃지 - 사진/코멘트 카드 안에서 눈에 띄되 태그 줄과는 별도로 한 줄 차지 */
 .feed-error-badge {
   display: inline-block;
@@ -134,10 +128,6 @@
   font-size: 12px;
 }
 
-.month-card {
-  cursor: pointer;
-}
-
 .month-card-summary {
   display: flex;
   align-items: center;
@@ -147,17 +137,11 @@
   font-weight: 600;
 }
 
-.month-card-caret {
-  flex: none;
-  font-size: 11px;
-}
-
 .month-card-detail {
   margin-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  cursor: default;
 }
 
 .month-card-detail .info-row {
@@ -172,11 +156,100 @@
   text-align: right;
 }
 
+/* 결산 카드 좌우 배치: 3x3은 왼쪽에 작게, 그 달의 사건은 오른쪽에.
+   예전엔 3x3이 카드 폭을 다 먹어 한 칸이 100px을 넘었는데 썸네일 원본이 200x150이라
+   확대돼서 흐렸다. 절반으로 줄이니 화질 문제도 같이 풀렸다. */
+.month-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.month-card-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.month-card-counts {
+  font-size: 12px;
+}
+
+.month-card-body {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
 .month-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
-  margin-bottom: 4px;
+  gap: 0;
+  /* 좁은 화면 상한. 오른쪽에 남겨야 하는 건 제목 한 줄(가장 긴 게 "최고점 갱신 4번" 약 80px)
+     + 아이콘 칸이라 115px쯤이면 된다. 이름 줄은 두 줄로 넘어가도 되는데,
+     사건이 서너 종류뿐이라 세로로는 격자 높이가 늘 남기 때문이다. */
+  width: min(320px, 60%);
+  flex: none;
+  /* 칸 사이 틈과 모서리를 없애 3x3이 한 장의 판처럼 붙어 보이게 한다 */
+  overflow: hidden;
+}
+
+/* 앱이 최대 폭(620px)까지 펴지는 화면에선 글에 190px쯤 남기고 사진을 키운다.
+   한 칸 127px이라 썸네일 원본(200x150)이 조금 늘어나지만 이 크기까지는 티가 안 난다. */
+@media (min-width: 620px) {
+  .month-grid {
+    width: 380px;
+  }
+}
+
+/* ---------- 그 달의 사건 ---------- */
+
+.month-digest {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.month-digest-row {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+}
+
+.month-digest-icon {
+  flex: none;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.month-digest-text {
+  min-width: 0;
+}
+
+.month-digest-title {
+  font-size: 12.5px;
+  line-height: 1.4;
+  /* "최고점 갱신 4 / 번"처럼 개수와 단위가 갈라지는 걸 막는다 */
+  white-space: nowrap;
+}
+
+.month-digest-names {
+  font-size: 11.5px;
+  line-height: 1.5;
+  /* 한국어는 기본값(break-all에 가까운 동작)이면 "내셔널 이 / 코노미"처럼 낱말 안에서 끊긴다.
+     keep-all로 띄어쓰기 기준으로만 넘기고, 한 낱말이 줄보다 길 때만 어쩔 수 없이 끊는다. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  /* 좁은 화면에선 오른쪽이 130px도 안 돼서 이름이 서너 줄로 늘어진다.
+     두 줄에서 자르면 줄 높이가 들쭉날쭉하지 않아 카드가 정돈돼 보인다. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 .month-grid-cell {
@@ -184,7 +257,6 @@
   aspect-ratio: 1 / 1;
   background: #000;
   overflow: hidden;
-  border-radius: 4px;
 }
 
 .month-grid-cell img {
@@ -242,3 +314,42 @@
   padding: 1px 7px;
   border-radius: 4px;
 }
+
+/* 결산 카드도 누구 것인지 프로필로 표시한다 - 계정별로 따로 만들어지므로 */
+.month-card-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.month-card-author .feed-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+}
+
+.month-card-author-name {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+/* 결산 카드도 누구 것인지 프로필로 표시한다 - 계정별로 따로 만들어지므로 */
+.month-card-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.month-card-author .feed-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+}
+
+.month-card-author-name {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+

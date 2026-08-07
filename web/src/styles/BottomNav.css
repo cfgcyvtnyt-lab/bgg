@@ -1,15 +1,18 @@
+/* 아이콘이 홈 인디케이터(아래 흰 막대)에 가리지 않도록 그만큼 안쪽으로 올린다.
+   막대가 없는 기기에서는 0이라 그대로다. */
 .bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  /* 아이폰 아래쪽 흰 막대(홈 인디케이터)에 아이콘이 안 겹칠 만큼만 띄운다.
+     env(safe-area-inset-bottom)은 34px이라 검은 띠처럼 두껍게 보였다.
+     막대 자체는 얇아서 이 정도면 충분하고, 막대가 없는 기기에서도 어색하지 않다. */
+  padding-bottom: 18px;
+  flex: none;
   width: 100%;
   max-width: var(--max-width);
+  margin: 0 auto;
   display: flex;
   background: var(--panel);
   border-top: 1px solid var(--border);
-  z-index: 100;
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  z-index: var(--z-nav);
 }
 
 .bottom-nav-item {

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import { getCached, setCached } from "../utils/listCache";
 import type { CollectionListEntry } from "../api/types";
 import GameCard from "../components/GameCard";
 import AlphaIndex from "../components/AlphaIndex";
@@ -26,8 +28,14 @@ function loadSort(): { field: SortField; dir: "asc" | "desc" } {
 }
 
 export default function CollectionPage() {
-  const [entries, setEntries] = useState<CollectionListEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // 뒤로 왔을 때 받아둔 목록이 있으면 그걸로 시작한다. 첫 그림부터 목록이 완성돼 있어야
+  // 스크롤이 보던 자리에 그대로 있다(비었다가 채워지면 그 사이 위치가 날아간다).
+  const cacheKey = `collection:${localStorage.getItem("bgg_include_expansions") === "1"}`;
+  const cached = getCached<CollectionListEntry[]>(cacheKey);
+  const [entries, setEntries] = useState<CollectionListEntry[]>(cached ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterState>({ kind: "view", key: "all" });
@@ -44,13 +52,18 @@ export default function CollectionPage() {
   const listRef = useRef<HTMLDivElement>(null);
 
   async function load(withExpansions: boolean) {
-    setLoading(true);
+    const key = `collection:${withExpansions}`;
+    const hit = getCached<CollectionListEntry[]>(key);
+    // 받아둔 게 있으면 그것부터 보여주고, 뒤에서 조용히 최신으로 바꾼다.
+    if (hit) setEntries(hit);
+    else setLoading(true);
     setError(null);
     try {
       const coll = await api.collection(undefined, undefined, withExpansions);
       setEntries(coll);
+      setCached(key, coll);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "불러오기 실패");
+      if (!hit) setError(err instanceof Error ? err.message : "불러오기 실패");
     } finally {
       setLoading(false);
     }
@@ -68,7 +81,9 @@ export default function CollectionPage() {
   }, [isWide, view]);
   // 표 모드일 때만 620px 폭 제한을 풀어준다. 페이지를 떠나거나 다른 뷰로 바꾸면 원복.
   useEffect(() => {
-    document.body.classList.toggle("wide-mode", view === "table");
+    // 탭이 살아 있는 구조라 unmount 정리에 기대면 안 된다 - 표 모드인 채로 다른 탭에 가면
+    // 정리가 안 돌아서 그 탭까지 1400px로 퍼진다. 컬렉션 탭이 화면에 있을 때만 켠다.
+    document.body.classList.toggle("wide-mode", view === "table" && pathname === "/collection");
     return () => document.body.classList.remove("wide-mode");
   }, [view]);
   useEffect(() => { localStorage.setItem(SORT_KEY, JSON.stringify(sort)); }, [sort]);
@@ -154,6 +169,14 @@ export default function CollectionPage() {
                   />
                   확장 포함
                 </label>
+                {/* 슬리브 재고는 앱 설정이 아니라 소유한 게임에 딸린 정보라 컬렉션 쪽에 둔다 */}
+                <div className="filter-dropdown-section-title">관리</div>
+                <button
+                  className="filter-dropdown-item"
+                  onClick={() => { setShowFilterMenu(false); navigate("/sleeves"); }}
+                >
+                  슬리브 재고
+                </button>
               </div>
             </>
           )}
@@ -225,10 +248,10 @@ export default function CollectionPage() {
         <span className="view-toggle-count muted">{sorted.length} 게임</span>
       </div>
 
-      {loading && <p className="muted center-pad">불러오는 중...</p>}
-      {error && <p className="error-text center-pad">{error}</p>}
+      {loading && <p className="muted empty-hint">불러오는 중...</p>}
+      {error && <p className="error-text empty-hint">{error}</p>}
       {!loading && !error && sorted.length === 0 && (
-        <p className="muted center-pad">표시할 게임이 없습니다.</p>
+        <p className="muted empty-hint">표시할 게임이 없습니다.</p>
       )}
 
       {view === "table" ? (

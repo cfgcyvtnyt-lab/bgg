@@ -1,0 +1,120 @@
+.star-rating-stars {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.star-rating-star {
+  position: relative;
+  display: inline-block;
+  color: var(--border);
+  line-height: 1;
+}
+
+/* 별 띠 전체가 슬라이더라 문지르는 동안 글자가 선택되면 안 된다 */
+.star-rating-stars.pickable {
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.star-rating-star-fill {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: #d9a441;
+  white-space: nowrap;
+}
+
+.star-rating-trigger {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* 표 모드의 평점 칸. 긱 평점 뱃지와 같은 모양이라 한 눈에 같은 종류의 값으로 읽힌다. */
+.rating-badge-btn {
+  min-width: 38px;
+  padding: 2px 6px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 껍데기(오버레이·가운데 정렬·바깥 클릭 닫기)는 공용 Modal이 맡고, 여기는 안쪽 배치만 */
+.rating-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+/* 숫자 자체가 직접 입력 버튼이다 */
+.rating-modal-value {
+  padding: 2px 10px;
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--border);
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: text;
+}
+
+.rating-modal-value-input {
+  width: 110px;
+  padding: 0 6px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* 별 10개가 좁은 화면에서도 한 줄에 들어가야 한다 */
+.rating-modal .star-rating-stars {
+  max-width: 100%;
+}
+
+.rating-modal-label {
+  min-height: 34px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.rating-modal-actions {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.rating-modal-actions button {
+  flex: 1;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.rating-modal-actions button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}

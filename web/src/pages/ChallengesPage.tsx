@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { Challenge, ChallengeTarget, Insights } from "../api/types";
+import type { Challenge, ChallengeTarget, CollectionListEntry, Insights } from "../api/types";
+import DateField from "../components/DateField";
 import "../styles/Challenges.css";
 
 type TemplateId = "NxM" | "shelfOfShame" | "newGames" | "totalPlays" | "hIndex";
+
+// 게임 선택 목록에 한 번에 그릴 최대 줄 수. 나머지는 검색으로 찾는다.
+const PICKER_LIMIT = 20;
 
 const TEMPLATES: { id: TemplateId; title: string; desc: string }[] = [
   { id: "NxM", title: "N개 게임 M회씩", desc: "고른 게임들을 각각 M번씩 플레이" },
   { id: "shelfOfShame", title: "안 해본 보유 게임 정복", desc: "아직 한 번도 안 한 보유 게임을 전부 플레이" },
   { id: "newGames", title: "새 게임 N개 배우기", desc: "기간 안에 처음 플레이한 게임 수" },
-  { id: "totalPlays", title: "기간 안에 N판", desc: "기간 안에 총 플레이 수 채우기" },
-  { id: "hIndex", title: "H-index N 달성", desc: "N판 이상 플레이한 게임이 N개 이상" },
+  { id: "totalPlays", title: "기간 안에 N회", desc: "기간 안에 총 플레이 수 채우기" },
+  { id: "hIndex", title: "H-index N 달성", desc: "N회 이상 플레이한 게임이 N개 이상" },
 ];
 
 function currentYearRange() {
@@ -87,7 +91,7 @@ function ChallengeCard({ challenge, onDelete }: { challenge: Challenge; onDelete
                 <div key={g.gameId} className="challenge-detail-row">
                   <Link to={`/game/${g.gameId}`} className="challenge-detail-name">{g.name || `#${g.gameId}`}</Link>
                   <span className={g.done ? "challenge-detail-value done" : "challenge-detail-value"}>
-                    {g.done ? `완료 (${g.plays}판)` : "미완료"}
+                    {g.done ? `완료 (${g.plays}회)` : "미완료"}
                   </span>
                 </div>
               ))}
@@ -129,23 +133,56 @@ function TemplateForm({
   const [selectedGameIds, setSelectedGameIds] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 후보를 "최근 많이 한 30개"로 묶어두면 아직 안 해본 게임을 도전 대상으로 고를 수 없다.
+  // 컬렉션 전체를 후보로 두고 검색으로 좁힌다.
+  const [collection, setCollection] = useState<CollectionListEntry[]>([]);
+  const [gameQuery, setGameQuery] = useState("");
 
-  const topGames = useMemo(() => insights?.topGames.slice(0, 30) || [], [insights]);
-  const ownedNotPlayed = insights?.ownedNotPlayed || [];
-
-  // NxM: 상위 N개 게임을 기본으로 자동 체크. n이 바뀌면 다시 채운다.
   useEffect(() => {
     if (templateId !== "NxM") return;
-    setSelectedGameIds(new Set(topGames.slice(0, n).map((g) => g.game_id)));
+    api.collection().then(setCollection).catch(() => setCollection([]));
+  }, [templateId]);
+
+  const ownedNotPlayed = insights?.ownedNotPlayed || [];
+
+  // 234개를 전부 깔면 훑기도 어렵고 체크박스가 그만큼 렌더된다.
+  // 고른 것은 항상 보여주고, 나머지는 많이 한 순으로 몇 개만. 그 밖은 검색으로 찾는다.
+  const pickerGames = useMemo(() => {
+    const q = gameQuery.trim().toLowerCase();
+    const all = collection.map((e) => ({
+      game_id: e.game_id,
+      game_name: e.game_name,
+      name_en: e.game_name_en || "",
+      count: e.play_count,
+    }));
+    if (q) {
+      return all
+        .filter((e) => `${e.game_name} ${e.name_en}`.toLowerCase().includes(q))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, PICKER_LIMIT);
+    }
+    const picked = all.filter((e) => selectedGameIds.has(e.game_id)).sort((a, b) => b.count - a.count);
+    const rest = all
+      .filter((e) => !selectedGameIds.has(e.game_id))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, Math.max(0, PICKER_LIMIT - picked.length));
+    return [...picked, ...rest];
+  }, [collection, gameQuery, selectedGameIds]);
+
+  // NxM: 많이 한 순으로 N개를 미리 체크해준다(출발점일 뿐 직접 바꿀 수 있다).
+  useEffect(() => {
+    if (templateId !== "NxM" || collection.length === 0) return;
+    const byPlays = [...collection].sort((a, b) => b.play_count - a.play_count);
+    setSelectedGameIds(new Set(byPlays.slice(0, n).map((g) => g.game_id)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateId, n, topGames.length]);
+  }, [templateId, n, collection.length]);
 
   useEffect(() => {
     const defaults: Record<TemplateId, string> = {
       NxM: `${n}개 게임 ${m}회씩`,
       shelfOfShame: "안 해본 보유 게임 정복",
       newGames: `새 게임 ${target}개 배우기`,
-      totalPlays: `${from.slice(0, 4)}년에 ${target}판`,
+      totalPlays: `${from.slice(0, 4)}년에 ${target}회`,
       hIndex: `H-index ${target} 달성`,
     };
     setName(defaults[templateId]);
@@ -207,15 +244,27 @@ function TemplateForm({
               <input type="number" min={1} value={n} onChange={(e) => setN(Number(e.target.value) || 1)} />
             </div>
             <div className="field">
-              <label>목표 판수 (M)</label>
+              <label>목표 횟수 (M)</label>
               <input type="number" min={1} value={m} onChange={(e) => setM(Number(e.target.value) || 1)} />
             </div>
           </div>
           <div className="field">
-            <label>게임 선택 (최근 많이 한 순으로 자동 체크됨 - 직접 조정 가능)</label>
+            <div className="picker-label-row">
+              <label>게임 선택</label>
+              <span className="muted picker-count">{selectedGameIds.size} / {n}개</span>
+            </div>
+            <input
+              className="picker-search"
+              placeholder={`게임 이름 검색 (전체 ${collection.length}개)`}
+              value={gameQuery}
+              onChange={(e) => setGameQuery(e.target.value)}
+            />
             <div className="challenge-game-picker">
-              {topGames.length === 0 && <p className="muted">플레이 기록이 없습니다.</p>}
-              {topGames.map((g) => (
+              {collection.length === 0 && <p className="muted empty-hint">불러오는 중...</p>}
+              {collection.length > 0 && pickerGames.length === 0 && (
+                <p className="muted empty-hint">검색 결과가 없습니다.</p>
+              )}
+              {pickerGames.map((g) => (
                 <label key={g.game_id} className="challenge-game-picker-row">
                   <input
                     type="checkbox"
@@ -223,7 +272,7 @@ function TemplateForm({
                     onChange={() => toggleGame(g.game_id)}
                   />
                   <span>{g.game_name}</span>
-                  <span className="muted">{g.count}판</span>
+                  <span className="muted">{g.count}회</span>
                 </label>
               ))}
             </div>
@@ -252,8 +301,8 @@ function TemplateForm({
             <input type="number" min={1} value={target} onChange={(e) => setTarget(Number(e.target.value) || 1)} />
           </div>
           <div className="field-row">
-            <div className="field"><label>시작일</label><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-            <div className="field"><label>종료일</label><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+            <div className="field"><label>시작일</label><DateField value={from} onChange={setFrom} /></div>
+            <div className="field"><label>종료일</label><DateField value={to} onChange={setTo} /></div>
           </div>
         </>
       )}
@@ -261,12 +310,12 @@ function TemplateForm({
       {templateId === "totalPlays" && (
         <>
           <div className="field">
-            <label>목표 판수</label>
+            <label>목표 횟수</label>
             <input type="number" min={1} value={target} onChange={(e) => setTarget(Number(e.target.value) || 1)} />
           </div>
           <div className="field-row">
-            <div className="field"><label>시작일</label><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-            <div className="field"><label>종료일</label><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+            <div className="field"><label>시작일</label><DateField value={from} onChange={setFrom} /></div>
+            <div className="field"><label>종료일</label><DateField value={to} onChange={setTo} /></div>
           </div>
         </>
       )}
@@ -325,21 +374,21 @@ export default function ChallengesPage() {
 
   return (
     <div className="page challenges-page">
-      <div className="page-header">
-        <Link to="/insights" className="btn-secondary challenges-back-btn">&lt; 뒤로</Link>
+      <div className="detail-topbar">
+        <Link to="/insights" className="back-btn">← 뒤로</Link>
         <h1>도전 과제</h1>
         {view === "list" && (
-          <button className="icon-btn" onClick={() => setView("templates")}>+</button>
+          <button className="icon-btn" onClick={() => setView("templates")}>＋</button>
         )}
       </div>
 
-      {loading && <p className="muted center-pad">불러오는 중...</p>}
+      {loading && <p className="muted empty-hint">불러오는 중...</p>}
       {error && <p className="error-text">{error}</p>}
 
       {!loading && view === "list" && (
         <>
           {challenges.length === 0 && (
-            <p className="muted center-pad">아직 도전 과제가 없습니다. + 버튼으로 만들어보세요.</p>
+            <p className="muted empty-hint">아직 도전 과제가 없습니다. + 버튼으로 만들어보세요.</p>
           )}
           {challenges.map((c) => (
             <ChallengeCard key={c.id} challenge={c} onDelete={handleDelete} />

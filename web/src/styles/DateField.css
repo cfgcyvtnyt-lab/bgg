@@ -1,0 +1,133 @@
+.date-field {
+  position: relative;
+}
+
+/* 다른 입력칸(.field input)과 같은 높이·테두리·배경을 쓴다 */
+.date-field-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.date-field-icon {
+  flex: none;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.date-popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: var(--z-dropdown);
+  width: 280px;
+  max-width: 100%;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.date-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.date-popup-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.date-nav {
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.date-nav:hover {
+  background: var(--accent-dim);
+}
+
+.date-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.date-weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.date-cell {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.date-cell:hover {
+  background: var(--accent-dim);
+}
+
+/* 주말은 색으로만 구분한다 - 선택/오늘 표시와 겹치지 않게 배경은 안 쓴다 */
+.date-weekday.sun, .date-cell.sun { color: #d9707a; }
+.date-weekday.sat, .date-cell.sat { color: #6f9bd8; }
+
+/* 오늘은 테두리, 선택된 날은 채움. 둘 다인 날은 채움이 이겨야 하므로 뒤에 둔다. */
+.date-cell.today {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.date-cell.selected,
+.date-cell.selected.sun,
+.date-cell.selected.sat {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.date-popup-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.date-today-btn {
+  padding: 5px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12.5px;
+  cursor: pointer;
+}

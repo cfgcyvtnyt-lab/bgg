@@ -114,10 +114,10 @@ export default function SleevesPage() {
 
   return (
     <div className="page sleeves-page">
-      <div className="page-header">
-        <button className="btn-secondary" onClick={() => navigate(-1)}>←</button>
+      <div className="detail-topbar">
+        <button className="back-btn" onClick={() => navigate(-1)}>← 뒤로</button>
         <h1>슬리브 재고</h1>
-        <button className="icon-btn" onClick={() => setAdding((v) => !v)}>{adding ? "×" : "+"}</button>
+        <button className="icon-btn" onClick={() => setAdding((v) => !v)}>{adding ? "✕" : "＋"}</button>
       </div>
 
       <input
@@ -157,8 +157,8 @@ export default function SleevesPage() {
         </div>
       )}
 
-      {loading && <p className="muted center-pad">불러오는 중...</p>}
-      {!loading && filtered.length === 0 && <p className="muted center-pad">항목이 없습니다.</p>}
+      {loading && <p className="muted empty-hint">불러오는 중...</p>}
+      {!loading && filtered.length === 0 && <p className="muted empty-hint">항목이 없습니다.</p>}
 
       {!loading && filtered.length > 0 && (
         <div className="sleeve-table-wrap">
@@ -203,9 +203,11 @@ export default function SleevesPage() {
                 ) : (
                   <tr key={s.id}>
                     <td>{s.size}</td>
-                    <td className="sleeve-maker-cell">
-                      <span>{s.maker || "-"}</span>
-                      {s.kind && <span className="muted sleeve-kind-tag">{s.kind}</span>}
+                    <td>
+                      <div className="sleeve-maker-cell">
+                        <span>{s.maker || "-"}</span>
+                        {s.kind && <span className="muted sleeve-kind-tag">{s.kind}</span>}
+                      </div>
                     </td>
                     <td className="muted">{s.thickness || "-"}</td>
                     <td className="sleeve-qty-cell">
@@ -219,9 +221,11 @@ export default function SleevesPage() {
                       />
                     </td>
                     <td className="sleeve-note-cell">{s.note || "-"}</td>
-                    <td className="sleeve-actions-cell">
-                      <button className="btn-small" onClick={() => startEdit(s)}>수정</button>
-                      <button className="btn-small" onClick={() => removeSleeve(s.id)}>삭제</button>
+                    <td>
+                      <div className="sleeve-actions-cell">
+                        <button className="btn-small" onClick={() => startEdit(s)}>수정</button>
+                        <button className="btn-small" onClick={() => removeSleeve(s.id)}>삭제</button>
+                      </div>
                     </td>
                   </tr>
                 )

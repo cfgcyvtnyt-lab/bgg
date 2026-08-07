@@ -1,0 +1,133 @@
+.bga-hint {
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+
+.bga-actions {
+  margin-bottom: 12px;
+}
+
+.bga-count {
+  font-size: 12px;
+}
+
+/* ---------- 플레이어 연결 ---------- */
+
+.bga-map-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.bga-map-row:last-of-type {
+  border-bottom: none;
+}
+
+.bga-map-name {
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bga-map-row select {
+  flex: none;
+  max-width: 150px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.bga-remember {
+  margin-top: 10px;
+  font-size: 12.5px;
+}
+
+/* ---------- 판 목록 ---------- */
+
+.bga-list {
+  padding: 4px 12px;
+}
+
+.bga-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.bga-row:last-child {
+  border-bottom: none;
+}
+
+/* 앱에 없는 게임은 고를 수 없다 - 흐리게 해서 이유가 보이게 한다 */
+.bga-row:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.bga-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bga-row-game {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bga-row-players {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bga-row-right {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.bga-row-date {
+  font-size: 12px;
+}
+
+.bga-tag {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.bga-tag-new { color: #8fb894; }
+.bga-tag-done { color: var(--muted); }
+.bga-tag-warn { color: #c2b483; }
+
+.bga-result-row {
+  display: flex;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 12.5px;
+}
+
+.bga-years {
+  margin-bottom: 8px;
+}

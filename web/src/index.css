@@ -15,6 +15,13 @@
   --record: #f0b232;
 
   /* 차트·뱃지용. 항목이 많은 파이(요일·장소·인원)에서 서로 구분되도록 색상환을 고르게 나눴다. */
+  /* 레이어 순서를 한 곳에서 정한다. 예전엔 20/30/95/96/100/200/201이 눈대중이라
+     새 레이어를 만들 때마다 하단 탭바에 가리는 사고가 났다. */
+  --z-dropdown: 50;
+  --z-nav: 100;
+  --z-modal: 200;
+  --z-lightbox: 300;
+
   --c1: #4a9eff;
   --c2: #3ba55c;
   --c3: #f0b232;
@@ -43,19 +50,60 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* 탭을 지우지 않고 살려두려면 탭마다 자기 스크롤 상자가 있어야 한다(App.tsx 참고).
+   창 하나를 같이 쓰면 스크롤 위치가 하나뿐이라 탭별로 기억할 수가 없다.
+   그래서 #root가 화면을 꽉 채우고 스크롤은 안쪽 .app-pane이 맡는다. */
+/* 위에서 아래로 [화면 영역][탭바] 두 칸. 탭바를 화면에 고정(position: fixed)하지 않고
+   그냥 맨 아래 칸에 두면, 기기마다 "화면 끝"을 어디로 보든 항상 바닥에 붙는다.
+   100dvh는 주소창이 접혔다 펴지는 만큼 알아서 따라간다. */
 #root {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-panes {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-pane {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 목록 끝에서 더 당겨도 뒤 화면이 같이 밀리지 않게 한다 */
+  overscroll-behavior-y: contain;
+
+  /* viewport-fit=cover를 쓰지 않으므로 노치 자리는 iOS가 알아서 비워 검게 둔다.
+     아래 여백은 .page가 맡는다 - 여기까지 주면 겹쳐서 바닥에 빈 칸이 크게 남는다. */
+
+  /* 안 보이는 탭은 숨기되 지우지 않는다. display:none은 사파리에서 스크롤 위치를
+     지워버리는 경우가 있어 visibility로 감춘다. */
+  visibility: hidden;
+  z-index: 0;
+}
+
+.app-pane.active {
+  visibility: visible;
+  z-index: 1;
+}
+
+/* 본문은 앱 최대 폭에 맞춰 가운데로 */
+.app-pane > * {
   max-width: var(--max-width);
   margin: 0 auto;
-  min-height: 100vh;
-  position: relative;
-  padding-bottom: 64px; /* 하단 탭바 높이만큼 여백 */
+}
+
+body.wide-mode .app-pane > * {
+  max-width: 1400px;
 }
 
 /* 컬렉션 표 모드일 때만 엑셀처럼 넓게 - CollectionPage가 body에 토글한다.
    다른 화면/탭으로 이동하면 클래스가 빠지면서 620px로 복귀한다. */
-body.wide-mode #root {
-  max-width: 1400px;
-}
+
 
 h1, h2, h3, h4 {
   margin: 0;

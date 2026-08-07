@@ -51,11 +51,13 @@ export default function PlayDetailPage() {
 
   return (
     <div className="page play-detail-page">
-      <button className="back-btn" onClick={() => navigate(-1)}>← 뒤로</button>
+      <div className="detail-topbar">
+        <button className="back-btn" onClick={() => navigate(-1)}>← 뒤로</button>
+      </div>
 
       <div className="play-detail-header">
         <Link to={`/game/${play.game_id}`} className="play-detail-boxart">
-          {boxArt ? <img src={boxArt} alt="" /> : <div className="play-detail-boxart-empty">?</div>}
+          {boxArt ? <img decoding="async" src={boxArt} alt="" /> : <div className="play-detail-boxart-empty">?</div>}
         </Link>
         <div className="play-detail-header-text">
           <Link to={`/game/${play.game_id}`} className="play-detail-header-name">{play.game_name}</Link>
@@ -66,7 +68,8 @@ export default function PlayDetailPage() {
       </div>
 
       <div className="card info-box">
-        <div className="info-row"><span className="muted">위치</span><span>{play.location || "미기록"}</span></div>
+        {/* 장소를 안 적은 판은 줄 자체를 안 보여준다 */}
+        {play.location && <div className="info-row"><span className="muted">위치</span><span>{play.location}</span></div>}
         <div className="info-row"><span className="muted">시간</span><span>{play.duration_min ? `${play.duration_min}분` : "-"}</span></div>
       </div>
 
@@ -87,11 +90,11 @@ export default function PlayDetailPage() {
             <div key={i} className="play-detail-player-row">
               <div className="play-detail-player-left">
                 {avatar ? (
-                  <img className="player-avatar" src={api.avatarUrl(avatar)} alt="" />
+                  <img decoding="async" className="player-avatar" src={api.avatarUrl(avatar)} alt="" />
                 ) : (
                   <div className="player-initial" style={{ background: colorForName(p.name) }}>{p.name.slice(0, 1)}</div>
                 )}
-                <span className="play-detail-player-name">{p.name}{p.is_automa ? " 🤖" : ""}</span>
+                <span className={`play-detail-player-name${isWinner ? " winner-name" : ""}`}>{p.name}{p.is_automa ? " 🤖" : ""}</span>
                 {isWinner && <span className="player-wreath" aria-label="승자" title="승자">🏆</span>}
               </div>
               <div className="play-detail-player-right">
@@ -141,8 +144,9 @@ export default function PlayDetailPage() {
                 <span>{c.name}</span>
                 <span>{c.wins}/{c.plays}</span>
                 <span>{c.winRate != null ? `${c.winRate}%` : "-"}</span>
-                <span>{c.avgScore != null ? fmtNum(c.avgScore) : "-"}</span>
-                <span>{c.bestScore != null ? fmtNum(c.bestScore) : "-"}</span>
+                {/* 게임 상세의 점수 요약과 같은 색 규칙 */}
+                <span className="score-avg">{c.avgScore != null ? fmtNum(c.avgScore) : "-"}</span>
+                <span className="score-best">{c.bestScore != null ? fmtNum(c.bestScore) : "-"}</span>
               </div>
             ))}
           </div>
@@ -157,9 +161,12 @@ export default function PlayDetailPage() {
       )}
 
       {play.photos.length > 0 && (
-        <div className="card play-detail-photos">
-          <PhotoSlider photos={play.photos} />
-        </div>
+        <>
+          <div className="section-title">사진</div>
+          <div className="card play-detail-photos">
+            <PhotoSlider photos={play.photos} />
+          </div>
+        </>
       )}
     </div>
   );

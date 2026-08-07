@@ -93,7 +93,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.92);
-  z-index: 200;
+  z-index: var(--z-lightbox);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,7 +106,12 @@
   max-height: 100%;
   object-fit: contain;
   touch-action: none;
+  /* 버튼으로 확대·축소할 때만 쓰이는 애니메이션. 손으로 끄는 동안에는 JS가 이걸 끈다
+     (PhotoSlider.tsx의 setDragging 참고) - 안 끄면 매 프레임 새 애니메이션이 시작돼
+     이미지가 손가락보다 한 박자 늦게 따라온다. */
   transition: transform 0.15s ease;
+  /* 확대·이동을 GPU 레이어에서 처리하게 해 매 프레임 다시 그리는 비용을 줄인다 */
+  will-change: transform;
   cursor: grab;
   user-select: none;
 }
@@ -127,7 +132,7 @@
   height: 36px;
   font-size: 18px;
   cursor: pointer;
-  z-index: 201;
+  z-index: calc(var(--z-lightbox) + 1);
 }
 
 .photo-lightbox-arrow {
@@ -145,7 +150,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 201;
+  z-index: calc(var(--z-lightbox) + 1);
 }
 
 .photo-lightbox-arrow.prev {
@@ -163,7 +168,7 @@
   transform: translateX(-50%);
   display: flex;
   gap: 8px;
-  z-index: 201;
+  z-index: calc(var(--z-lightbox) + 1);
 }
 
 .photo-lightbox-zoom-controls button {
@@ -180,4 +185,21 @@
 .photo-lightbox-zoom-controls button:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+/* 터치 기기에서는 라이트박스의 화살표·확대 버튼을 숨긴다.
+   좌우로 쓸어 넘기고 손가락으로 벌려 확대하면 되는데, 버튼까지 겹쳐 있으면
+   사진을 가리고 탭해서 닫으려다 잘못 눌리기도 한다.
+   화면 폭이 아니라 포인터 종류로 가른다 - 창을 줄인 PC에서는 버튼이 남아야 한다. */
+/* 손가락으로 쓰는 기기 판정. pointer: coarse 하나만 보면 기기·설정에 따라 빗나갈 때가
+   있어서 hover 가능 여부도 같이 본다(마우스가 없으면 hover도 없다). */
+@media (pointer: coarse), (hover: none) {
+  /* 피드 카드 안의 좌우 화살표도 같이 숨긴다. 라이트박스만 숨겨놨더니
+     정작 목록에서는 그대로 보였다. 손으로 쓸어 넘기면 되고, 사진 위에 겹쳐 있어
+     탭해서 크게 보려다 잘못 눌리기도 한다. 점(인디케이터)은 몇 장인지 알려주므로 남긴다. */
+  .photo-slider-arrow,
+  .photo-lightbox-arrow,
+  .photo-lightbox-zoom-controls {
+    display: none;
+  }
 }

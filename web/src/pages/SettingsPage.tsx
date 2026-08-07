@@ -2,117 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { api } from "../api/client";
-import type { LocationCount, User } from "../api/types";
+import type { CleanupResult, LocationCount, User } from "../api/types";
 import "../styles/Settings.css";
 
-// BGA 계정 연동/동기화는 아직 없다. 아이디만 로컬에 저장해두고 나중에 쓸 자리를 마련한다.
-const BGA_KEY = "bgg_bga_username";
-// 서버가 실제로 쓴 적 있는 장소만 내려주므로, 아직 기록에 안 쓰인 "새 장소 이름"은
-// 여기 로컬에 따로 보관해서 목록에 같이 보여준다. 실제 play.location에는 기록 시점에 반영된다.
-const EXTRA_LOCATIONS_KEY = "bgg_extra_locations";
-
-function loadExtraLocations(): string[] {
-  try {
-    const raw = localStorage.getItem(EXTRA_LOCATIONS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-// BGG는 하루 1회 동기화를 권장한다(서버가 429로 강제한다). 그래서 버튼을 누르면
-// "정말 지금 할 거냐"를 확인한 뒤 force=1로 그 제한을 우회한다.
-function SyncButton() {
-  const [syncing, setSyncing] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function doSync() {
-    if (!window.confirm("BGG 서버 정책상 동기화는 하루 1회만 권장됩니다. 지금 강제로 동기화할까요?")) return;
-    setSyncing(true);
-    setMessage(null);
-    try {
-      await api.sync(true);
-      setMessage("동기화 완료");
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "동기화 실패");
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  return (
-    <div className="account-subsection">
-      <div className="account-subsection-label">BGG 동기화</div>
-      <button className="btn-primary" disabled={syncing} onClick={doSync}>
-        {syncing ? "동기화 중..." : "지금 동기화"}
-      </button>
-      <p className="muted bga-note">평소엔 서버가 하루 1회 자동으로 동기화합니다.</p>
-      {message && <p className="muted bga-note">{message}</p>}
-    </div>
-  );
-}
-
-// BGG/BGA 로그인 카드. 실제 연동은 아직 구현하지 않으므로 "연동" 버튼은 안내만 띄운다.
-// 비밀번호는 화면 상태로만 잠깐 들고 있다가 그대로 버려지고, 서버로 전송되지도 저장되지도 않는다.
-function LoginCard({
-  title, usernamePlaceholder, username, onUsernameChange, onUsernameSaved, extra,
-}: {
-  title: string;
-  usernamePlaceholder: string;
-  username: string;
-  onUsernameChange: (v: string) => void;
-  onUsernameSaved?: () => void;
-  extra?: React.ReactNode;
-}) {
-  // 비밀번호는 로컬 상태에만 존재 - 저장도 전송도 하지 않고 "연동" 클릭 시 그대로 비운다.
-  const [password, setPassword] = useState("");
-  const [notice, setNotice] = useState(false);
-
-  function connect() {
-    setPassword(""); // 서버로 보내지 않는다 - 그냥 비운다
-    setNotice(true);
-    if (onUsernameSaved) onUsernameSaved();
-  }
-
-  return (
-    <>
-      <div className="section-title">{title}</div>
-      <div className="card login-card">
-        <div className="field">
-          <label>아이디</label>
-          <input
-            value={username}
-            onChange={(e) => onUsernameChange(e.target.value)}
-            placeholder={usernamePlaceholder}
-          />
-        </div>
-        <div className="field">
-          <label>비밀번호</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="비밀번호"
-            autoComplete="new-password"
-          />
-        </div>
-        <button className="btn-primary" onClick={connect}>연동</button>
-        {notice && <p className="muted bga-note">아직 준비 중입니다. 아이디만 저장되며 비밀번호는 저장되지 않습니다.</p>}
-        {extra}
-      </div>
-    </>
-  );
-}
-
-// 계정 섹션: 사용자 전환(접힘), 프로필 사진, BGG/BGA 로그인 카드, 대표 장소를 모은다.
-function AccountSection({ locations }: { locations: LocationCount[] }) {
+// 계정 섹션: 사용자 전환(접힘)과 프로필 사진.
+function AccountSection() {
   const { users, currentUser, setCurrentUser } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [bgaUsername, setBgaUsername] = useState(() => localStorage.getItem(BGA_KEY) || "");
-  const [bggUsername, setBggUsername] = useState(() => currentUser?.bgg_username || "");
-  const [locBusy, setLocBusy] = useState(false);
   // 사용자 전환은 한 번 정하면 거의 안 바꾸는 값이라 기본은 접어둔다.
   const [switchOpen, setSwitchOpen] = useState(false);
 
@@ -163,17 +61,6 @@ function AccountSection({ locations }: { locations: LocationCount[] }) {
     }
   }
 
-  async function onDefaultLocationChange(value: string) {
-    if (!currentUser) return;
-    setLocBusy(true);
-    try {
-      const updated = await api.updateUser(currentUser.id, { default_location: value || null });
-      setCurrentUser({ ...currentUser, ...updated } as User);
-    } finally {
-      setLocBusy(false);
-    }
-  }
-
   return (
     <>
       <div className="section-title">계정</div>
@@ -182,7 +69,7 @@ function AccountSection({ locations }: { locations: LocationCount[] }) {
           <div className="account-user-row">
             <div className="avatar-preview avatar-preview-sm">
               {currentUser?.avatar
-                ? <img src={api.avatarUrl(currentUser.avatar)} alt={currentUser.name} />
+                ? <img decoding="async" src={api.avatarUrl(currentUser.avatar)} alt={currentUser.name} />
                 : <span className="avatar-placeholder muted">{currentUser?.name?.[0] ?? "?"}</span>}
             </div>
             <span className="account-user-name">{currentUser?.name ?? "-"}</span>
@@ -226,145 +113,255 @@ function AccountSection({ locations }: { locations: LocationCount[] }) {
           )}
         </div>
 
-        <div className="account-subsection">
-          <div className="account-subsection-label">대표 장소</div>
-          <select
-            value={currentUser?.default_location || ""}
-            disabled={!currentUser || locBusy}
-            onChange={(e) => onDefaultLocationChange(e.target.value)}
-          >
-            <option value="">(없음)</option>
-            {locations.map((l) => (
-              <option key={l.name} value={l.name}>{l.name}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
-      <LoginCard
-        title="BGG 계정 연동"
-        usernamePlaceholder="BGG 아이디"
-        username={bggUsername}
-        onUsernameChange={setBggUsername}
-        extra={<SyncButton />}
-      />
-
-      <LoginCard
-        title="BGA 계정 연동"
-        usernamePlaceholder="Board Game Arena 아이디"
-        username={bgaUsername}
-        onUsernameChange={setBgaUsername}
-        onUsernameSaved={() => localStorage.setItem(BGA_KEY, bgaUsername.trim())}
-      />
+      <div className="section-title">아레나 연동</div>
+      <div className="card">
+        <Link to="/bga" className="btn-primary bga-import-link">아레나에서 가져오기</Link>
+      </div>
     </>
   );
 }
 
-// 장소 표기를 직접 바꾸는 섹션. name_alias(조회 시점 병합)와 달리 play.location 원본 값을
-// UPDATE로 실제 고친다 - 예전 "이름 정리"보다 더 강한 조작이라 확인 다이얼로그를 반드시 거친다.
-function LocationManageSection({ locations, onChanged }: { locations: LocationCount[]; onChanged: () => void }) {
-  const [extra, setExtra] = useState<string[]>(() => loadExtraLocations());
-  const [editMode, setEditMode] = useState(false);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [adding, setAdding] = useState(false);
-  const [addValue, setAddValue] = useState("");
-  const [busy, setBusy] = useState(false);
+// 정리 결과는 MB로만 보여준다 - 몇 KB 단위까지 알 필요가 없다.
+function fmtMB(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
 
-  const names = [...locations.map((l) => l.name), ...extra.filter((e) => !locations.some((l) => l.name === e))];
+// 장소 관리. 평소엔 이름만 보여주고, 편집을 눌렀을 때만 고치기·대표 지정·삭제·추가가 나온다.
+// 기록 화면 드롭다운은 고르기만 한다 - 판을 적는 중에 할 일이 아니고,
+// 잘못 눌러 기록 전체의 장소가 바뀌면 곤란하기 때문이다.
+//
+// 장소는 계정별로 따로다(ㅇ은 Home/BGA, ㅃ는 B.). 목록은 서버가 내 play.location을 집계해 주고,
+// 아직 한 판도 안 한 장소와 "온라인" 표시는 서버의 location_pref에 저장된다.
+function LocationSection() {
+  const { currentUser, setCurrentUser } = useUser();
+  const [locations, setLocations] = useState<LocationCount[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [adding, setAdding] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function load() {
+    return api.locations().then(setLocations).catch(() => setLocations([]));
+  }
+  useEffect(() => { load(); }, [currentUser]);
 
   function toggleEdit() {
-    if (editMode) {
-      setEditMode(false);
-      setAdding(false);
-      setAddValue("");
-    } else {
-      setValues(Object.fromEntries(names.map((n) => [n, n])));
-      setEditMode(true);
-    }
+    if (!editing) setEdits(Object.fromEntries(locations.map((l) => [l.name, l.name])));
+    setEditing((v) => !v);
+    setAdding("");
+    setError(null);
   }
 
-  async function confirmRename(from: string) {
-    const to = (values[from] ?? from).trim();
-    if (!to || to === from) return;
-    if (!window.confirm(`"${from}" → "${to}"로 이름을 바꿀까요?`)) return;
+  async function run(fn: () => Promise<unknown>, fallback: string) {
     setBusy(true);
+    setError(null);
     try {
-      // 서버에 실제 기록이 있는 장소만 play.location을 고칠 수 있다. 아직 미사용(extra) 장소는
-      // 로컬 목록만 바꾼다.
-      if (locations.some((l) => l.name === from)) {
-        await api.renameLocation(from, to);
-        onChanged();
-      }
-      if (extra.includes(from)) {
-        const next = extra.map((e) => (e === from ? to : e));
-        setExtra(next);
-        localStorage.setItem(EXTRA_LOCATIONS_KEY, JSON.stringify(next));
-      }
-      setValues((v) => ({ ...v, [to]: to }));
+      await fn();
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : fallback);
     } finally {
       setBusy(false);
     }
   }
 
-  function submitAdd() {
-    const name = addValue.trim();
-    if (!name || names.includes(name)) { setAdding(false); setAddValue(""); return; }
-    const next = [...extra, name];
-    setExtra(next);
-    localStorage.setItem(EXTRA_LOCATIONS_KEY, JSON.stringify(next));
-    setValues((v) => ({ ...v, [name]: name }));
-    setAdding(false);
-    setAddValue("");
+  // 저장 버튼 없이 Enter나 포커스 이탈로 적용한다. 기록 전체가 바뀌는 일이라 확인은 받고,
+  // 취소하면 입력을 원래 이름으로 되돌린다.
+  async function rename(from: string) {
+    const to = (edits[from] ?? from).trim();
+    if (!to || to === from) return;
+    if (!window.confirm(`"${from}" → "${to}"로 바꿉니다. 이 장소로 기록된 내 플레이 전부에 적용됩니다.`)) {
+      setEdits((v) => ({ ...v, [from]: from }));
+      return;
+    }
+    await run(async () => {
+      await api.renameLocation(from, to);
+      if (currentUser?.default_location === from) {
+        const updated = await api.updateUser(currentUser.id, { default_location: to });
+        setCurrentUser({ ...currentUser, ...updated } as User);
+      }
+      setEdits((v) => ({ ...v, [to]: to }));
+    }, "이름 변경 실패");
+  }
+
+  // 기록이 있는 장소를 지우면 그 판들은 장소 없는 기록이 된다(플레이 자체는 남는다).
+  function remove(l: LocationCount) {
+    const msg = l.count > 0
+      ? `"${l.name}"을(를) 지울까요? 기록 ${l.count}건의 장소 표시도 함께 지워집니다.`
+      : `"${l.name}"을(를) 목록에서 지울까요?`;
+    if (!window.confirm(msg)) return;
+    run(async () => {
+      await api.deleteLocation(l.name);
+      if (currentUser?.default_location === l.name) {
+        const updated = await api.updateUser(currentUser.id, { default_location: null });
+        setCurrentUser({ ...currentUser, ...updated } as User);
+      }
+    }, "삭제 실패");
+  }
+
+  function setDefault(name: string) {
+    if (!currentUser || currentUser.default_location === name) return;
+    run(async () => {
+      const updated = await api.updateUser(currentUser.id, { default_location: name });
+      setCurrentUser({ ...currentUser, ...updated } as User);
+    }, "대표 장소 지정 실패");
+  }
+
+  function add() {
+    const name = adding.trim();
+    setAdding("");
+    if (!name || locations.some((l) => l.name === name)) return;
+    run(async () => {
+      await api.saveLocation(name);
+      setEdits((v) => ({ ...v, [name]: name }));
+    }, "장소 추가 실패");
   }
 
   return (
     <>
       <div className="section-title-row">
-        <div className="section-title">장소 관리</div>
-        <button className="btn-small" onClick={toggleEdit}>{editMode ? "완료" : "편집"}</button>
+        <div className="section-title">장소</div>
+        <button className="btn-small" onClick={toggleEdit}>{editing ? "완료" : "편집"}</button>
       </div>
       <div className="card">
-        {names.length === 0 && <p className="muted center-pad">기록된 장소가 없습니다.</p>}
+        {error && <p className="error-text">{error}</p>}
+        {locations.length === 0 && <p className="muted empty-hint">기록된 장소가 없습니다.</p>}
 
-        {names.map((name) => (
-          <div key={name} className="alias-row">
-            {editMode ? (
-              <div className="alias-row-action">
+        {locations.map((l) => (
+          <div key={l.name} className="loc-item">
+            <div className="loc-row">
+              {editing ? (
+                <>
+                  <input
+                    className="loc-name-input"
+                    value={edits[l.name] ?? l.name}
+                    disabled={busy}
+                    onChange={(e) => setEdits((v) => ({ ...v, [l.name]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                    // 삭제를 누르느라 포커스가 빠진 거면 이름부터 바꾸겠냐고 묻지 않는다 -
+                    // 지울 장소의 이름을 확인받는 건 의미가 없고 창만 두 번 뜬다.
+                    onBlur={(e) => {
+                      if ((e.relatedTarget as HTMLElement | null)?.classList.contains("loc-del-btn")) {
+                        setEdits((v) => ({ ...v, [l.name]: l.name }));
+                        return;
+                      }
+                      rename(l.name);
+                    }}
+                  />
+                  {/* 대표는 읽기 모드의 배지와 같은 모양을 그대로 버튼으로 쓴다 - 켜져 있는 쪽이 현재 대표 */}
+                  <button
+                    className={`loc-default-toggle${currentUser?.default_location === l.name ? " active" : ""}`}
+                    disabled={busy}
+                    onClick={() => setDefault(l.name)}
+                  >
+                    대표
+                  </button>
+                  <button className="loc-del-btn" disabled={busy} onClick={() => remove(l)} aria-label="장소 삭제">✕</button>
+                </>
+              ) : (
+                <>
+                  <span className="loc-name">{l.name}</span>
+                  {l.online && <span className="muted loc-online-tag">온라인</span>}
+                  {currentUser?.default_location === l.name && (
+                    <span className="default-location-badge muted">대표</span>
+                  )}
+                </>
+              )}
+            </div>
+            {/* 온라인에서 한 판은 실물 제품으로 논 게 아니라서 판당 비용 계산에서 뺀다.
+                기본값은 BGA·TTS·App이 켜짐. */}
+            {editing && (
+              <label className="switch-label loc-online">
                 <input
-                  value={values[name] ?? name}
-                  onChange={(e) => setValues((v) => ({ ...v, [name]: e.target.value }))}
+                  type="checkbox"
+                  checked={!!l.online}
+                  disabled={busy}
+                  onChange={(e) => run(() => api.saveLocation(l.name, { online: e.target.checked }), "설정 저장 실패")}
                 />
-                <button
-                  className="btn-small"
-                  disabled={busy || (values[name] ?? name).trim() === name}
-                  onClick={() => confirmRename(name)}
-                >
-                  저장
-                </button>
-              </div>
-            ) : (
-              <div className="alias-row-main">
-                <span>{name}</span>
-              </div>
+                온라인
+              </label>
             )}
           </div>
         ))}
 
-        {editMode && (
-          adding ? (
-            <div className="alias-row-action add-location-row">
-              <input
-                value={addValue}
-                onChange={(e) => setAddValue(e.target.value)}
-                placeholder="새 장소 이름"
-                autoFocus
-              />
-              <button className="btn-small" onClick={submitAdd}>추가</button>
-              <button className="btn-small" onClick={() => { setAdding(false); setAddValue(""); }}>취소</button>
-            </div>
+        {editing && (
+          <div className="loc-row loc-add-row">
+            <input
+              className="loc-name-input"
+              placeholder="새 장소 이름"
+              value={adding}
+              disabled={busy}
+              onChange={(e) => setAdding(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") add(); }}
+            />
+            {/* 삭제(✕)와 같은 아이콘 버튼 규칙. 앱 전체가 추가는 ＋, 제거는 ✕로 통일돼 있다 */}
+            <button className="loc-del-btn" disabled={busy || !adding.trim()} onClick={add} aria-label="장소 추가">＋</button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// 저장 공간 정리. NAS 도커에 올려두고 몇 달씩 안 들여다볼 걸 전제로 서버가 주 1회 자동으로
+// 돌지만, 지금 얼마나 쌓였는지 보고 직접 돌릴 수 있어야 한다.
+//
+// 지우는 건 캐시와 고아 파일뿐이다 - 기록·컬렉션·평점은 건드리지 않는다.
+// 긱 이미지는 지워도 다음에 볼 때 다시 받으므로 잃는 게 없다.
+function StorageSection() {
+  const [status, setStatus] = useState<CleanupResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<CleanupResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.cleanupStatus().then(setStatus).catch(() => setStatus(null));
+  }, []);
+
+  async function run() {
+    if (!window.confirm("캐시와 고아 파일을 정리합니다. 기록과 컬렉션은 그대로입니다.")) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.cleanup();
+      setDone(r);
+      setStatus(await api.cleanupStatus());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "정리 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const pending = status?.freedBytes ?? 0;
+
+  return (
+    <>
+      <div className="section-title-row">
+        <div className="section-title">저장 공간</div>
+        <button className="btn-small" disabled={busy} onClick={run}>{busy ? "정리 중..." : "정리"}</button>
+      </div>
+      <div className="card">
+        {error && <p className="error-text">{error}</p>}
+        {done && (
+          <p className="muted storage-line">
+            {fmtMB(done.freedBytes)} 정리했습니다 (이미지 {done.images.removed}개).
+          </p>
+        )}
+        {status ? (
+          pending > 0 ? (
+            <p className="muted storage-line">
+              지울 수 있는 것 <b>{fmtMB(pending)}</b> · 안 쓰는 긱 이미지 {status.images.removed}개
+            </p>
           ) : (
-            <button className="btn-secondary add-location-btn" onClick={() => setAdding(true)}>장소 추가</button>
+            <p className="muted storage-line">정리할 게 없습니다.</p>
           )
+        ) : (
+          <p className="muted storage-line">확인 중...</p>
         )}
       </div>
     </>
@@ -372,39 +369,13 @@ function LocationManageSection({ locations, onChanged }: { locations: LocationCo
 }
 
 export default function SettingsPage() {
-  const [locations, setLocations] = useState<LocationCount[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  async function loadLocations() {
-    setLoading(true);
-    try {
-      setLocations(await api.locations());
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { loadLocations(); }, []);
-
+  // 슬리브 재고는 컬렉션 화면에 있다 - 게임 소유 정보에 딸린 것이지 앱 설정이 아니다.
   return (
     <div className="page settings-page">
       <div className="page-header"><h1>설정</h1></div>
-
-      <AccountSection locations={locations} />
-
-      <div className="section-title">슬리브 재고</div>
-      <div className="card">
-        <Link to="/sleeves" className="btn-secondary sleeve-link-btn">슬리브 재고 관리 열기</Link>
-      </div>
-
-      {loading ? (
-        <>
-          <div className="section-title">장소 관리</div>
-          <div className="card"><p className="muted center-pad">불러오는 중...</p></div>
-        </>
-      ) : (
-        <LocationManageSection locations={locations} onChanged={loadLocations} />
-      )}
+      <AccountSection />
+      <LocationSection />
+      <StorageSection />
     </div>
   );
 }

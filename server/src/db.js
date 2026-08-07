@@ -94,6 +94,9 @@ CREATE INDEX IF NOT EXISTS idx_photo_play ON photo(play_id);
 // 이미 데이터가 쌓인 뒤 추가된 컬럼들. ALTER TABLE은 실패해도(이미 있으면) 무시한다.
 const ALTER_COLUMNS = [
   "ALTER TABLE user ADD COLUMN bga_username TEXT",
+  // BGA 플레이어 이름 -> 앱 계정 매칭용. game_id(=game 참조)에 사용자 id를 넣으면
+  // 외래키가 깨지므로 전용 컬럼을 따로 둔다.
+  "ALTER TABLE sync_match ADD COLUMN mapped_user_id INTEGER",
   "ALTER TABLE play ADD COLUMN expansions TEXT",
   "ALTER TABLE play ADD COLUMN is_coop INTEGER DEFAULT 0",
   "ALTER TABLE play_player ADD COLUMN role TEXT",
@@ -147,6 +150,10 @@ const ALTER_COLUMNS = [
   // 게임 대체 이미지(BGG 다른 버전 이미지 등). 있으면 image/thumbnail보다 우선 표시한다.
   // 동기화(upsertGames)는 이 컬럼을 절대 건드리지 않는다 - custom_name과 같은 이유.
   "ALTER TABLE game ADD COLUMN custom_image TEXT",
+
+  // 번역 실패 시각. 무료 번역 API가 막혀 있을 때 상세를 열 때마다 재시도하면
+  // 매번 느리고 429만 쌓인다. 하루 동안은 재시도하지 않는 기준점.
+  "ALTER TABLE game ADD COLUMN translate_failed_at TEXT",
 ];
 
 // 챌린지(목표)와 BGA 동기화 매칭 기록. 기존 테이블과 무관한 신규 기능이라 CREATE IF NOT EXISTS로 충분.
@@ -188,6 +195,16 @@ CREATE TABLE IF NOT EXISTS name_alias (
   alias     TEXT NOT NULL,      -- 실제 기록된 값
   canonical TEXT NOT NULL,      -- 대표로 쓸 이름
   UNIQUE(kind, alias)
+);
+
+-- 장소별 설정. 장소 목록 자체는 play.location을 집계해서 만들지만, 아직 한 판도 안 한
+-- 장소(만들어만 둔 것)와 "판당 비용에서 뺄지" 같은 설정은 집계로 알 수 없어 여기 둔다.
+-- 장소는 계정별로 다르므로(ㅇ은 Home/BGA, ㅃ는 B.) user_id를 함께 키로 쓴다.
+CREATE TABLE IF NOT EXISTS location_pref (
+  user_id INTEGER NOT NULL REFERENCES user(id),
+  name    TEXT    NOT NULL,
+  online  INTEGER,            -- 1이면 판당 비용 계산에서 제외(내 실물 제품으로 논 게 아니라서)
+  PRIMARY KEY (user_id, name)
 );
 
 -- 슬리브 재고. 구글시트에서 이관한 공유 값(둘이 같이 쓴다) - user_id 없음.

@@ -19,11 +19,6 @@
   color: var(--accent);
 }
 
-.bga-note {
-  margin-top: 8px;
-  font-size: 12px;
-}
-
 /* 사용자 전환은 거의 안 바꾸는 값이라 한 줄로 접어두고, 눌러야 펼쳐진다. */
 .account-user-row {
   display: flex;
@@ -57,22 +52,6 @@
 }
 
 /* BGG/BGA 로그인 카드 - 실제 연동은 미구현, 폼만 제공한다. */
-.login-card .btn-primary {
-  width: 100%;
-}
-
-.section-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 20px 0 8px;
-}
-
-.section-title-row .section-title {
-  margin: 0;
-}
-
 .account-subsection {
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
@@ -85,12 +64,6 @@
 .account-subsection:last-child {
   border-bottom: none;
   padding-bottom: 0;
-}
-
-.account-subsection-label {
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 8px;
 }
 
 .avatar-row {
@@ -131,60 +104,107 @@
   width: 100%;
 }
 
-.add-location-btn {
-  margin-top: 10px;
-  width: 100%;
+.sync-ok { color: #8fb894; }
+.sync-fail { color: #c08a8a; }
+
+.bga-import-link {
+  display: block;
+  text-align: center;
+  text-decoration: none;
 }
 
-.add-location-row {
-  margin-top: 10px;
-}
+/* ---------- 장소 관리 ---------- */
 
-.alias-kind-toggle {
-  margin-bottom: 10px;
-}
-
-.alias-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 0;
+.loc-item {
   border-bottom: 1px solid var(--border);
 }
 
-.alias-row:last-child {
+.loc-item:last-child {
   border-bottom: none;
 }
 
-.alias-row-main {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.alias-row-action {
+.loc-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 13px;
+  gap: 6px;
+  padding: 6px 0;
 }
 
-.sleeve-link-btn {
-  display: inline-block;
-  text-decoration: none;
-  text-align: center;
+/* 추가 행은 목록과 구분선으로 떨어뜨린다 */
+.loc-add-row {
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
 }
 
-.alias-row-action select,
-.alias-row-action input {
+.loc-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loc-online-tag {
+  flex: none;
+  font-size: 11.5px;
+}
+
+.loc-online {
+  padding: 0 0 8px;
+  font-size: 12px;
+}
+
+/* 대표 지정 버튼. 읽기 모드의 "대표" 배지와 같은 모양이고, 켜진 쪽이 현재 대표다. */
+.loc-default-toggle {
+  flex: none;
+  font-size: 11px;
+  padding: 3px 8px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.loc-default-toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 삭제는 앱의 다른 제거 버튼(플레이어 ✕, 사진 ✕)과 같은 규칙 */
+.loc-del-btn {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 15px;
+  padding: 4px;
+}
+
+.loc-name-input {
   flex: 1;
   min-width: 0;
   padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
   background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   color: var(--text);
+  font-size: 13.5px;
+}
+
+.loc-del-btn:disabled {
+  opacity: 0.35;
+}
+
+/* ---------- 저장 공간 ---------- */
+
+.storage-line {
+  margin: 0 0 6px;
   font-size: 13px;
+}
+
+.storage-note {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
 }

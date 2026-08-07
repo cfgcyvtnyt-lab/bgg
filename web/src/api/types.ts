@@ -79,6 +79,7 @@ export interface GameStats {
   playCount: number;
   winRate: number | null; // 0~100 정수(%)
   avgDurationMin: number | null;
+  firstPlayedAt?: string | null;
   lastPlayedAt: string | null;
   // 1인 판과 2인+ 판을 섞으면 의미가 없어서 분리한다.
   score: { solo: ScoreBucket | null; multi: ScoreBucket | null };
@@ -100,8 +101,9 @@ export interface CollectionEntry {
   // /api/collection 조인 결과에만 존재
   game_name?: string;
   game_name_en?: string | null;
+  // custom_image → thumbnail → image 순으로 서버가 골라 보낸 한 장. 원본 image는 안 보낸다
+  // (목록에서 쓰지 않는데 245행이면 33KB다). 큰 이미지는 /api/games/:id 상세에 있다.
   thumbnail?: string | null;
-  image?: string | null;
   year_published?: number | null;
   min_players?: number | null;
   max_players?: number | null;
@@ -283,18 +285,7 @@ export interface PlayInput {
   rule_error_note?: string | null;
 }
 
-export interface NameAlias {
-  id: number;
-  kind: "player" | "location";
-  alias: string;
-  canonical: string;
-}
 
-export interface NameCount {
-  name: string;
-  count: number;
-  canonical: string | null;
-}
 
 export interface BggSearchResult {
   id: number;
@@ -306,6 +297,8 @@ export interface BggSearchResult {
 export interface LocationCount {
   name: string;
   count: number;
+  // 온라인 장소(BGA·TTS 등)는 실물 제품을 안 쓴 판이라 판당 비용 계산에서 뺀다
+  online?: boolean;
 }
 
 export interface TagCount {
@@ -387,7 +380,8 @@ export interface FeedItemPlay {
 
 export interface FeedItemEvent {
   type: "event";
-  kind: "first" | "milestone" | "best" | "worst" | "challenge" | "error";
+  // best는 피드에 낱개로 안 뜨고 월간 결산에만 들어간다(MonthEvent 참고)
+  kind: "first" | "milestone" | "challenge" | "error";
   date: string;
   seq: number;
   userId: number;
@@ -406,6 +400,9 @@ export interface FeedItemMonth {
   type: "month";
   date: string;
   seq: number;
+  // 결산은 계정별로 따로 만들어진다(플레이 기록이 합산되지 않으므로)
+  userId: number;
+  author: string;
   month: string;
   year: number;
   monthNum: number;
@@ -415,6 +412,19 @@ export interface FeedItemMonth {
   topGames: { name: string; count: number; gameId: number; thumbnail: string | null }[];
   bestUpdateCount: number;
   totalMinutes: number;
+  distinctGames: number;
+  playedDays: number;
+  // 그 달의 사건들. 최저점·에러플은 빼고 첫 플레이·최고점·N회 달성·도전과제만 담긴다.
+  events: MonthEvent[];
+}
+
+export interface MonthEvent {
+  kind: "first" | "best" | "milestone" | "challenge";
+  gameId: number | null;
+  gameName: string | null;
+  score: number | null;
+  count: number | null;
+  challengeName: string | null;
 }
 
 export type FeedItem = FeedItemPlay | FeedItemEvent | FeedItemMonth;
@@ -423,4 +433,70 @@ export interface FeedResponse {
   items: FeedItem[];
   hasMore: boolean;
   total: number;
+}
+
+
+
+// ---------- BGA 임포트 ----------
+
+export interface BgaSessionRow {
+  user_id: number;
+  name: string;
+  bga_username: string | null;
+  loggedIn: boolean;
+  playerId: number | null;
+  at: string | null;
+}
+
+export interface BgaPlayPlayer {
+  bgaId: number | null;
+  name: string;
+  score: number | null;
+  rank: number | null;
+  win: boolean;
+  // 지난번에 고른 매칭. 고정이 아니라 제안일 뿐이다(계정을 바꿔 쓰는 경우가 있어서).
+  suggestUserId: number | null;
+}
+
+export interface BgaPlayItem {
+  tableId: number;
+  playedAt: string;
+  durationMin: number | null;
+  bgaGameId: number;
+  bgaGameName: string;
+  bggId: number | null;
+  gameName: string;
+  inCollection: boolean;
+  // 앱 DB에 게임이 없어 가져올 때 BGG에서 받아와야 하는 경우
+  needsFetch: boolean;
+  // BGG 번호를 알아 연결 가능한지. 아니면 가져올 수 없다.
+  canImport: boolean;
+  alreadyImported: boolean;
+  maybeDuplicate: boolean;
+  players: BgaPlayPlayer[];
+}
+
+export interface BgaImportResult {
+  tableId: number;
+  ok: boolean;
+  playId?: number;
+  game?: string;
+  date?: string;
+  error?: string;
+}
+
+// GET/POST /api/cleanup - 캐시·고아 파일 청소. GET은 dry run(무엇을 얼마나 지울지만 센다).
+export interface CleanupBucket {
+  removed: number;
+  freedBytes: number;
+}
+
+export interface CleanupResult {
+  startedAt: string;
+  dryRun: boolean;
+  images: CleanupBucket;
+  photos: CleanupBucket;
+  avatars: CleanupBucket;
+  database: { freedBytes: number; freelistPages: number };
+  freedBytes: number;
 }
